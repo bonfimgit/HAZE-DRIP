@@ -262,7 +262,7 @@ haze-drip/
 Executando o backend localmente
 
 Clone o repositório:
-git clone URL\_DO\_REPOSITORIO
+git clone: https://github.com/bonfimgit/HAZE-DRIP
 
 Entre na pasta:
 
