@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Campanha — Haze Drip
+  </title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+
+</head>
+
+
+<body class="admin-body">
+
+<div class="admin-layout">
+
+
+  <aside class="admin-sidebar">
+
+    <div class="admin-brand">
+
+      <img
+        src="/hazedrip/assets/haze-logo.png"
+        alt="Haze Drip"
+      >
+
+      <span>ADMIN</span>
+
+    </div>
+
+
+    <div class="admin-user">
+
+      <div class="admin-avatar">
+        HD
+      </div>
+
+      <div>
+
+        <strong class="js-admin-nome">
+          Gerente
+        </strong>
+
+        <span class="js-admin-perfil">
+          Gerente
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <nav class="admin-menu">
+
+      <a
+        href="dashboard.html"
+        class="admin-menu-link"
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="produtos.html"
+        class="admin-menu-link"
+      >
+        Produtos
+      </a>
+
+      <a
+        href="drops.html"
+        class="admin-menu-link"
+      >
+        Drops
+      </a>
+
+      <a
+        href="campanha.html"
+        class="admin-menu-link active"
+      >
+        Campanha
+      </a>
+
+      <a
+        href="pedidos.html"
+        class="admin-menu-link"
+      >
+        Pedidos
+      </a>
+
+    </nav>
+
+
+    <button
+      type="button"
+      class="admin-logout js-admin-sair"
+    >
+      Sair
+    </button>
+
+  </aside>
+
+
+
+  <main class="admin-content">
+
+
+    <header class="admin-page-header">
+
+      <div>
+
+        <span class="admin-page-label">
+          HOME / CAMPANHA
+        </span>
+
+        <h1>
+          Campanha
+        </h1>
+
+        <p>
+          Altere o banner principal da loja.
+        </p>
+
+      </div>
+
+
+      <a
+        href="/hazedrip/frontend/index.html"
+        target="_blank"
+        class="admin-view-store"
+      >
+        Ver Home
+      </a>
+
+    </header>
+
+
+
+    <form
+      id="campanha-form"
+      class="admin-edit-form"
+    >
+
+
+      <!-- IMAGEM -->
+
+      <section class="admin-form-card">
+
+        <div class="admin-form-card-header">
+
+          <div>
+
+            <span>
+              BANNER
+            </span>
+
+            <h2>
+              Imagem da campanha
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <div class="admin-campaign-preview">
+
+          <img
+            id="campanha-preview"
+            src=""
+            alt="Campanha atual"
+          >
+
+          <div
+            id="campanha-sem-imagem"
+            class="admin-campaign-empty"
+          >
+            Nenhuma imagem cadastrada
+          </div>
+
+        </div>
+
+
+        <div class="admin-upload-area">
+
+          <input
+            type="file"
+            id="campanha-imagem"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+          >
+
+
+          <button
+            type="button"
+            class="admin-secondary-btn"
+            id="campanha-escolher-imagem"
+          >
+            Alterar imagem
+          </button>
+
+
+          <span id="campanha-arquivo">
+            Nenhuma nova imagem selecionada
+          </span>
+
+        </div>
+
+
+        <p class="admin-upload-help">
+          JPG, PNG ou WEBP. Máximo de 5 MB.
+          Se não escolher outra imagem,
+          a atual será mantida.
+        </p>
+
+      </section>
+
+
+
+      <!-- CONTEÚDO -->
+
+      <section class="admin-form-card">
+
+        <div class="admin-form-card-header">
+
+          <div>
+
+            <span>
+              CONTEÚDO
+            </span>
+
+            <h2>
+              Informações da campanha
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <div class="admin-form-grid">
+
+
+          <div class="admin-form-group admin-form-full">
+
+            <label for="campanha-titulo">
+              Título
+            </label>
+
+            <input
+              type="text"
+              id="campanha-titulo"
+              required
+            >
+
+          </div>
+
+
+          <div class="admin-form-group admin-form-full">
+
+            <label for="campanha-subtitulo">
+              Subtítulo
+            </label>
+
+            <textarea
+              id="campanha-subtitulo"
+              rows="3"
+            ></textarea>
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="campanha-texto-botao">
+              Texto do botão
+            </label>
+
+            <input
+              type="text"
+              id="campanha-texto-botao"
+              placeholder="Ver coleção"
+            >
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="campanha-link-botao">
+              Link do botão
+            </label>
+
+            <input
+              type="text"
+              id="campanha-link-botao"
+              placeholder="catalogo.html"
+            >
+
+          </div>
+
+
+        </div>
+
+      </section>
+
+
+
+      <!-- STATUS -->
+
+      <section class="admin-form-card">
+
+        <div class="admin-form-card-header">
+
+          <div>
+
+            <span>
+              VISIBILIDADE
+            </span>
+
+            <h2>
+              Status
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <label class="admin-toggle-item">
+
+          <div>
+
+            <strong>
+              Campanha ativa
+            </strong>
+
+            <span>
+              Esta campanha será usada
+              como campanha principal da Home.
+            </span>
+
+          </div>
+
+
+          <input
+            type="checkbox"
+            id="campanha-ativa"
+          >
+
+        </label>
+
+      </section>
+
+
+
+      <div
+        id="campanha-mensagem"
+        class="admin-form-message"
+      ></div>
+
+
+      <div class="admin-form-actions">
+
+        <button
+          type="submit"
+          id="campanha-salvar"
+          class="admin-primary-btn"
+        >
+          Salvar campanha
+        </button>
+
+      </div>
+
+
+    </form>
+
+
+  </main>
+
+</div>
+
+
+<script src="admin.js"></script>
+<script src="campanha.js"></script>
+
+</body>
+
+</html>

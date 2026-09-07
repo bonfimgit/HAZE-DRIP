@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Novo Produto — Haze Drip</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+</head>
+
+<body class="admin-body">
+
+<div class="admin-layout">
+
+
+  <aside class="admin-sidebar">
+
+    <div class="admin-brand">
+
+      <img
+        src="/hazedrip/assets/haze-logo.png"
+        alt="Haze Drip"
+      >
+
+      <span>ADMIN</span>
+
+    </div>
+
+
+    <div class="admin-user">
+
+      <div class="admin-avatar">
+        HD
+      </div>
+
+      <div>
+
+        <strong class="js-admin-nome">
+          Gerente
+        </strong>
+
+        <span class="js-admin-perfil">
+          Gerente
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <nav class="admin-menu">
+
+      <a
+        href="dashboard.html"
+        class="admin-menu-link"
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="produtos.html"
+        class="admin-menu-link active"
+      >
+        Produtos
+      </a>
+
+      <a
+        href="drops.html"
+        class="admin-menu-link"
+      >
+        Drops
+      </a>
+
+      <a
+        href="campanha.html"
+        class="admin-menu-link"
+      >
+        Campanha
+      </a>
+
+      <a
+        href="pedidos.html"
+        class="admin-menu-link"
+      >
+        Pedidos
+      </a>
+
+    </nav>
+
+
+    <button
+      type="button"
+      class="admin-logout js-admin-sair"
+    >
+      Sair
+    </button>
+
+  </aside>
+
+
+
+  <main class="admin-content">
+
+
+    <header class="admin-page-header">
+
+      <div>
+
+        <a
+          href="produtos.html"
+          class="admin-back-link"
+        >
+          ← Voltar para produtos
+        </a>
+
+        <span class="admin-page-label">
+          PRODUTOS / NOVO
+        </span>
+
+        <h1>
+          Novo produto
+        </h1>
+
+        <p>
+          Cadastre as informações básicas do produto.
+        </p>
+
+      </div>
+
+    </header>
+
+
+
+    <form
+      id="novo-produto-form"
+      class="admin-edit-form"
+    >
+
+
+      <section class="admin-form-card">
+
+
+        <div class="admin-form-card-header">
+
+          <div>
+
+            <span>
+              INFORMAÇÕES
+            </span>
+
+            <h2>
+              Dados do produto
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <div class="admin-form-grid">
+
+
+          <div class="admin-form-group admin-form-full">
+
+            <label for="novo-produto-nome">
+              Nome
+            </label>
+
+            <input
+              type="text"
+              id="novo-produto-nome"
+              required
+              placeholder="Ex: Camiseta Haze Metal"
+            >
+
+          </div>
+
+
+          <div class="admin-form-group admin-form-full">
+
+            <label for="novo-produto-descricao">
+              Descrição
+            </label>
+
+            <textarea
+              id="novo-produto-descricao"
+              rows="5"
+              placeholder="Descrição do produto..."
+            ></textarea>
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="novo-produto-preco">
+              Preço
+            </label>
+
+            <input
+              type="number"
+              id="novo-produto-preco"
+              min="0.01"
+              step="0.01"
+              required
+              placeholder="199.90"
+            >
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="novo-produto-categoria">
+              Categoria
+            </label>
+
+            <select
+              id="novo-produto-categoria"
+              required
+            >
+
+              <option value="">
+                Carregando categorias...
+              </option>
+
+            </select>
+
+          </div>
+
+
+        </div>
+
+      </section>
+
+
+
+      <section class="admin-form-card">
+
+        <div class="admin-form-card-header">
+
+          <div>
+
+            <span>
+              VISIBILIDADE
+            </span>
+
+            <h2>
+              Publicação
+            </h2>
+
+          </div>
+
+        </div>
+
+
+        <label class="admin-toggle-item">
+
+          <div>
+
+            <strong>
+              Produto ativo
+            </strong>
+
+            <span>
+              Produtos ativos aparecem na loja.
+              Recomendamos ativar somente depois
+              de cadastrar fotos e estoque.
+            </span>
+
+          </div>
+
+
+          <input
+            type="checkbox"
+            id="novo-produto-ativo"
+          >
+
+        </label>
+
+
+
+        <label class="admin-toggle-item">
+
+          <div>
+
+            <strong>
+              Destaque na Home
+            </strong>
+
+            <span>
+              Adiciona o produto aos Drops
+              em destaque.
+            </span>
+
+          </div>
+
+
+          <input
+            type="checkbox"
+            id="novo-produto-destaque"
+          >
+
+        </label>
+
+      </section>
+
+
+
+      <div
+        id="novo-produto-mensagem"
+        class="admin-form-message"
+      ></div>
+
+
+      <div class="admin-form-actions">
+
+        <a
+          href="produtos.html"
+          class="admin-secondary-btn"
+        >
+          Cancelar
+        </a>
+
+
+        <button
+          type="submit"
+          id="novo-produto-salvar"
+          class="admin-primary-btn"
+        >
+          Cadastrar produto
+        </button>
+
+      </div>
+
+
+    </form>
+
+
+  </main>
+
+</div>
+
+
+<script src="admin.js"></script>
+<script src="produto-novo.js"></script>
+
+</body>
+
+</html>

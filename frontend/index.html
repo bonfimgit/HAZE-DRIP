@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8">
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Haze Drip — Streetwear</title>
+
+    <meta
+      name="description"
+      content="Haze Drip. Streetwear de verdade. Feito pra quem vive, não pra quem assiste."
+    >
+
+    <!-- Fontes -->
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    >
+
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    >
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Rubik+Wet+Paint&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    >
+
+    <!-- CSS -->
+    <link
+      rel="stylesheet"
+      href="style.css"
+    >
+  </head>
+
+  <body>
+
+    <!-- =====================================================
+         CABEÇALHO
+    ====================================================== -->
+    <header class="nav">
+      <div class="wrap">
+
+        <a
+          href="index.html"
+          class="nav-logo"
+        >
+          <img
+            src="../assets/haze-logo.png"
+            alt="Haze Drip"
+            class="logo-img nav"
+          >
+        </a>
+
+        <ul class="nav-links">
+          <li>
+            <a href="catalogo.html">
+              Catálogo
+              <span class="chev">▾</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="#">
+              Sobre
+              <span class="chev">▾</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="catalogo.html">
+              Drops
+            </a>
+          </li>
+
+          <li>
+            <a href="#">
+              Contato
+            </a>
+          </li>
+        </ul>
+
+        <div class="nav-right">
+
+          <a
+            href="#"
+            class="nav-icon-btn currency mono"
+          >
+            BRL
+            <span class="chev">▾</span>
+          </a>
+
+          <a
+            href="#"
+            class="nav-icon-btn account"
+            aria-label="Minha conta"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <circle
+                cx="12"
+                cy="8"
+                r="3.6"
+              />
+
+              <path
+                d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"
+              />
+            </svg>
+          </a>
+
+          <a
+            href="#"
+            class="nav-icon-btn mobile-search"
+            aria-label="Buscar"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+          </a>
+
+          <a
+            href="sacola.html"
+            class="nav-icon-btn cart-link"
+            aria-label="Carrinho"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <path
+                d="M6 8h12l-1 12H7L6 8Z"
+              />
+
+              <path
+                d="M9 8V6a3 3 0 0 1 6 0v2"
+              />
+            </svg>
+
+            <span class="cart-badge js-cart-count">
+              0
+            </span>
+          </a>
+
+          <button
+            class="nav-burger"
+            type="button"
+            aria-label="Abrir menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+        </div>
+      </div>
+    </header>
+
+
+    <!-- =====================================================
+         HERO
+    ====================================================== -->
+    <section class="hero">
+
+  <div class="wrap hero-grid">
+
+
+    <div class="hero-copy">
+
+      <img
+        src="/hazedrip/assets/haze-logo.png"
+        alt="Haze Drip"
+        class="logo-img hero-logo"
+      >
+
+
+      <span
+        id="home-campanha-titulo"
+        class="hero-campaign-title"
+      >
+        Haze Drip
+      </span>
+
+
+      <p
+        id="home-campanha-subtitulo"
+        class="hero-tagline"
+      >
+        Streetwear de verdade.
+        Feito pra quem vive,
+        não pra quem assiste.
+      </p>
+
+
+      <div class="hero-cta">
+
+        <a
+          href="catalogo.html"
+          id="home-campanha-botao"
+          class="btn"
+        >
+          Catálogo →
+        </a>
+
+      </div>
+
+    </div>
+
+
+
+    <div class="hero-media">
+
+      <img
+        id="home-campanha-imagem"
+        alt="Campanha Haze Drip"
+      >
+
+    </div>
+
+
+  </div>
+
+</section>
+    <!-- =====================================================
+         MARQUEE
+    ====================================================== -->
+    <div class="marquee">
+      <div class="marquee-track">
+
+        <span>Novo Drop</span>
+        <span>Nome da Coleção</span>
+        <span>Disponível agora</span>
+        <span>Frete grátis acima de R$399</span>
+
+        <span>Novo Drop</span>
+        <span>Nome da Coleção</span>
+        <span>Disponível agora</span>
+        <span>Frete grátis acima de R$399</span>
+
+      </div>
+    </div>
+
+
+    <!-- =====================================================
+         DROPS EM DESTAQUE
+    ====================================================== -->
+    <section class="section">
+      <div class="wrap">
+
+        <div class="section-head">
+          <h2>Drops em destaque</h2>
+
+          <a href="catalogo.html">
+            Ver todos →
+          </a>
+        </div>
+
+        <div
+          class="grid"
+          id="destaques-grid"
+        >
+          <p>
+            Carregando destaques...
+          </p>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- =====================================================
+         NEWSLETTER
+    ====================================================== -->
+    <section class="newsletter">
+      <div class="wrap newsletter-box">
+
+        <div>
+          <h3>
+            Faça parte do movimento
+          </h3>
+
+          <p>
+            Receba novidades, drops exclusivos e benefícios especiais.
+          </p>
+
+          <form
+            class="newsletter-form js-newsletter"
+            style="margin-top: 22px;"
+          >
+            <input
+              type="email"
+              placeholder="Digite seu e-mail"
+              required
+            >
+
+            <button
+              type="submit"
+              aria-label="Enviar"
+            >
+              →
+            </button>
+          </form>
+        </div>
+
+        <svg
+          viewBox="0 0 200 200"
+          width="160"
+          style="opacity: 0.9;"
+        >
+          <path
+            d="M100 20 L112 75 L165 60 L120 95 L150 145 L100 115 L50 145 L80 95 L35 60 L88 75 Z"
+            fill="none"
+            stroke="url(#g1)"
+            stroke-width="3"
+            stroke-linejoin="round"
+          />
+
+          <defs>
+            <linearGradient
+              id="g1"
+              x1="0"
+              y1="0"
+              x2="1"
+              y2="1"
+            >
+              <stop
+                offset="0%"
+                stop-color="#cfe0ff"
+              />
+
+              <stop
+                offset="35%"
+                stop-color="#dcc9f5"
+              />
+
+              <stop
+                offset="70%"
+                stop-color="#ffd0e6"
+              />
+
+              <stop
+                offset="100%"
+                stop-color="#c8f3e6"
+              />
+            </linearGradient>
+          </defs>
+        </svg>
+
+      </div>
+    </section>
+
+
+    <!-- =====================================================
+         RODAPÉ
+    ====================================================== -->
+    <footer class="footer">
+      <div class="wrap">
+
+        <div class="footer-grid">
+
+          <div>
+            <a
+              href="index.html"
+              class="nav-logo"
+            >
+              <img
+                src="../assets/haze-logo.png"
+                alt="Haze Drip"
+                class="logo-img footer"
+              >
+            </a>
+
+            <p>
+              Streetwear de verdade.
+              Feito pra quem vive,
+              não pra quem assiste.
+            </p>
+          </div>
+
+          <div>
+            <h4>Catálogo</h4>
+
+            <ul>
+              <li>
+                <a href="catalogo.html">
+                  Camisetas
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Moletons
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Calças
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Bonés
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Acessórios
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4>Informações</h4>
+
+            <ul>
+              <li>
+                <a href="#">
+                  Sobre nós
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Políticas
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Rastreamento
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Pagamento
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Privacidade
+                </a>
+              </li>
+            </ul>
+          </div>
+
+          <div>
+            <h4>Ajuda</h4>
+
+            <ul>
+              <li>
+                <a href="#">
+                  Contato
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Trocas e devoluções
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  Envio e prazos
+                </a>
+              </li>
+
+              <li>
+                <a href="#">
+                  FAQ
+                </a>
+              </li>
+            </ul>
+          </div>
+
+        </div>
+
+        <div class="footer-bottom">
+          <span>
+            © 2026 Haze Drip. Todos os direitos reservados.
+          </span>
+
+          <span>
+            Siga a Haze · Instagram · TikTok · X
+          </span>
+        </div>
+
+      </div>
+    </footer>
+
+
+    <!-- =====================================================
+         NAVEGAÇÃO MOBILE
+    ====================================================== -->
+    <nav class="bottom-nav">
+
+      <a
+        href="index.html"
+        class="active"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M4 11.5 12 4l8 7.5"
+          />
+
+          <path
+            d="M6 10v10h12V10"
+          />
+        </svg>
+
+        Inicio
+      </a>
+
+      <a href="catalogo.html">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M6 8h12l-1 12H7L6 8Z"
+          />
+
+          <path
+            d="M9 8V6a3 3 0 0 1 6 0v2"
+          />
+        </svg>
+
+        Catálogo
+      </a>
+
+      <a href="catalogo.html">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M12 3v6M12 15v6M4.5 7.5l4.2 2.4M15.3 14.1l4.2 2.4M4.5 16.5l4.2-2.4M15.3 9.9l4.2-2.4"
+          />
+        </svg>
+
+        Drops
+      </a>
+
+      <a href="#">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M6 8h12l-1 12H7L6 8Z"
+          />
+
+          <path
+            d="M9 8V6a3 3 0 0 1 6 0v2"
+          />
+        </svg>
+
+        <span class="badge js-cart-count">
+          0
+        </span>
+
+        Carrinho
+      </a>
+
+      <a href="#">
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <circle
+            cx="12"
+            cy="8"
+            r="3.6"
+          />
+
+          <path
+            d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"
+          />
+        </svg>
+
+        Perfil
+      </a>
+
+    </nav>
+
+
+    <!-- JavaScript -->
+    <script src="script.js"></script>
+
+  </body>
+</html>

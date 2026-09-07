@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Estoque e Variações — Haze Drip
+  </title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+
+</head>
+
+
+<body class="admin-body">
+
+<div class="admin-layout">
+
+
+  <aside class="admin-sidebar">
+
+    <div class="admin-brand">
+
+      <img
+        src="/hazedrip/assets/haze-logo.png"
+        alt="Haze Drip"
+      >
+
+      <span>ADMIN</span>
+
+    </div>
+
+
+    <div class="admin-user">
+
+      <div class="admin-avatar">
+        HD
+      </div>
+
+      <div>
+
+        <strong class="js-admin-nome">
+          Gerente
+        </strong>
+
+        <span class="js-admin-perfil">
+          Gerente
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <nav class="admin-menu">
+
+      <a
+        href="dashboard.html"
+        class="admin-menu-link"
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="produtos.html"
+        class="admin-menu-link active"
+      >
+        Produtos
+      </a>
+
+      <a
+        href="drops.html"
+        class="admin-menu-link"
+      >
+        Drops
+      </a>
+
+      <a
+        href="campanha.html"
+        class="admin-menu-link"
+      >
+        Campanha
+      </a>
+
+      <a
+        href="pedidos.html"
+        class="admin-menu-link"
+      >
+        Pedidos
+      </a>
+
+    </nav>
+
+
+    <button
+      type="button"
+      class="admin-logout js-admin-sair"
+    >
+      Sair
+    </button>
+
+  </aside>
+
+
+
+  <main class="admin-content">
+
+
+    <header class="admin-page-header">
+
+      <div>
+
+        <a
+          href="#"
+          id="variacoes-voltar"
+          class="admin-back-link"
+        >
+          ← Voltar para produto
+        </a>
+
+
+        <span class="admin-page-label">
+          PRODUTOS / ESTOQUE
+        </span>
+
+
+        <h1>
+          Variações
+        </h1>
+
+
+        <p id="variacoes-produto-nome">
+          Carregando produto...
+        </p>
+
+      </div>
+
+    </header>
+
+
+
+    <!-- NOVA VARIAÇÃO -->
+
+    <section class="admin-form-card">
+
+      <div class="admin-form-card-header">
+
+        <div>
+
+          <span>
+            NOVA VARIAÇÃO
+          </span>
+
+          <h2>
+            Adicionar tamanho / cor
+          </h2>
+
+        </div>
+
+      </div>
+
+
+      <form id="variacao-form">
+
+        <div class="admin-form-grid">
+
+
+          <div class="admin-form-group">
+
+            <label for="variacao-cor">
+              Cor
+            </label>
+
+            <input
+              type="text"
+              id="variacao-cor"
+              placeholder="Ex: Preto"
+              required
+            >
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="variacao-tamanho">
+              Tamanho
+            </label>
+
+            <input
+              type="text"
+              id="variacao-tamanho"
+              placeholder="Ex: M"
+              required
+            >
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="variacao-sku">
+              SKU
+            </label>
+
+            <input
+              type="text"
+              id="variacao-sku"
+              placeholder="Ex: HAZ-CAM-PRE-M"
+              required
+            >
+
+          </div>
+
+
+          <div class="admin-form-group">
+
+            <label for="variacao-estoque">
+              Estoque
+            </label>
+
+            <input
+              type="number"
+              id="variacao-estoque"
+              value="0"
+              min="0"
+              step="1"
+              required
+            >
+
+          </div>
+
+
+        </div>
+
+
+        <div class="admin-form-actions">
+
+          <button
+            type="submit"
+            id="variacao-adicionar"
+            class="admin-primary-btn"
+          >
+            Adicionar variação
+          </button>
+
+        </div>
+
+      </form>
+
+
+      <div
+        id="variacoes-mensagem"
+        class="admin-form-message"
+      ></div>
+
+    </section>
+
+
+
+    <!-- LISTA -->
+
+    <section class="admin-form-card">
+
+      <div class="admin-form-card-header">
+
+        <div>
+
+          <span>
+            ESTOQUE
+          </span>
+
+          <h2>
+            Variações cadastradas
+          </h2>
+
+        </div>
+
+
+        <strong id="variacoes-estoque-total">
+          0 unidades
+        </strong>
+
+      </div>
+
+
+      <div class="table-responsive">
+
+        <table class="table table-dark align-middle">
+
+          <thead>
+
+            <tr>
+
+              <th>Cor</th>
+              <th>Tamanho</th>
+              <th>SKU</th>
+              <th>Estoque</th>
+              <th>Status</th>
+              <th>Ações</th>
+
+            </tr>
+
+          </thead>
+
+
+          <tbody id="variacoes-lista">
+
+            <tr>
+
+              <td colspan="6">
+                Carregando...
+              </td>
+
+            </tr>
+
+          </tbody>
+
+        </table>
+
+      </div>
+
+    </section>
+
+
+  </main>
+
+</div>
+
+<!-- =========================================================
+     MODAL EDITAR VARIAÇÃO
+========================================================== -->
+
+<div
+  class="modal fade"
+  id="modalEditarVariacao"
+  tabindex="-1"
+>
+
+  <div class="modal-dialog">
+
+    <div class="modal-content bg-dark text-light">
+
+
+      <div class="modal-header">
+
+        <h5 class="modal-title">
+          Editar variação
+        </h5>
+
+        <button
+          type="button"
+          class="btn-close btn-close-white"
+          data-bs-dismiss="modal"
+        ></button>
+
+      </div>
+
+
+      <div class="modal-body">
+
+
+        <input
+          type="hidden"
+          id="editar-variacao-id"
+        >
+
+
+        <div class="mb-3">
+
+          <label
+            for="editar-variacao-cor"
+            class="form-label"
+          >
+            Cor
+          </label>
+
+          <input
+            type="text"
+            id="editar-variacao-cor"
+            class="form-control"
+          >
+
+        </div>
+
+
+        <div class="mb-3">
+
+          <label
+            for="editar-variacao-tamanho"
+            class="form-label"
+          >
+            Tamanho
+          </label>
+
+          <input
+            type="text"
+            id="editar-variacao-tamanho"
+            class="form-control"
+          >
+
+        </div>
+
+
+        <div class="mb-3">
+
+          <label
+            for="editar-variacao-sku"
+            class="form-label"
+          >
+            SKU
+          </label>
+
+          <input
+            type="text"
+            id="editar-variacao-sku"
+            class="form-control"
+          >
+
+        </div>
+
+
+        <div class="mb-3">
+
+          <label
+            for="editar-variacao-estoque"
+            class="form-label"
+          >
+            Estoque
+          </label>
+
+          <input
+            type="number"
+            id="editar-variacao-estoque"
+            class="form-control"
+            min="0"
+            step="1"
+          >
+
+        </div>
+
+
+      </div>
+
+
+      <div class="modal-footer">
+
+        <button
+          type="button"
+          class="btn btn-outline-light"
+          data-bs-dismiss="modal"
+        >
+          Cancelar
+        </button>
+
+
+        <button
+          type="button"
+          id="editar-variacao-salvar"
+          class="btn btn-light"
+        >
+          Salvar alterações
+        </button>
+
+      </div>
+
+
+    </div>
+
+  </div>
+
+</div>
+
+<script
+  src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
+></script>
+<script src="admin.js"></script>
+<script src="produto-variacoes.js"></script>
+
+</body>
+
+</html>

@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>
+    Fotos do produto — Haze Drip
+  </title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+
+</head>
+
+
+<body class="admin-body">
+
+
+<div class="admin-layout">
+
+
+  <!-- SIDEBAR -->
+
+  <aside class="admin-sidebar">
+
+    <div class="admin-brand">
+
+      <img
+        src="/hazedrip/assets/haze-logo.png"
+        alt="Haze Drip"
+      >
+
+      <span>
+        ADMIN
+      </span>
+
+    </div>
+
+
+    <div class="admin-user">
+
+      <div class="admin-avatar">
+        HD
+      </div>
+
+      <div>
+
+        <strong class="js-admin-nome">
+          Gerente
+        </strong>
+
+        <span class="js-admin-perfil">
+          Gerente
+        </span>
+
+      </div>
+
+    </div>
+
+
+    <nav class="admin-menu">
+
+      <a
+        href="dashboard.html"
+        class="admin-menu-link"
+      >
+        Dashboard
+      </a>
+
+      <a
+        href="produtos.html"
+        class="admin-menu-link active"
+      >
+        Produtos
+      </a>
+
+      <a
+        href="drops.html"
+        class="admin-menu-link"
+      >
+        Drops
+      </a>
+
+      <a
+        href="campanha.html"
+        class="admin-menu-link"
+      >
+        Campanha
+      </a>
+
+      <a
+        href="pedidos.html"
+        class="admin-menu-link"
+      >
+        Pedidos
+      </a>
+
+    </nav>
+
+
+    <button
+      type="button"
+      class="admin-logout js-admin-sair"
+    >
+      Sair
+    </button>
+
+  </aside>
+
+
+
+  <!-- CONTEÚDO -->
+
+  <main class="admin-content">
+
+
+    <header class="admin-page-header">
+
+      <div>
+
+        <a
+          href="#"
+          id="fotos-voltar-produto"
+          class="admin-back-link"
+        >
+          ← Voltar para editar produto
+        </a>
+
+
+        <span class="admin-page-label">
+          PRODUTOS / MÍDIA
+        </span>
+
+
+        <h1>
+          Fotos
+        </h1>
+
+
+        <p id="fotos-produto-nome">
+          Carregando produto...
+        </p>
+
+      </div>
+
+
+      <a
+        href="#"
+        target="_blank"
+        id="fotos-ver-produto"
+        class="admin-view-store"
+      >
+        Ver na loja
+      </a>
+
+    </header>
+
+
+
+    <!-- UPLOAD -->
+
+    <section class="admin-form-card">
+
+      <div class="admin-form-card-header">
+
+        <div>
+
+          <span>
+            NOVA IMAGEM
+          </span>
+
+          <h2>
+            Adicionar foto
+          </h2>
+
+        </div>
+
+      </div>
+
+
+      <div class="admin-upload-area">
+
+
+        <input
+          type="file"
+          id="produto-foto-input"
+          accept="image/jpeg,image/png,image/webp"
+          hidden
+        >
+
+
+        <button
+          type="button"
+          id="produto-foto-escolher"
+          class="admin-secondary-btn"
+        >
+          Escolher imagem
+        </button>
+
+
+        <span id="produto-foto-arquivo">
+          Nenhum arquivo selecionado
+        </span>
+
+
+        <button
+          type="button"
+          id="produto-foto-enviar"
+          class="admin-primary-btn"
+          disabled
+        >
+          Enviar foto
+        </button>
+
+
+      </div>
+
+
+      <p class="admin-upload-help">
+        Formatos permitidos: JPG, PNG ou WEBP.
+        Tamanho máximo: 5 MB.
+      </p>
+
+
+      <div
+        id="produto-fotos-mensagem"
+        class="admin-form-message"
+      ></div>
+
+    </section>
+
+
+
+    <!-- IMAGENS -->
+
+    <section class="admin-form-card">
+
+      <div class="admin-form-card-header">
+
+        <div>
+
+          <span>
+            GALERIA
+          </span>
+
+          <h2>
+            Fotos do produto
+          </h2>
+
+        </div>
+
+
+        <span id="produto-fotos-contador">
+          0 fotos
+        </span>
+
+      </div>
+
+
+      <div
+        id="produto-fotos-grid"
+        class="admin-photos-grid"
+      >
+
+        <div class="admin-loading">
+          Carregando fotos...
+        </div>
+
+      </div>
+
+    </section>
+
+
+  </main>
+
+
+</div>
+
+
+<script src="admin.js"></script>
+<script src="produto-fotos.js"></script>
+
+
+</body>
+
+</html>
