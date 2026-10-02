@@ -170,178 +170,66 @@
 
 
 
-    <section class="admin-dashboard-grid">
+    <!-- PERÍODO -->
+    <div class="dash-filtros" role="group" aria-label="Período">
+      <button type="button" class="dash-periodo" data-dias="7">7 dias</button>
+      <button type="button" class="dash-periodo ativo" data-dias="30" aria-pressed="true">30 dias</button>
+      <button type="button" class="dash-periodo" data-dias="90">90 dias</button>
+      <span class="dash-periodo-texto" id="dash-periodo-texto"></span>
+    </div>
 
+    <p class="dash-mensagem" id="dash-mensagem" role="status">Carregando indicadores...</p>
 
-      <article class="admin-dashboard-card">
+    <!-- PENDÊNCIAS -->
+    <section class="dash-pendencias" id="dash-pendencias" aria-label="Pendências"></section>
 
-        <span>
-          Produtos
-        </span>
+    <!-- INDICADORES -->
+    <section class="dash-kpis" id="dash-kpis" aria-label="Indicadores do período"></section>
 
-        <strong id="dashboard-produtos">
-          —
-        </strong>
-
-        <a href="produtos.html">
-          Gerenciar produtos →
-        </a>
-
-      </article>
-
-
-
-      <article class="admin-dashboard-card">
-
-        <span>
-          Drops em destaque
-        </span>
-
-        <strong id="dashboard-drops">
-          —
-        </strong>
-
-        <a href="drops.html">
-          Gerenciar destaques →
-        </a>
-
-      </article>
-
-
-
-      <article class="admin-dashboard-card">
-
-        <span>
-          Pedidos
-        </span>
-
-        <strong id="dashboard-pedidos">
-          —
-        </strong>
-
-        <a href="pedidos.html">
-          Ver pedidos →
-        </a>
-
-      </article>
-
-
-
-      <article class="admin-dashboard-card">
-
-        <span>
-          Campanha
-        </span>
-
-        <strong>
-          Home
-        </strong>
-
-        <a href="campanha.html">
-          Alterar campanha →
-        </a>
-
-      </article>
-
-
-    </section>
-
-
-
-    <section class="admin-quick">
-
-      <div class="admin-section-title">
-
+    <!-- GRÁFICO -->
+    <section class="dash-card">
+      <div class="dash-card-topo">
         <div>
-
-          <span>
-            ACESSO RÁPIDO
-          </span>
-
-          <h2>
-            Gerenciamento
-          </h2>
-
+          <h2>Faturamento por dia</h2>
+          <p class="dash-sub">Pedidos com pagamento confirmado, valor total.</p>
         </div>
+      </div>
+      <div class="dash-grafico" id="dash-grafico"></div>
+      <details class="dash-tabela-detalhes">
+        <summary>Ver como tabela</summary>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead><tr><th>Dia</th><th>Pedidos</th><th>Faturamento</th></tr></thead>
+            <tbody id="dash-tabela"></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
 
+    <!-- MAIS VENDIDOS -->
+    <section class="dash-duas-colunas">
+
+      <div class="dash-card">
+        <h2>Produtos mais vendidos</h2>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead><tr><th>Produto</th><th>Qtd.</th><th>Faturamento</th></tr></thead>
+            <tbody id="dash-produtos"></tbody>
+          </table>
+        </div>
       </div>
 
-
-      <div class="admin-quick-grid">
-
-
-        <a
-          href="produtos.html"
-          class="admin-quick-card"
-        >
-
-          <strong>
-            Produtos
-          </strong>
-
-          <p>
-            Alterar preço, nome,
-            descrição e fotos.
-          </p>
-
-        </a>
-
-
-        <a
-          href="drops.html"
-          class="admin-quick-card"
-        >
-
-          <strong>
-            Drops
-          </strong>
-
-          <p>
-            Escolher quais produtos
-            aparecem em destaque.
-          </p>
-
-        </a>
-
-
-        <a
-          href="campanha.html"
-          class="admin-quick-card"
-        >
-
-          <strong>
-            Campanha
-          </strong>
-
-          <p>
-            Alterar a imagem principal
-            da Home.
-          </p>
-
-        </a>
-
-
-        <a
-          href="pedidos.html"
-          class="admin-quick-card"
-        >
-
-          <strong>
-            Pedidos
-          </strong>
-
-          <p>
-            Acompanhar pedidos
-            realizados na loja.
-          </p>
-
-        </a>
-
-
+      <div class="dash-card">
+        <h2>Vendas por categoria</h2>
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead><tr><th>Categoria</th><th>Qtd.</th><th>Faturamento</th></tr></thead>
+            <tbody id="dash-categorias"></tbody>
+          </table>
+        </div>
       </div>
 
     </section>
-
 
   </main>
 
@@ -353,6 +241,7 @@
 
 
 <script src="admin.js"></script>
+<script src="dashboard.js"></script>
 
 
 </body>

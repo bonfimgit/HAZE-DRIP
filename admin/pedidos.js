@@ -325,9 +325,15 @@ async function carregarPedidos() {
 
     pedidosCarregados = pedidos;
 
- renderizarPedidos(
-  pedidosCarregados
- );
+    // Filtro vindo do dashboard (pedidos.html?status=pago)
+    const statusUrl =
+      new URLSearchParams(window.location.search).get('status');
+
+    if (statusUrl) {
+      pedidosFiltroStatus.value = statusUrl;
+    }
+
+    filtrarPedidos();
 
  
   } catch (erro) {
