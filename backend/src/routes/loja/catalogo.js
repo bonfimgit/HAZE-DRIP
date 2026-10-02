@@ -72,7 +72,8 @@ router.get('/produtos/:id/relacionados', cachePublico(300), async (req, res) => 
   res.json(await catalogoService.relacionados(produtoId));
 });
 
-router.get('/produtos/:id/avaliacoes', cachePublico(60), async (req, res) => {
+// Sem cache: quem acabou de avaliar precisa ver a própria avaliação
+router.get('/produtos/:id/avaliacoes', async (req, res) => {
   const produtoId = valida.id(req.params.id, ID_PRODUTO);
   res.json(await avaliacoesService.resumoProduto(produtoId, {
     pagina: req.query.pagina ? valida.inteiro(req.query.pagina, 'Página inválida', { min: 1 }) : 1

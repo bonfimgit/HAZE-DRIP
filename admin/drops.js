@@ -206,7 +206,7 @@ function renderizarDrops(
 
       const imagem =
         produto.imagem_principal ||
-        '/hazedrip/assets/haze-logo.png';
+        '../assets/haze-logo.webp';
 
 
       const preco =

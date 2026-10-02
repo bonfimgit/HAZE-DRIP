@@ -20,6 +20,7 @@ const ADMIN_MENU = [
   { href: 'pedidos.html', texto: 'Pedidos', relacionados: ['pedido-detalhes.html'] },
   { href: 'produtos.html', texto: 'Produtos', relacionados: ['produto-novo.html', 'produto-editar.html', 'produto-fotos.html', 'produto-variacoes.html'] },
   { href: 'estoque.html', texto: 'Estoque' },
+  { href: 'avaliacoes.html', texto: 'Avaliações' },
   { href: 'clientes.html', texto: 'Clientes', relacionados: ['cliente-detalhes.html'] },
   { href: 'cupons.html', texto: 'Cupons' },
   { href: 'frete.html', texto: 'Frete' },

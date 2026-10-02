@@ -320,7 +320,7 @@
 
   /* ---------- Navegação entre seções ---------- */
 
-  const secoes = ['pedidos', 'dados', 'enderecos', 'seguranca', 'privacidade'];
+  const secoes = ['pedidos', 'dados', 'enderecos', 'avaliacoes', 'seguranca', 'privacidade'];
 
   function mostrarSecao() {
 
@@ -636,6 +636,76 @@
   });
 
 
+  /* ---------- Avaliações ---------- */
+
+  async function carregarAvaliacoes() {
+
+    const lista = $('avaliacoes-produtos');
+    const produtos = await Cliente.api('/clientes/me/avaliacoes');
+
+    if (produtos.length === 0) {
+      lista.innerHTML = '<p class="conta-vazio">Quando um pedido for entregue, você poderá avaliar os produtos aqui.</p>';
+      return;
+    }
+
+    lista.innerHTML = produtos.map(produto => `
+      <form class="checkout-bloco conta-form conta-avaliacao" data-produto="${Number(produto.produto_id)}" novalidate>
+        <div class="conta-secao-topo">
+          <a href="produto.html?id=${Number(produto.produto_id)}" class="conta-link"><strong>${escaparHtml(produto.produto_nome)}</strong></a>
+          ${produto.avaliacao_id ? '<span class="conta-selo">Avaliado</span>' : ''}
+        </div>
+        <fieldset class="conta-estrelas">
+          <legend class="visually-hidden">Nota</legend>
+          ${[5, 4, 3, 2, 1].map(nota => `
+            <label>
+              <input type="radio" name="nota-${Number(produto.produto_id)}" value="${nota}" ${Number(produto.nota) === nota ? 'checked' : ''}>
+              <span aria-hidden="true">★</span>
+              <span class="visually-hidden">${nota} estrela(s)</span>
+            </label>`).join('')}
+        </fieldset>
+        <div class="checkout-campo">
+          <label for="titulo-${Number(produto.produto_id)}">Título (opcional)</label>
+          <input type="text" id="titulo-${Number(produto.produto_id)}" maxlength="100" value="${escaparHtml(produto.titulo || '')}">
+        </div>
+        <div class="checkout-campo">
+          <label for="comentario-${Number(produto.produto_id)}">Comentário (opcional)</label>
+          <textarea id="comentario-${Number(produto.produto_id)}" rows="3" maxlength="2000">${escaparHtml(produto.comentario || '')}</textarea>
+        </div>
+        <p class="conta-mensagem" role="status"></p>
+        <button type="submit" class="btn conta-botao-pequeno">${produto.avaliacao_id ? 'Atualizar avaliação' : 'Enviar avaliação'}</button>
+      </form>`).join('');
+  }
+
+  $('avaliacoes-produtos').addEventListener('submit', evento => {
+
+    const form = evento.target.closest('.conta-avaliacao');
+    if (!form) return;
+
+    evento.preventDefault();
+
+    const produtoId = Number(form.dataset.produto);
+    const saida = form.querySelector('.conta-mensagem');
+    const nota = form.querySelector('input[type="radio"]:checked');
+
+    if (!nota) {
+      return mensagem(saida, 'Escolha uma nota de 1 a 5 estrelas.');
+    }
+
+    executar(form, saida, async () => {
+      await Cliente.api('/clientes/me/avaliacoes', {
+        metodo: 'POST',
+        corpo: {
+          produto_id: produtoId,
+          nota: Number(nota.value),
+          titulo: $(`titulo-${produtoId}`).value.trim() || undefined,
+          comentario: $(`comentario-${produtoId}`).value.trim() || undefined
+        }
+      });
+      mensagem(saida, 'Obrigado pela avaliação!', true);
+    });
+  });
+
+
   /* ---------- Senha ---------- */
 
   $('form-senha').addEventListener('submit', evento => {
@@ -711,7 +781,7 @@
 
   /* ---------- Carregamento inicial ---------- */
 
-  Promise.all([carregarPerfil(), carregarPedidos(), carregarEnderecos()])
+  Promise.all([carregarPerfil(), carregarPedidos(), carregarEnderecos(), carregarAvaliacoes()])
     .catch(erro => {
       if (erro.status === 401) {
         Cliente.exigirLogin();

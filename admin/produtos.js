@@ -141,7 +141,7 @@ function renderizarProdutosAdmin(produtos) {
 
       const imagem =
         produto.imagem_principal ||
-        '../assets/haze-logo.png';
+        '../assets/haze-logo.webp';
 
 
       const categoria =

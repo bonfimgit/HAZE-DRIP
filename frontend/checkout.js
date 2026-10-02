@@ -95,7 +95,7 @@
 
       return `
         <div class="checkout-item${disponivel ? '' : ' checkout-item-indisponivel'}">
-          <img src="${escaparHtml(item.imagem || '../assets/haze-logo.png')}" alt="${escaparHtml(item.nome)}">
+          <img src="${escaparHtml(item.imagem || '../assets/haze-logo.webp')}" alt="${escaparHtml(item.nome)}">
           <div>
             <h3>${escaparHtml(item.nome)}</h3>
             <p>${escaparHtml(item.cor)} · ${escaparHtml(item.tamanho)} · ${Number(item.quantidade)}x</p>
