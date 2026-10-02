@@ -282,6 +282,45 @@
       <section class="admin-card mb-4">
 
         <h3>
+          Pagamento
+        </h3>
+
+        <div id="pedido-pagamento-info" class="admin-muted-text">Carregando...</div>
+
+        <div class="table-responsive mt-3">
+          <table class="table table-dark align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Mercado Pago</th>
+                <th>Tipo</th>
+                <th>Status</th>
+                <th>Valor</th>
+                <th>Reembolsado</th>
+                <th>Atualizado</th>
+              </tr>
+            </thead>
+            <tbody id="pedido-pagamentos"></tbody>
+          </table>
+        </div>
+
+        <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
+          <button type="button" id="pedido-pagamento-sincronizar" class="btn btn-sm btn-outline-light">
+            CONSULTAR MERCADO PAGO
+          </button>
+          <input type="number" id="pedido-reembolso-valor" min="0.01" step="0.01" placeholder="Valor (vazio = total)" class="form-control form-control-sm bg-dark text-light border-secondary" style="max-width:190px" aria-label="Valor do reembolso">
+          <button type="button" id="pedido-reembolsar" class="btn btn-sm btn-outline-warning">
+            REEMBOLSAR
+          </button>
+        </div>
+
+        <div id="pedido-pagamento-mensagem" class="mt-2"></div>
+
+      </section>
+
+
+      <section class="admin-card mb-4">
+
+        <h3>
           Histórico
         </h3>
 

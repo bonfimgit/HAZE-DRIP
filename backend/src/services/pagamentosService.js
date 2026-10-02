@@ -189,8 +189,11 @@ async function sincronizar(pagamentoId) {
   // Registra/atualiza o pagamento (no Checkout Pro ele nasce no MP)
   const [existentes] = await db.execute(
     `SELECT id FROM pagamentos
-     WHERE provedor = 'mercadopago' AND provedor_id = ? AND tipo = 'pagamento'`,
-    [pagamento.id]
+     WHERE provedor = 'mercadopago'
+     AND provedor_id = ?
+     AND tipo = 'pagamento'
+     AND pedido_id = ?`,
+    [pagamento.id, pedido.id]
   );
 
   if (existentes.length) {

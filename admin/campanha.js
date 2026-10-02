@@ -256,7 +256,107 @@ function preencherCampanha(
     campanha.imagem_url
   );
 
+
+  document.getElementById('campanha-inicio').value =
+    paraCampoDataHora(campanha.inicio_em);
+
+  document.getElementById('campanha-fim').value =
+    paraCampoDataHora(campanha.fim_em);
+
+  document.getElementById('campanha-desconto').value =
+    campanha.desconto_percentual != null
+      ? Number(campanha.desconto_percentual)
+      : '';
+
+  marcarProdutosCampanha(
+    campanha.produto_ids || []
+  );
+
 }
+
+
+
+/* =============================================================
+   PRODUTOS DA PROMOÇÃO
+============================================================= */
+
+let produtosCampanhaSelecionados = new Set();
+
+
+async function carregarProdutosCampanha() {
+
+  const lista =
+    document.getElementById('campanha-produtos');
+
+  try {
+
+    const produtos =
+      await adminApi('/admin/produtos');
+
+    lista.innerHTML = produtos.map(produto => `
+      <label class="admin-campanha-produto" data-nome="${escaparHtmlPainel(produto.nome.toLowerCase())}">
+        <input type="checkbox" value="${Number(produto.id)}">
+        <span>${escaparHtmlPainel(produto.nome)}</span>
+        <small>${moedaPainel(produto.preco)}${Number(produto.ativo) ? '' : ' · inativo'}</small>
+      </label>
+    `).join('') || 'Nenhum produto cadastrado.';
+
+    marcarProdutosCampanha(
+      [...produtosCampanhaSelecionados]
+    );
+
+  } catch (erro) {
+    lista.textContent = erro.message;
+  }
+
+}
+
+
+function marcarProdutosCampanha(ids) {
+
+  produtosCampanhaSelecionados =
+    new Set(ids.map(Number));
+
+  document
+    .querySelectorAll('#campanha-produtos input')
+    .forEach(caixa => {
+      caixa.checked =
+        produtosCampanhaSelecionados.has(Number(caixa.value));
+    });
+
+}
+
+
+document
+  .getElementById('campanha-produtos')
+  .addEventListener('change', evento => {
+
+    const caixa = evento.target;
+
+    if (caixa.checked) {
+      produtosCampanhaSelecionados.add(Number(caixa.value));
+    } else {
+      produtosCampanhaSelecionados.delete(Number(caixa.value));
+    }
+
+  });
+
+
+document
+  .getElementById('campanha-produtos-busca')
+  .addEventListener('input', evento => {
+
+    const termo =
+      evento.target.value.trim().toLowerCase();
+
+    document
+      .querySelectorAll('.admin-campanha-produto')
+      .forEach(item => {
+        item.hidden =
+          Boolean(termo) && !item.dataset.nome.includes(termo);
+      });
+
+  });
 
 
 
@@ -470,6 +570,34 @@ campanhaForm.addEventListener(
     );
 
 
+    // Promoção: vazio limpa o campo
+    const inicio =
+      document.getElementById('campanha-inicio').value;
+
+    const fim =
+      document.getElementById('campanha-fim').value;
+
+    dados.append(
+      'inicio_em',
+      inicio ? new Date(inicio).toISOString() : ''
+    );
+
+    dados.append(
+      'fim_em',
+      fim ? new Date(fim).toISOString() : ''
+    );
+
+    dados.append(
+      'desconto_percentual',
+      document.getElementById('campanha-desconto').value
+    );
+
+    dados.append(
+      'produto_ids',
+      [...produtosCampanhaSelecionados].join(',')
+    );
+
+
     if (arquivo) {
 
       dados.append(
@@ -607,3 +735,5 @@ campanhaForm.addEventListener(
 ============================================================= */
 
 carregarCampanhaAdmin();
+
+carregarProdutosCampanha();

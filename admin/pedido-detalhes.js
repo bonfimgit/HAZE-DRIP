@@ -320,6 +320,12 @@ configurarCancelamento(
       resultado.historico || []
     );
 
+    pedidoAtual = resultado;
+
+    carregarPagamentos(
+      resultado
+    );
+
     configurarRastreio(
       resultado
     );
@@ -579,6 +585,14 @@ pedidoCancelar.addEventListener(
       ) || '';
 
 
+    // Pedido pago no Mercado Pago: oferece devolver o dinheiro junto
+    const reembolsar =
+      ['aprovado', 'reembolsado_parcial'].includes(pedidoAtual?.pagamento_status) &&
+      window.confirm(
+        'Este pedido foi pago. Reembolsar o valor ao cliente pelo Mercado Pago?\n\nOK = cancelar e reembolsar\nCancelar = só cancelar (sem reembolso)'
+      );
+
+
     const token =
       pegarTokenAdmin();
 
@@ -618,7 +632,8 @@ pedidoCancelar.addEventListener(
             body:
               JSON.stringify({
                 motivo:
-                  motivo.trim() || undefined
+                  motivo.trim() || undefined,
+                reembolsar
               })
 
           }
@@ -675,6 +690,7 @@ pedidoCancelar.addEventListener(
 
 
       pedidoCancelarMensagem.textContent =
+        resultado.mensagem ||
         'Pedido cancelado e estoque devolvido com sucesso.';
 
 
@@ -957,3 +973,172 @@ pedidoRastreioSalvar.addEventListener(
 
   }
 );
+
+
+/* =============================================================
+   PAGAMENTO E REEMBOLSO
+============================================================= */
+
+let pedidoAtual = null;
+
+
+const NOMES_PAGAMENTO = {
+  pendente: 'Pendente',
+  aprovado: 'Aprovado',
+  em_analise: 'Em análise',
+  em_disputa: 'Em disputa',
+  recusado: 'Recusado',
+  cancelado: 'Cancelado',
+  reembolsado: 'Reembolsado',
+  reembolsado_parcial: 'Reembolso parcial',
+  estornado: 'Estornado (chargeback)',
+  valor_divergente: 'Valor pago diferente do pedido',
+  aprovado_apos_cancelamento: 'Pago após cancelamento — reembolsar'
+};
+
+
+async function carregarPagamentos(pedido) {
+
+  const info =
+    document.getElementById('pedido-pagamento-info');
+
+  const metodo = {
+    pix: 'PIX',
+    mercadopago: 'Mercado Pago (cartão/boleto)'
+  }[pedido.metodo_pagamento] || 'Não informado (pedido anterior ao checkout com pagamento)';
+
+  const linhas = [
+    `<strong>Forma:</strong> ${escaparHtml(metodo)}`,
+    `<strong>Situação:</strong> ${escaparHtml(NOMES_PAGAMENTO[pedido.pagamento_status] || pedido.pagamento_status || '—')}`
+  ];
+
+  if (pedido.cupom_codigo) {
+    linhas.push(`<strong>Cupom:</strong> ${escaparHtml(pedido.cupom_codigo)} (- ${formatarDinheiro(pedido.desconto)})`);
+  }
+
+  if (pedido.frete_descricao) {
+    linhas.push(`<strong>Frete:</strong> ${escaparHtml(pedido.frete_descricao)} — ${Number(pedido.frete_prazo_min)} a ${Number(pedido.frete_prazo_max)} dias úteis`);
+  }
+
+  if (Number(pedido.valor_reembolsado) > 0) {
+    linhas.push(`<strong>Reembolsado:</strong> ${formatarDinheiro(pedido.valor_reembolsado)} em ${escaparHtml(dataPainel(pedido.reembolsado_em, true))}`);
+  }
+
+  info.innerHTML = linhas.join('<br>');
+
+  info.classList.toggle(
+    'text-danger',
+    ['valor_divergente', 'aprovado_apos_cancelamento', 'estornado'].includes(pedido.pagamento_status)
+  );
+
+  try {
+
+    const pagamentos =
+      await adminApi(`/admin/pedidos/${pedidoId}/pagamentos`);
+
+    document.getElementById('pedido-pagamentos').innerHTML =
+      pagamentos.length === 0
+        ? '<tr><td colspan="6" class="admin-muted-text">Nenhum pagamento registrado.</td></tr>'
+        : pagamentos.map(pagamento => `
+          <tr>
+            <td>${escaparHtml(pagamento.provedor_id || '—')}</td>
+            <td>${escaparHtml(pagamento.tipo === 'preferencia' ? 'Link de pagamento' : (pagamento.metodo || 'Pagamento'))}</td>
+            <td>${escaparHtml(NOMES_PAGAMENTO[pagamento.status] || pagamento.status)}</td>
+            <td>${formatarDinheiro(pagamento.valor)}</td>
+            <td>${formatarDinheiro(pagamento.valor_reembolsado)}</td>
+            <td>${escaparHtml(dataPainel(pagamento.atualizado_em, true))}</td>
+          </tr>`).join('');
+
+  } catch (erro) {
+    document.getElementById('pedido-pagamento-mensagem').textContent = erro.message;
+  }
+
+  const admin = lerAdminSalvo();
+  const podeReembolsar =
+    (!admin || admin.perfil === 'gerente') &&
+    ['aprovado', 'reembolsado_parcial', 'aprovado_apos_cancelamento'].includes(pedido.pagamento_status);
+
+  document.getElementById('pedido-reembolsar').hidden = !podeReembolsar;
+  document.getElementById('pedido-reembolso-valor').hidden = !podeReembolsar;
+
+}
+
+
+document
+  .getElementById('pedido-pagamento-sincronizar')
+  .addEventListener('click', async evento => {
+
+    const saida =
+      document.getElementById('pedido-pagamento-mensagem');
+
+    evento.target.disabled = true;
+    saida.textContent = 'Consultando...';
+
+    try {
+
+      const { resultados } =
+        await adminApi(`/admin/pedidos/${pedidoId}/pagamentos/sincronizar`, { metodo: 'POST' });
+
+      saida.textContent = resultados.length
+        ? `Resultado: ${resultados.map(r => r.resultado).join(', ')}`
+        : 'Nenhum pagamento do Mercado Pago para consultar.';
+
+      await carregarPedido();
+
+    } catch (erro) {
+      saida.textContent = erro.message;
+    } finally {
+      evento.target.disabled = false;
+    }
+
+  });
+
+
+document
+  .getElementById('pedido-reembolsar')
+  .addEventListener('click', async evento => {
+
+    const saida =
+      document.getElementById('pedido-pagamento-mensagem');
+
+    const valor =
+      document.getElementById('pedido-reembolso-valor').value;
+
+    const texto = valor
+      ? `Reembolsar ${formatarDinheiro(valor)} deste pedido?`
+      : 'Reembolsar o valor total? Se o pedido ainda não foi enviado, ele será cancelado e o estoque devolvido.';
+
+    if (!window.confirm(texto)) {
+      return;
+    }
+
+    const motivo =
+      window.prompt('Motivo do reembolso (opcional):') || undefined;
+
+    evento.target.disabled = true;
+
+    try {
+
+      const resultado =
+        await adminApi(`/admin/pedidos/${pedidoId}/reembolso`, {
+          metodo: 'POST',
+          corpo: {
+            valor: valor ? Number(valor) : undefined,
+            motivo
+          }
+        });
+
+      saida.textContent =
+        `Reembolso de ${formatarDinheiro(resultado.valor_reembolsado)} realizado.`;
+
+      document.getElementById('pedido-reembolso-valor').value = '';
+
+      await carregarPedido();
+
+    } catch (erro) {
+      saida.textContent = erro.message;
+    } finally {
+      evento.target.disabled = false;
+    }
+
+  });

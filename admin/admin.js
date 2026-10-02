@@ -266,6 +266,25 @@ function dataPainel(valor, comHora = false) {
 
 
 
+// Converte data da API para o valor de <input type="datetime-local">
+function paraCampoDataHora(valor) {
+  if (!valor) return '';
+  const data = new Date(valor);
+  const local = new Date(data.getTime() - data.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+// Valor de <input type="datetime-local"> para ISO (ou undefined)
+function deCampoDataHora(valor) {
+  return valor ? new Date(valor).toISOString() : undefined;
+}
+
+// Número opcional de um campo (vazio = undefined)
+function numeroOpcional(valor) {
+  return valor === '' || valor == null ? undefined : Number(valor);
+}
+
+
 const STATUS_PEDIDO = {
   aguardando_pagamento: { nome: 'Aguardando pagamento', classe: 'status-aguardando' },
   pago: { nome: 'Pago', classe: 'status-pago' },
