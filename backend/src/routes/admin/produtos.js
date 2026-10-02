@@ -8,6 +8,7 @@ const produtosService = require('../../services/produtosService');
 const imagensService = require('../../services/imagensService');
 const variacoesService = require('../../services/variacoesService');
 const estoqueService = require('../../services/estoqueService');
+const avaliacoesService = require('../../services/avaliacoesService');
 
 const router = Router();
 
@@ -294,6 +295,25 @@ router.patch('/produtos/:produtoId/variacoes/:variacaoId/estoque', autenticarAdm
     mensagem: 'Estoque atualizado com sucesso',
     variacao: await variacoesService.buscar(produtoId, variacaoId)
   });
+});
+
+
+/* =============================================================
+   AVALIAÇÕES (moderação)
+============================================================= */
+
+router.get('/admin/avaliacoes', autenticarAdmin, async (req, res) => {
+  res.json(await avaliacoesService.listarAdmin({
+    pagina: req.query.pagina ? valida.inteiro(req.query.pagina, 'Página inválida', { min: 1 }) : 1
+  }));
+});
+
+router.patch('/admin/avaliacoes/:id', autenticarAdmin, async (req, res) => {
+  await avaliacoesService.alterarVisibilidade(
+    valida.id(req.params.id),
+    valida.paraBoolean(valida.obrigatorio(req.body?.visivel, 'Informe se a avaliação fica visível'))
+  );
+  res.json({ mensagem: 'Avaliação atualizada' });
 });
 
 

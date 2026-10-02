@@ -9,6 +9,7 @@ const clientesService = require('../../services/clientesService');
 const enderecosService = require('../../services/enderecosService');
 const pedidosService = require('../../services/pedidosService');
 const carrinhoService = require('../../services/carrinhoService');
+const avaliacoesService = require('../../services/avaliacoesService');
 
 const router = Router();
 
@@ -209,6 +210,27 @@ router.get('/clientes/me/pedidos/:id', autenticarCliente, async (req, res) => {
   pedido.historico = pedido.historico.map(({ admin_nome: _, ...item }) => item);
 
   res.json(pedido);
+});
+
+
+/* =============================================================
+   AVALIAÇÕES (compra verificada)
+============================================================= */
+
+router.get('/clientes/me/avaliacoes', autenticarCliente, async (req, res) => {
+  res.json(await avaliacoesService.doCliente(req.cliente.id));
+});
+
+router.post('/clientes/me/avaliacoes', autenticarCliente, async (req, res) => {
+
+  const { produto_id: produtoId, nota, titulo, comentario } = req.body || {};
+
+  res.status(201).json(await avaliacoesService.salvar(req.cliente.id, {
+    produtoId: valida.id(produtoId, 'Produto inválido'),
+    nota: valida.inteiro(nota, 'A nota deve ser de 1 a 5', { min: 1, max: 5 }),
+    titulo: valida.texto(titulo, 'Título inválido', { max: 100, opcional: true }),
+    comentario: valida.texto(comentario, 'Comentário muito longo', { max: 2000, opcional: true })
+  }));
 });
 
 

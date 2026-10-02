@@ -4,8 +4,10 @@ const helmet = require('helmet');
 const compression = require('compression');
 
 const config = require('./config/ambiente');
+const { version: VERSAO } = require('../package.json');
 const db = require('./config/db');
 const { auditoria } = require('./middlewares/auditoria');
+const { registroRequisicoes } = require('./middlewares/registroRequisicoes');
 const { criarLimitador } = require('./middlewares/limiteTentativas');
 const notificacoes = require('./services/notificacoesService');
 const { tratarErros, rotaNaoEncontrada } = require('./middlewares/tratarErros');
@@ -44,6 +46,8 @@ function criarApp() {
 
   app.use(compression());
 
+  app.use(registroRequisicoes);
+
   // Limite geral: 300 requisições por minuto por IP
   const limiteGeral = criarLimitador({
     maximo: 300,
@@ -79,12 +83,27 @@ function criarApp() {
     res.send('API Haze Drip funcionando!');
   });
 
+  /*
+    Health check para monitoramento externo (UptimeRobot, Railway).
+    Responde 500 se o banco estiver fora, para disparar alerta.
+  */
   app.get('/health', async (req, res) => {
+
+    res.setHeader('Cache-Control', 'no-store');
+
+    const inicio = Date.now();
+
     try {
       await db.execute('SELECT 1');
-      res.json({ status: 'ok', banco: 'conectado' });
+      res.json({
+        status: 'ok',
+        banco: 'conectado',
+        banco_ms: Date.now() - inicio,
+        versao: VERSAO,
+        no_ar_desde: new Date(Date.now() - process.uptime() * 1000).toISOString()
+      });
     } catch {
-      res.status(500).json({ status: 'erro', banco: 'desconectado' });
+      res.status(500).json({ status: 'erro', banco: 'desconectado', versao: VERSAO });
     }
   });
 
