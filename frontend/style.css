@@ -2473,3 +2473,75 @@ a.card-name:hover {
 .checkout-campo textarea {
   resize: vertical;
 }
+
+
+/* =============================================================
+   PÁGINAS DE TEXTO (privacidade, termos, trocas, sobre, contato)
+============================================================= */
+
+.pagina-texto {
+  padding: 50px 0 100px;
+}
+
+.pagina-texto-wrap {
+  max-width: 760px;
+}
+
+.pagina-texto h1 {
+  margin: 12px 0 8px;
+  font-size: clamp(30px, 5vw, 48px);
+  text-transform: uppercase;
+}
+
+.pagina-texto h2 {
+  margin: 36px 0 12px;
+  font-size: 18px;
+  text-transform: uppercase;
+}
+
+.pagina-texto p,
+.pagina-texto li {
+  color: var(--fog);
+  font-size: 15px;
+  line-height: 1.75;
+}
+
+.pagina-texto ul,
+.pagina-texto ol {
+  padding-left: 20px;
+}
+
+.pagina-texto a {
+  color: var(--white);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.pagina-texto strong {
+  color: var(--white);
+}
+
+.pagina-atualizacao {
+  font-size: 12px !important;
+  color: var(--fog-dim) !important;
+}
+
+.pagina-destaque {
+  font-size: 20px !important;
+  color: var(--white) !important;
+}
+
+.pagina-texto details {
+  border-bottom: 1px solid var(--line);
+  padding: 14px 0;
+}
+
+.pagina-texto summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.contato-canais {
+  list-style: none;
+  padding: 0 !important;
+}

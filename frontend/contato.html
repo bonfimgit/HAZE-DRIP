@@ -9,11 +9,11 @@
       content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Confirmação de e-mail — Haze Drip</title>
+    <title>Contato — Haze Drip</title>
 
     <meta
       name="description"
-      content="Confirmação de e-mail da conta Haze Drip."
+      content="Fale com a Haze Drip e veja as perguntas frequentes."
     >
 
 
@@ -46,7 +46,6 @@
       rel="stylesheet"
       href="style.css"
     >
-    <meta name="robots" content="noindex">
   </head>
 
 
@@ -215,24 +214,51 @@
     </header>
 
 
-<main class="conta-page">
+<main class="pagina-texto">
+  <div class="wrap pagina-texto-wrap">
+    <p class="breadcrumb"><a href="index.html">Início</a> / Contato</p>
+    <h1>Contato</h1>
 
-  <div class="wrap conta-wrap">
+    <ul class="contato-canais">
+      <li><strong>E-mail:</strong> [PREENCHER: e-mail de atendimento]</li>
+      <li><strong>WhatsApp:</strong> [PREENCHER: número]</li>
+      <li><strong>Instagram:</strong> [PREENCHER: @perfil]</li>
+      <li><strong>Atendimento:</strong> [PREENCHER: dias e horários]</li>
+    </ul>
+    <p>Para falar sobre um pedido, informe o número dele. Respondemos em até [PREENCHER: prazo] dias úteis.</p>
 
-    <div class="conta-head">
-      <p class="breadcrumb">
-        <a href="index.html">Início</a> / Confirmação de e-mail
-      </p>
-      <h1>Confirmação de e-mail</h1>
-    </div>
+    <h2 id="faq">Perguntas frequentes</h2>
 
-    <section class="checkout-bloco conta-form">
-      <p class="conta-mensagem" id="verificar-mensagem" role="status">Confirmando seu e-mail...</p>
-      <a href="minha-conta.html" class="btn conta-botao" id="verificar-continuar" hidden>Ir para minha conta</a>
-    </section>
+    <details>
+      <summary>Como acompanho meu pedido?</summary>
+      <p>Em <a href="minha-conta.html#pedidos">Minha conta → Meus pedidos</a> ou pelo link do e-mail de confirmação. Quando for enviado, o código de rastreio aparece lá.</p>
+    </details>
 
+    <details>
+      <summary>Quanto tempo tenho para pagar o PIX?</summary>
+      <p>30 minutos. Depois disso o pedido é cancelado e você pode comprar de novo, se ainda houver estoque.</p>
+    </details>
+
+    <details>
+      <summary>Posso trocar o tamanho?</summary>
+      <p>Pode. Veja as condições em <a href="trocas.html#trocas">Trocas e devoluções</a>.</p>
+    </details>
+
+    <details>
+      <summary>Comprei sem conta. Consigo ver meus pedidos depois?</summary>
+      <p>Sim. Crie uma conta com o mesmo e-mail e confirme o endereço: os pedidos anteriores aparecem em Minha conta.</p>
+    </details>
+
+    <details>
+      <summary>Esqueci minha senha</summary>
+      <p>Use <a href="recuperar-senha.html">Recuperar senha</a>. Enviaremos um link válido por 1 hora.</p>
+    </details>
+
+    <details id="pagamento">
+      <summary>Quais formas de pagamento vocês aceitam?</summary>
+      <p>PIX, cartão de crédito e boleto, pelo Mercado Pago.</p>
+    </details>
   </div>
-
 </main>
 
     
@@ -548,7 +574,6 @@
 
     <script src="script.js"></script>
     <script src="cliente.js"></script>
-    <script src="conta.js"></script>
 
   </body>
 
