@@ -9,12 +9,70 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs/promises');
 
-const API_URL = "https://hazedrip-production-6a67.up.railway.app";
 const cloudinary = require('./cloudinary');
 
 //criação de login do admin
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+
+// Sem JWT_SECRET o servidor não consegue assinar nem validar tokens
+if (!process.env.JWT_SECRET) {
+    console.error('JWT_SECRET não definido. Configure o arquivo .env.');
+    process.exit(1);
+}
+
+// Converte valores vindos de JSON ou multipart (true, 1, '1', 'true') em boolean
+function paraBoolean(valor) {
+    return (
+        valor === true ||
+        valor === 1 ||
+        valor === '1' ||
+        String(valor).toLowerCase() === 'true'
+    );
+}
+
+/* =============================================================
+   LIMITE DE TENTATIVAS DE LOGIN (em memória)
+   Bloqueia o IP por 15 minutos após 5 tentativas inválidas.
+============================================================= */
+
+const LOGIN_MAX_TENTATIVAS = 5;
+const LOGIN_JANELA_MS = 15 * 60 * 1000;
+const tentativasLogin = new Map();
+
+function loginBloqueado(chave) {
+
+    const registro = tentativasLogin.get(chave);
+
+    if (!registro) {
+        return false;
+    }
+
+    if (Date.now() - registro.inicio > LOGIN_JANELA_MS) {
+        tentativasLogin.delete(chave);
+        return false;
+    }
+
+    return registro.quantidade >= LOGIN_MAX_TENTATIVAS;
+}
+
+function registrarFalhaLogin(chave) {
+
+    const registro = tentativasLogin.get(chave);
+
+    if (
+        !registro ||
+        Date.now() - registro.inicio > LOGIN_JANELA_MS
+    ) {
+        tentativasLogin.set(chave, {
+            quantidade: 1,
+            inicio: Date.now()
+        });
+        return;
+    }
+
+    registro.quantidade++;
+}
 
 function enviarImagemCloudinary(buffer, pasta) {
 
@@ -92,6 +150,9 @@ function autenticarAdmin(req, res, next) {
 //Criação de aplicação do servidor
 const app = express();
 
+// Railway/Netlify ficam atrás de proxy: usa o IP real do cliente em req.ip
+app.set('trust proxy', 1);
+
 
 const origensPermitidas = (process.env.FRONTEND_URLS || '') 
     .split(',')
@@ -111,9 +172,10 @@ app.use(cors({
             return callback(null, true);
         }
 
-        return callback(
-            new Error('Origem não permitida pelo CORS')
-        );
+        const erroCors = new Error('Origem não permitida pelo CORS');
+        erroCors.status = 403;
+
+        return callback(erroCors);
     }
 }));
 
@@ -147,10 +209,6 @@ app.get('/health', async (req, res) => {
 //Definição da porta do servidor
 const PORT = Number(process.env.PORT) || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
-
 async function testarConexao() {
     try {
         await db.query('SELECT 1');
@@ -178,39 +236,8 @@ const filtroImagem = (req, file, cb) => {
     }
 };
 
-const storage = multer.diskStorage({
-    
-    destination: (req, file, cb) => {
-        cb(null, 'uploads/');
-    },
-
-    filename: (req, file, cb) => {
-        const nomeUnico =
-            Date.now() +
-            '-'+
-            Math.round(Math.random() * 1E9);
-
-            const extensao = path.extname(file.originalname);
-
-            cb(null, nomeUnico + extensao);
-    }
-});
-
 const uploadCloud = multer({
     storage: multer.memoryStorage(),
-
-    fileFilter: filtroImagem,
-
-    limits: {
-        fileSize: 5 * 1024 * 1024
-    }
-});
-
-
-//limitador de arquivos 
-
-const upload = multer ({
-    storage: storage,
 
     fileFilter: filtroImagem,
 
@@ -337,7 +364,7 @@ app.get('/produtos/:id', async(req, res) => {
                 [produtoId]
         );
 
-        if(produtos.lenght === 0) {
+        if(produtos.length === 0) {
             return res.status(404).json ({
                 mensagem: 'Produto não encontrado'
             });
@@ -515,7 +542,7 @@ app.get('/campanha', async (req, res) => {
         );
 
         res.status(500).json({
-            mengagem:'Erro ao buscar campanha'
+            mensagem:'Erro ao buscar campanha'
         });
     }
 });
@@ -528,12 +555,22 @@ app.post('/admin/login', async (req, res) => {
     } = req.body;
 
     if (
-        !email ||
+        typeof email !== 'string' ||
+        typeof senha !== 'string' ||
         !email.trim() ||
         !senha
     ) {
         return res.status(400).json({
             mensagem: 'E-mail e senha são obrigatórios'
+        });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+    const chaveTentativa = `${req.ip}|${emailNormalizado}`;
+
+    if (loginBloqueado(chaveTentativa)) {
+        return res.status(429).json({
+            mensagem: 'Muitas tentativas inválidas. Tente novamente em 15 minutos.'
         });
     }
 
@@ -545,10 +582,12 @@ app.post('/admin/login', async (req, res) => {
              WHERE email = ?
              AND ativo = TRUE
              LIMIT 1`,
-            [email.trim().toLowerCase()]
+            [emailNormalizado]
         );
 
         if (usuarios.length === 0) {
+            registrarFalhaLogin(chaveTentativa);
+
             return res.status(401).json({
                 mensagem: 'E-mail ou senha inválidos'
             });
@@ -562,10 +601,14 @@ app.post('/admin/login', async (req, res) => {
         );
 
         if (!senhaCorreta) {
+            registrarFalhaLogin(chaveTentativa);
+
             return res.status(401).json({
                 mensagem: 'E-mail ou senha inválidos'
             });
         }
+
+        tentativasLogin.delete(chaveTentativa);
 
         const token = jwt.sign(
             {
@@ -641,11 +684,6 @@ app.get('/admin/produtos', autenticarAdmin, async (req, res) =>{
         });
     }
 
-});
-
-//get do gerente que vai conseguir vizualizar tudo
-app.get('/admin/produtos',(req, res) =>{
-    res.json(produtos);
 });
 
 /* =============================================================
@@ -764,9 +802,15 @@ app.post('/produtos', autenticarAdmin, async (req, res) => {
         destaque_home = false
     } = req.body;
 
-    if (!nome || !nome.trim()) {
+    if (typeof nome !== 'string' || !nome.trim()) {
         return res.status(400).json({
             mensagem: 'Nome do produto é obrigatório'
+        });
+    }
+
+    if (descricao != null && typeof descricao !== 'string') {
+        return res.status(400).json({
+            mensagem: 'Descrição inválida'
         });
     }
 
@@ -802,6 +846,16 @@ app.post('/produtos', autenticarAdmin, async (req, res) => {
             });
         }
 
+        /*
+          Um produto recém-criado ainda não tem foto principal,
+          variações nem estoque. Por isso ele sempre nasce inativo
+          e só pode ser ativado depois (PUT ou /reativar), quando
+          essas regras forem atendidas.
+        */
+        const aviso = paraBoolean(ativo)
+            ? 'Produto cadastrado como inativo: adicione foto principal, variações e estoque antes de ativá-lo.'
+            : null;
+
         const [resultado] = await db.execute(`
             INSERT INTO produtos
             (
@@ -812,17 +866,17 @@ app.post('/produtos', autenticarAdmin, async (req, res) => {
                 ativo,
                 destaque_home
             )
-            VALUES(?, ?, ?, ?, ?, ?)    
-            
+            VALUES(?, ?, ?, ?, ?, ?)
+
             `, [
                 nome.trim(),
                 descricao
                     ? descricao.trim() : null,
-                preco,
+                precoNumero,
                 categoria_id,
-                ativo,
-                destaque_home
-            
+                false,
+                paraBoolean(destaque_home)
+
     ]);
 
         const [produtoCriado] = await db.execute(
@@ -831,7 +885,10 @@ app.post('/produtos', autenticarAdmin, async (req, res) => {
 
         );
 
-        res.status(201).json(produtoCriado[0]);
+        res.status(201).json({
+            ...produtoCriado[0],
+            aviso
+        });
 
     } catch (erro) {
 
@@ -872,13 +929,22 @@ app.put('/produtos/:id', autenticarAdmin, async (req, res) => {
 
 
     if (
-        !nome ||
+        typeof nome !== 'string' ||
         !nome.trim()
     ) {
 
         return res.status(400).json({
             mensagem:
                 'Nome do produto é obrigatório'
+        });
+
+    }
+
+
+    if (descricao != null && typeof descricao !== 'string') {
+
+        return res.status(400).json({
+            mensagem: 'Descrição inválida'
         });
 
     }
@@ -947,10 +1013,7 @@ app.put('/produtos/:id', autenticarAdmin, async (req, res) => {
         ========================================================= */
 
         const ativarProduto =
-            ativo === true ||
-            ativo === 1 ||
-            ativo === '1' ||
-            String(ativo).toLowerCase() === 'true';
+            paraBoolean(ativo);
 
 
         let ativoFinal =
@@ -1067,7 +1130,7 @@ app.put('/produtos/:id', autenticarAdmin, async (req, res) => {
                     precoNumero,
                     categoria_id,
                     ativoFinal,
-                    destaque_home,
+                    paraBoolean(destaque_home),
                     id
                 ]
             );
@@ -1134,7 +1197,7 @@ app.put('/produtos/:id', autenticarAdmin, async (req, res) => {
 app.delete('/produtos/:id', autenticarAdmin, async (req, res) => {
     const id = Number(req.params.id);
 
-    if (!Number.isInteger(id)){
+    if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json ({
             mensagem: 'ID inválido'
         });
@@ -1169,7 +1232,7 @@ app.delete('/produtos/:id', autenticarAdmin, async (req, res) => {
 app.patch ('/produtos/:id/reativar', autenticarAdmin ,async(req, res) =>{
     const id = Number(req.params.id);
     
-    if (!Number.isInteger(id)) {
+    if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
             mensagem: 'ID inválido'
         });
@@ -1317,6 +1380,25 @@ app.post('/produtos/:id/imagens', autenticarAdmin, uploadCloud.single('imagem'),
              VALUES (?, ?, ?)`,
              [produtoId, urlImagem, publicId]
         );
+
+        // Se o produto ainda não tem foto principal, esta passa a ser
+        const [principais] = await db.execute(
+            `SELECT id
+             FROM produto_imagens
+             WHERE produto_id = ?
+             AND principal = TRUE
+             LIMIT 1`,
+            [produtoId]
+        );
+
+        if (principais.length === 0) {
+            await db.execute(
+                `UPDATE produto_imagens
+                 SET principal = TRUE
+                 WHERE id = ?`,
+                [resultado.insertId]
+            );
+        }
 
         const[imagemCriada] = await db.execute(
             `SELECT * FROM produto_imagens
@@ -1635,7 +1717,10 @@ app.post('/produtos/:id/variacoes', autenticarAdmin, async (req, res) => {
     }
 
     if (
-        !tamanho || !cor || estoque == null || !sku
+        typeof tamanho !== 'string' || !tamanho.trim() ||
+        typeof cor !== 'string' || !cor.trim() ||
+        typeof sku !== 'string' || !sku.trim() ||
+        estoque == null
     ) {
         return res.status(400).json({
             mensagem: 'Tamanho, cor, estoque e SKU são obrigatórios'
@@ -1749,10 +1834,10 @@ app.put('/produtos/:produtoId/variacoes/:variacaoId', autenticarAdmin, async (re
     }
 
     if(
-        !tamanho ||
-        !cor ||
+        typeof tamanho !== 'string' || !tamanho.trim() ||
+        typeof cor !== 'string' || !cor.trim() ||
+        typeof sku !== 'string' || !sku.trim() ||
         estoque == null ||
-        !sku ||
         ativo == null
     ) {
         return res.status(400).json({
@@ -1787,7 +1872,7 @@ app.put('/produtos/:produtoId/variacoes/:variacaoId', autenticarAdmin, async (re
                 cor.trim(),
                 estoqueNumero,
                 sku.trim(),
-                ativo,
+                paraBoolean(ativo),
                 variacaoId,
                 produtoId
             ]
@@ -1812,6 +1897,14 @@ app.put('/produtos/:produtoId/variacoes/:variacaoId', autenticarAdmin, async (re
         console.error(
             'Erro ao atualizar variação:', erro.message
         );
+
+        if (erro.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                mensagem: erro.message.toLowerCase().includes('sku')
+                    ? 'Este SKU já está sendo utilizado'
+                    : 'Já existe uma variação com esse tamanho e cor para este produto'
+            });
+        }
 
         res.status(500).json({
             mensagem:'Erro ao atualizar variação'
@@ -2338,10 +2431,12 @@ app.patch('/admin/campanhas/:id/ativar', autenticarAdmin, async (req, res) => {
         });
     } catch (erro) {
         if (connection) {
-            await connection.rollback();
+            try {
+                await connection.rollback();
+            } catch {}
         }
         console.error(
-            'Erro ao tivar campanha:', erro.message
+            'Erro ao ativar campanha:', erro.message
         );
 
         res.status(500).json({
@@ -2354,45 +2449,6 @@ app.patch('/admin/campanhas/:id/ativar', autenticarAdmin, async (req, res) => {
     }
 });
     
-app.get ('/destaques', async (req, res) => {
-
-    try {
-
-        const [produtos] = await db.execute(`
-            SELECT
-                p.*,
-                c.nome AS categoria_nome,
-
-                (
-                    SELECT pi.url
-                    FROM produto_imagens pi
-                    WHERE pi.produto_id = p.id
-                    AND pi.principal = TRUE
-                    LIMIT 1
-                ) AS imagem_principal
-
-                FROM produtos p
-
-                LEFT JOIN categorias c
-                    ON c.id = p.categoria_id
-                
-                WHERE p.ativo = TRUE
-                AND p.destaque_home = TRUE
-
-                ORDER BY p.criado_em DESC
-            `);
-
-            res.json(produtos);
-    } catch(erro) {
-        console.error(
-            'Erro ao buscar destaques:', erro.message
-        );
-
-        res.status(500).json ({
-            mensagem: 'Erro ao buscar produtos em destaque'
-        });
-    }
-});
 
 app.patch('/admin/produtos/:id/destaque', autenticarAdmin, async (req, res) => {
 
@@ -2809,229 +2865,6 @@ app.delete('/admin/campanhas/:id', autenticarAdmin, async (req, res) => {
 
 });
 
-app.patch('/admin/campanhas/:id/ativar', autenticarAdmin, async (req, res) => {
-
-    const id = Number(req.params.id);
-
-    if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({
-            mensagem: 'ID da campanha inválido'
-        });
-    }
-
-    let connection;
-
-    try {
-
-        connection = await db.getConnection();
-
-        await connection.beginTransaction();
-
-        const [campanhas] = await connection.execute(
-            `SELECT id FROM campanhas
-             WHERE id = ?`,
-             [id]
-        );
-
-        if (campanhas.length === 0) {
-            await connection.rollback();
-
-            return res.status(404).json({
-                mensagem: 'Campanha não encontrada'
-            });
-        }
-
-        // Desativa todas
-        await connection.execute (
-            `UPDATE campanhas
-             SET ativo = FALSE`
-        );
-
-        // Ativa somente a escolhida
-        await connection.execute(
-            `UPDATE campanhas 
-             SET ativo = TRUE
-             WHERE id = ?`,
-            [id]
-        );
-
-        const [campanhaAtivada] = await connection.execute(
-            `SELECT * FROM campanhas
-             WHERE if = ?`,
-             [id]
-        );
-
-        await connection.commit();
-
-        res.json({
-            mensagem: 'Campanha ativada com sucesso',
-            campanha: campanhaAtivada[0]
-        });
-
-    } catch (erro) {
-        if (connection) {
-            await connection.rollback();
-        }
-        console.error(
-            'Erro ao ativar campanha:',erro.message
-        );
-
-        res.status(500).json({
-            mensagem: 'Erro ao ativar campanha'
-        });
-
-    } finally {
-        if (connection) {
-            connection.release();
-        }
-    }
-});
-
-app.patch('/admin/produtos/:id/destaque', async (req, res) => {
-
-    const id = Number(req.params.id);
-
-    const { destaque_home } = req.body;
-
-    if (!Number.isInteger(id) || id <= 0) {
-        return res.status(400).json({
-            mensagem: 'ID do produto inválido'
-        });
-    }
-
-    if (destaque_home == null) {
-        return res.status(400).json({
-            mensagem: 'Status de destaque é obrigatório'
-        });
-    }
-
-    const destaque =
-        destaque_home === true ||
-        destaque_home === 1 ||
-        destaque_home === '1' ||
-        String(destaque_home).toLowerCase() === 'true';
-
-    try {
-
-        const [resultado] = await db.execute(
-            `UPDATE produtos
-             SET destaque_home = ?
-             WHERE id = ?`,
-            [destaque, id]
-        );
-
-        if (resultado.affectedRows === 0) {
-            return res.status(404).json({
-                mensagem: 'Produto não encontrado'
-            });
-        }
-
-        const [produto] = await db.execute(
-            `SELECT
-                id,
-                nome,
-                destaque_home
-             FROM produtos
-             WHERE id = ?`,
-            [id]
-        );
-
-        res.json({
-            mensagem: destaque
-                ? 'Produto adicionado aos destaques'
-                : 'Produto removido dos destaques',
-
-            produto: produto[0]
-        });
-
-    } catch (erro) {
-
-        console.error(
-            'Erro ao alterar destaque do produto:',
-            erro.message
-        );
-
-        res.status(500).json({
-            mensagem: 'Erro ao alterar destaque do produto'
-        });
-    }
-});
-
-// TRATAMENTO GLOBAL DE ERROS
-app.use((erro, req, res, next) => {
-
-    if (erro instanceof multer.MulterError) {
-
-        if (erro.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({
-                mensagem: 'A imagem deve ter no máximo 5 MB'
-            });
-        }
-
-        return res.status(400).json({
-            mensagem: 'Erro ao enviar imagem'
-        });
-    }
-
-    if (
-        erro.message ===
-        'Apenas imagens JPG, PNG ou WEBP são permitidas'
-    ) {
-        return res.status(400).json({
-            mensagem: erro.message
-        });
-    }
-
-    console.error(
-        'Erro não tratado:',
-        erro.message
-    );
-
-    res.status(500).json({
-        mensagem: 'Erro interno do servidor'
-    });
-});
-
-//rota de teste imagens online
-
-app.post(
-    '/admin/teste-cloudinary',
-    autenticarAdmin,
-    uploadCloud.single('imagem'),
-    async (req, res) => {
-
-        if (!req.file) {
-            return res.status(400).json({
-                mensagem: 'Nenhuma imagem enviada'
-            });
-        }
-
-        try {
-
-            const resultado = await enviarImagemCloudinary(
-                req.file.buffer,
-                'haze-drip/testes'
-            );
-
-            res.status(201).json({
-                mensagem: 'Imagem enviada para Cloudinary com sucesso',
-                url: resultado.secure_url,
-                public_id: resultado.public_id
-            });
-
-        } catch (erro) {
-
-            console.error(
-                'ERRO COMPLETO CLOUDINARY:',
-                erro.message
-            );
-
-            res.status(500).json({
-                mensagem: 'Erro ao enviar imagem para Cloudinary'
-            });
-        }
-    }
-);
 
 /* =============================================================
    ADMIN - LISTAR PEDIDOS
@@ -3332,15 +3165,32 @@ app.patch( '/admin/pedidos/:id/status', autenticarAdmin,async (req, res) => {
          ATUALIZAR
       ========================================================= */
 
-      await db.execute(
+      /*
+        A condição "AND status = ?" impede que duas requisições
+        simultâneas pulem etapas ou alterem um pedido que acabou
+        de ser cancelado.
+      */
+      const [resultadoStatus] = await db.execute(
         `UPDATE pedidos
          SET status = ?
-         WHERE id = ?`,
+         WHERE id = ?
+         AND status = ?`,
         [
           status,
-          pedidoId
+          pedidoId,
+          statusAtual
         ]
       );
+
+
+      if (resultadoStatus.affectedRows === 0) {
+
+        return res.status(409).json({
+          mensagem:
+            'O status do pedido foi alterado por outra operação. Recarregue a página.'
+        });
+
+      }
 
 
       return res.json({
@@ -3406,11 +3256,13 @@ app.patch(
     }
 
 
-    const conexao =
-      await db.getConnection();
+    let conexao = null;
 
 
     try {
+
+      conexao =
+        await db.getConnection();
 
       await conexao.beginTransaction();
 
@@ -3581,7 +3433,13 @@ app.patch(
 
     } catch (erro) {
 
-      await conexao.rollback();
+      if (conexao) {
+
+        try {
+          await conexao.rollback();
+        } catch {}
+
+      }
 
 
       console.error(
@@ -3598,139 +3456,59 @@ app.patch(
 
     } finally {
 
-      conexao.release();
+      if (conexao) {
+        conexao.release();
+      }
 
     }
 
   }
 );
+
+
 
 
 
 /* =============================================================
-   ADMIN - DETALHES DE UM PEDIDO
+   LOJA - CRIAR PEDIDO
 ============================================================= */
 
-app.get(
-  '/admin/pedidos/:id',
-  autenticarAdmin,
-  async (req, res) => {
+const PEDIDO_MAX_ITENS = 50;
+const PEDIDO_MAX_QUANTIDADE_ITEM = 99;
 
-    const pedidoId =
-      Number(req.params.id);
+// Lê um campo de texto obrigatório (ou opcional) com tamanho máximo
+function lerTexto(valor, tamanhoMaximo, obrigatorio = true) {
 
-
-    if (
-      !Number.isInteger(pedidoId) ||
-      pedidoId <= 0
-    ) {
-
-      return res.status(400).json({
-        mensagem:
-          'ID do pedido inválido'
-      });
-
-    }
-
-
-    try {
-
-      /* =========================================================
-         BUSCAR PEDIDO
-      ========================================================= */
-
-      const [pedidos] =
-        await db.execute(
-          `SELECT
-              id,
-              status,
-
-              cliente_nome,
-              cliente_email,
-              cliente_telefone,
-
-              endereco_cep,
-              endereco_rua,
-              endereco_numero,
-              endereco_complemento,
-              endereco_bairro,
-              endereco_cidade,
-              endereco_estado,
-
-              subtotal,
-              frete,
-              total
-
-           FROM pedidos
-
-           WHERE id = ?`,
-          [pedidoId]
-        );
-
-
-      if (pedidos.length === 0) {
-
-        return res.status(404).json({
-          mensagem:
-            'Pedido não encontrado'
-        });
-
-      }
-
-
-      /* =========================================================
-         BUSCAR ITENS
-      ========================================================= */
-
-      const [itens] =
-        await db.execute(
-          `SELECT
-              pedido_id,
-              produto_id,
-              variacao_id,
-              produto_nome,
-              sku,
-              cor,
-              tamanho,
-              preco_unitario,
-              quantidade,
-              subtotal
-
-           FROM pedidos_itens
-
-           WHERE pedido_id = ?`,
-          [pedidoId]
-        );
-
-
-      /* =========================================================
-         RESPOSTA
-      ========================================================= */
-
-      return res.json({
-        ...pedidos[0],
-        itens
-      });
-
-
-    } catch (erro) {
-
-      console.error(
-        'Erro ao buscar pedido:',
-        erro.message
-      );
-
-
-      return res.status(500).json({
-        mensagem:
-          'Erro ao buscar pedido'
-      });
-
-    }
-
+  if (valor == null || valor === '') {
+    return obrigatorio ? null : '';
   }
-);
 
+  if (typeof valor !== 'string') {
+    return null;
+  }
+
+  const texto = valor.trim();
+
+  if (obrigatorio && !texto) {
+    return null;
+  }
+
+  if (texto.length > tamanhoMaximo) {
+    return null;
+  }
+
+  return texto;
+}
+
+function arredondarDinheiro(valor) {
+  return Math.round(valor * 100) / 100;
+}
+
+function erroPedido(mensagem, status) {
+  const erro = new Error(mensagem);
+  erro.status = status;
+  return erro;
+}
 
 app.post('/pedidos', async (req, res) => {
 
@@ -3738,60 +3516,188 @@ app.post('/pedidos', async (req, res) => {
     cliente,
     endereco,
     itens
-  } = req.body;
+  } = req.body || {};
 
 
   // =========================================================
-  // VALIDAÇÕES BÁSICAS
+  // VALIDAÇÃO DOS DADOS DO CLIENTE
   // =========================================================
 
-  if (
-    !cliente ||
-    !cliente.nome ||
-    !cliente.email ||
-    !cliente.telefone
-  ) {
-
+  if (!cliente || typeof cliente !== 'object') {
     return res.status(400).json({
       erro: 'Dados do cliente são obrigatórios'
     });
+  }
 
+  const clienteNome = lerTexto(cliente.nome, 150);
+  const clienteEmail = lerTexto(cliente.email, 150);
+  const clienteTelefone = lerTexto(cliente.telefone, 20);
+
+  if (!clienteNome || !clienteEmail || !clienteTelefone) {
+    return res.status(400).json({
+      erro: 'Dados do cliente são obrigatórios'
+    });
+  }
+
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(clienteEmail)) {
+    return res.status(400).json({
+      erro: 'E-mail inválido'
+    });
+  }
+
+  const telefoneDigitos = clienteTelefone.replace(/\D/g, '');
+
+  if (
+    telefoneDigitos.length < 10 ||
+    telefoneDigitos.length > 11
+  ) {
+    return res.status(400).json({
+      erro: 'Telefone inválido'
+    });
   }
 
 
-  if (
-    !endereco ||
-    !endereco.cep ||
-    !endereco.rua ||
-    !endereco.numero ||
-    !endereco.bairro ||
-    !endereco.cidade ||
-    !endereco.estado
-  ) {
+  // =========================================================
+  // VALIDAÇÃO DO ENDEREÇO
+  // =========================================================
 
+  if (!endereco || typeof endereco !== 'object') {
     return res.status(400).json({
       erro: 'Endereço incompleto'
     });
-
   }
 
+  const enderecoCep = lerTexto(endereco.cep, 9);
+  const enderecoRua = lerTexto(endereco.rua, 150);
+  const enderecoNumero = lerTexto(endereco.numero, 20);
+  const enderecoComplemento = lerTexto(endereco.complemento, 100, false);
+  const enderecoBairro = lerTexto(endereco.bairro, 100);
+  const enderecoCidade = lerTexto(endereco.cidade, 100);
+  const enderecoEstado = lerTexto(endereco.estado, 2);
+
+  if (
+    !enderecoCep ||
+    !enderecoRua ||
+    !enderecoNumero ||
+    enderecoComplemento === null ||
+    !enderecoBairro ||
+    !enderecoCidade ||
+    !enderecoEstado
+  ) {
+    return res.status(400).json({
+      erro: 'Endereço incompleto'
+    });
+  }
+
+  if (enderecoCep.replace(/\D/g, '').length !== 8) {
+    return res.status(400).json({
+      erro: 'CEP inválido'
+    });
+  }
+
+  if (!/^[A-Za-z]{2}$/.test(enderecoEstado)) {
+    return res.status(400).json({
+      erro: 'Estado inválido'
+    });
+  }
+
+
+  // =========================================================
+  // VALIDAÇÃO DOS ITENS
+  // =========================================================
 
   if (
     !Array.isArray(itens) ||
     itens.length === 0
   ) {
-
     return res.status(400).json({
       erro: 'O pedido precisa possuir pelo menos um item'
     });
+  }
 
+  if (itens.length > PEDIDO_MAX_ITENS) {
+    return res.status(400).json({
+      erro: 'O pedido possui itens demais'
+    });
   }
 
 
-  const conexao = await db.getConnection();
+  /*
+    Agrupa itens da mesma variação.
+    Sem isso, duas linhas da mesma variação passariam
+    na validação separadamente e o estoque ficaria negativo.
+  */
+
+  const itensAgrupados = new Map();
+
+  for (const item of itens) {
+
+    const produtoId = Number(item?.produto_id);
+    const variacaoId = Number(item?.variacao_id);
+    const quantidade = Number(item?.quantidade);
+
+    if (
+      !Number.isInteger(produtoId) ||
+      produtoId <= 0 ||
+      !Number.isInteger(variacaoId) ||
+      variacaoId <= 0 ||
+      !Number.isInteger(quantidade) ||
+      quantidade <= 0
+    ) {
+      return res.status(400).json({
+        erro: 'Item do pedido inválido'
+      });
+    }
+
+    const existente = itensAgrupados.get(variacaoId);
+
+    if (existente) {
+
+      if (existente.produtoId !== produtoId) {
+        return res.status(400).json({
+          erro: 'Item do pedido inválido'
+        });
+      }
+
+      existente.quantidade += quantidade;
+
+    } else {
+
+      itensAgrupados.set(variacaoId, {
+        produtoId,
+        variacaoId,
+        quantidade
+      });
+
+    }
+  }
+
+  for (const item of itensAgrupados.values()) {
+
+    if (item.quantidade > PEDIDO_MAX_QUANTIDADE_ITEM) {
+      return res.status(400).json({
+        erro: 'Quantidade máxima por item excedida'
+      });
+    }
+  }
+
+
+  /*
+    Ordena por variação para que pedidos simultâneos
+    travem as linhas sempre na mesma ordem (evita deadlock).
+  */
+
+  const itensPedido =
+    [...itensAgrupados.values()]
+      .sort((a, b) => a.variacaoId - b.variacaoId);
+
+
+  let conexao = null;
 
 
   try {
+
+    conexao = await db.getConnection();
 
     await conexao.beginTransaction();
 
@@ -3805,37 +3711,7 @@ app.post('/pedidos', async (req, res) => {
     // VALIDA CADA ITEM DIRETAMENTE NO BANCO
     // =========================================================
 
-    for (const item of itens) {
-
-      const produtoId =
-        Number(item.produto_id);
-
-      const variacaoId =
-        Number(item.variacao_id);
-
-      const quantidade =
-        Number(item.quantidade);
-
-
-      if (
-        !Number.isInteger(produtoId) ||
-        produtoId <= 0 ||
-        !Number.isInteger(variacaoId) ||
-        variacaoId <= 0 ||
-        !Number.isInteger(quantidade) ||
-        quantidade <= 0
-      ) {
-
-        const erro = new Error(
-          'Item do pedido inválido'
-        );
-
-        erro.status = 400;
-
-        throw erro;
-
-      }
-
+    for (const item of itensPedido) {
 
       const [resultado] =
         await conexao.query(
@@ -3865,22 +3741,17 @@ app.post('/pedidos', async (req, res) => {
           FOR UPDATE
           `,
           [
-            variacaoId,
-            produtoId
+            item.variacaoId,
+            item.produtoId
           ]
         );
 
 
       if (resultado.length === 0) {
-
-        const erro = new Error(
-          'Produto ou variação não encontrada'
+        throw erroPedido(
+          'Produto ou variação não encontrada',
+          404
         );
-
-        erro.status = 404;
-
-        throw erro;
-
       }
 
 
@@ -3892,31 +3763,21 @@ app.post('/pedidos', async (req, res) => {
         !Number(produto.produto_ativo) ||
         !Number(produto.variacao_ativa)
       ) {
-
-        const erro = new Error(
-          `${produto.produto_nome} não está disponível`
+        throw erroPedido(
+          `${produto.produto_nome} não está disponível`,
+          400
         );
-
-        erro.status = 400;
-
-        throw erro;
-
       }
 
 
       if (
-        quantidade >
+        item.quantidade >
         Number(produto.estoque)
       ) {
-
-        const erro = new Error(
-          `Estoque insuficiente para ${produto.produto_nome} - ${produto.cor} / ${produto.tamanho}`
+        throw erroPedido(
+          `Estoque insuficiente para ${produto.produto_nome} - ${produto.cor} / ${produto.tamanho}`,
+          409
         );
-
-        erro.status = 409;
-
-        throw erro;
-
       }
 
 
@@ -3925,42 +3786,27 @@ app.post('/pedidos', async (req, res) => {
 
 
       const subtotalItem =
-        precoUnitario * quantidade;
+        arredondarDinheiro(
+          precoUnitario * item.quantidade
+        );
 
 
-      subtotalPedido +=
-        subtotalItem;
+      subtotalPedido =
+        arredondarDinheiro(
+          subtotalPedido + subtotalItem
+        );
 
 
       itensValidados.push({
-
-        produto_id:
-          produto.produto_id,
-
-        variacao_id:
-          produto.variacao_id,
-
-        produto_nome:
-          produto.produto_nome,
-
-        sku:
-          produto.sku,
-
-        cor:
-          produto.cor,
-
-        tamanho:
-          produto.tamanho,
-
-        preco_unitario:
-          precoUnitario,
-
-        quantidade:
-          quantidade,
-
-        subtotal:
-          subtotalItem
-
+        produto_id: produto.produto_id,
+        variacao_id: produto.variacao_id,
+        produto_nome: produto.produto_nome,
+        sku: produto.sku,
+        cor: produto.cor,
+        tamanho: produto.tamanho,
+        preco_unitario: precoUnitario,
+        quantidade: item.quantidade,
+        subtotal: subtotalItem
       });
 
     }
@@ -3974,7 +3820,7 @@ app.post('/pedidos', async (req, res) => {
     const frete = 0;
 
     const total =
-      subtotalPedido + frete;
+      arredondarDinheiro(subtotalPedido + frete);
 
 
     // =========================================================
@@ -4012,19 +3858,17 @@ app.post('/pedidos', async (req, res) => {
         )
         `,
         [
-          cliente.nome.trim(),
-          cliente.email.trim().toLowerCase(),
-          cliente.telefone.trim(),
+          clienteNome,
+          clienteEmail.toLowerCase(),
+          clienteTelefone,
 
-          endereco.cep.trim(),
-          endereco.rua.trim(),
-          endereco.numero.trim(),
-          endereco.complemento
-            ? endereco.complemento.trim()
-            : null,
-          endereco.bairro.trim(),
-          endereco.cidade.trim(),
-          endereco.estado.trim().toUpperCase(),
+          enderecoCep,
+          enderecoRua,
+          enderecoNumero,
+          enderecoComplemento || null,
+          enderecoBairro,
+          enderecoCidade,
+          enderecoEstado.toUpperCase(),
 
           subtotalPedido,
           frete,
@@ -4075,19 +3919,34 @@ app.post('/pedidos', async (req, res) => {
       );
 
 
-      await conexao.query(
-        `
-        UPDATE produto_variacoes
+      /*
+        A condição "estoque >= ?" é uma segunda proteção:
+        o estoque nunca fica negativo.
+      */
+      const [resultadoEstoque] =
+        await conexao.query(
+          `
+          UPDATE produto_variacoes
 
-        SET estoque = estoque - ?
+          SET estoque = estoque - ?
 
-        WHERE id = ?
-        `,
-        [
-          item.quantidade,
-          item.variacao_id
-        ]
-      );
+          WHERE id = ?
+          AND estoque >= ?
+          `,
+          [
+            item.quantidade,
+            item.variacao_id,
+            item.quantidade
+          ]
+        );
+
+
+      if (resultadoEstoque.affectedRows === 0) {
+        throw erroPedido(
+          `Estoque insuficiente para ${item.produto_nome} - ${item.cor} / ${item.tamanho}`,
+          409
+        );
+      }
 
     }
 
@@ -4105,22 +3964,11 @@ app.post('/pedidos', async (req, res) => {
         'Pedido criado com sucesso',
 
       pedido: {
-
-        id:
-          pedidoId,
-
-        status:
-          'aguardando_pagamento',
-
-        subtotal:
-          subtotalPedido,
-
-        frete:
-          frete,
-
-        total:
-          total
-
+        id: pedidoId,
+        status: 'aguardando_pagamento',
+        subtotal: subtotalPedido,
+        frete: frete,
+        total: total
       }
 
     });
@@ -4128,39 +3976,41 @@ app.post('/pedidos', async (req, res) => {
 
   } catch (erro) {
 
-    await conexao.rollback();
+    if (conexao) {
+
+      try {
+        await conexao.rollback();
+      } catch {}
+
+    }
 
 
     console.error(
       'Erro ao criar pedido:',
-      erro
+      erro.message
     );
 
 
     return res
       .status(erro.status || 500)
       .json({
-
         erro:
           erro.status
             ? erro.message
             : 'Erro interno ao criar pedido'
-
       });
 
 
   } finally {
 
-    conexao.release();
+    if (conexao) {
+      conexao.release();
+    }
 
   }
 
 });
 
-// SERVIDOR
-app.listen(PORT, () => {
-    console.log(`Servidor rodando na porta ${PORT}`);
-});
 
 //Essa rota será usada no catálogo
 app.get('/admin/categorias', autenticarAdmin, async (req, res) => {
@@ -4193,7 +4043,7 @@ app.get('/admin/categorias', autenticarAdmin, async (req, res) => {
 app.post('/categorias', autenticarAdmin, async (req,res) => {
     const { nome } = req.body;
 
-    if (!nome || !nome.trim()){
+    if (typeof nome !== 'string' || !nome.trim()) {
         return res.status(400).json ({
             mensagem:'Nome da categoria é obrigatório'
         });
@@ -4241,13 +4091,13 @@ app.put('/categorias/:id', autenticarAdmin, async (req,res) => {
 
     const { nome } = req.body;
 
-    if (!Number.isInteger(id)) {
+    if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
             mensagem: 'ID inválido'
         });
     }
 
-    if (!nome || !nome.trim()) {
+    if (typeof nome !== 'string' || !nome.trim()) {
         return res.status(400).json ({
             mensagem: 'Nome da categoria é obrigatório'
         });
@@ -4262,7 +4112,7 @@ app.put('/categorias/:id', autenticarAdmin, async (req,res) => {
             [nome.trim(),id]
         );
 
-        if(resuldado.affectedRows === 0) {
+        if(resultado.affectedRows === 0) {
             return res.status(404).json ({
                 mensagem: 'Categoria não encontrada'
             });
@@ -4282,6 +4132,12 @@ app.put('/categorias/:id', autenticarAdmin, async (req,res) => {
             erro.message
         );
 
+        if (erro.code === 'ER_DUP_ENTRY') {
+            return res.status(409).json({
+                mensagem: 'Já existe uma categoria com esse nome'
+            });
+        }
+
         res.status(500).json ({
             mensagem:'Erro ao atualizar categoria'
         });
@@ -4292,7 +4148,7 @@ app.delete('/categorias/:id', autenticarAdmin, async (req, res) => {
 
     const id = Number(req.params.id);
 
-    if(!Number.isInteger(id)){
+    if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json({
             mensagem: 'ID inválido'
         });
@@ -4332,7 +4188,7 @@ app.patch('/categorias/:id/reativar', autenticarAdmin, async (req, res) => {
 
     const id = Number(req.params.id);
 
-    if(!Number.isInteger(id)){
+    if (!Number.isInteger(id) || id <= 0) {
         return res.status(400).json ({
             mensagem: 'ID inválido'
         });
@@ -4420,7 +4276,7 @@ app.patch(
         } catch (erro) {
             console.error(
                 'Erro ao definir imagem principal',
-                erro.mensagem
+                erro.message
             );
 
             res.status(500).json({
@@ -4429,3 +4285,58 @@ app.patch(
         }
     } 
 );
+
+
+// TRATAMENTO GLOBAL DE ERROS
+app.use((erro, req, res, next) => {
+
+    if (erro instanceof multer.MulterError) {
+
+        if (erro.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({
+                mensagem: 'A imagem deve ter no máximo 5 MB'
+            });
+        }
+
+        return res.status(400).json({
+            mensagem: 'Erro ao enviar imagem'
+        });
+    }
+
+    if (
+        erro.message ===
+        'Apenas imagens JPG, PNG ou WEBP são permitidas'
+    ) {
+        return res.status(400).json({
+            mensagem: erro.message
+        });
+    }
+
+    // Corpo JSON malformado (express.json)
+    if (erro.type === 'entity.parse.failed') {
+        return res.status(400).json({
+            mensagem: 'JSON inválido na requisição'
+        });
+    }
+
+    // Erros com status definido (ex.: origem bloqueada pelo CORS)
+    if (erro.status && erro.status < 500) {
+        return res.status(erro.status).json({
+            mensagem: erro.message
+        });
+    }
+
+    console.error(
+        'Erro não tratado:',
+        erro.message
+    );
+
+    res.status(500).json({
+        mensagem: 'Erro interno do servidor'
+    });
+});
+
+// SERVIDOR (sempre depois de todas as rotas e do tratamento de erros)
+app.listen(PORT, () => {
+    console.log(`Servidor rodando na porta ${PORT}`);
+});

@@ -18,5 +18,8 @@
     "jsonwebtoken": "^9.0.3",
     "multer": "^2.2.0",
     "mysql2": "^3.23.3"
+  },
+  "engines": {
+    "node": ">=20.12"
   }
 }
