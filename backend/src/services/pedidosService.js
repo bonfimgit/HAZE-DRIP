@@ -198,7 +198,7 @@ async function validarItensNoBanco(conexao, itens) {
       frete, desconto, colunas: { coluna: valor }, aposCriar(conexao, pedidoId)
     }
 */
-async function criar({ cliente, endereco, itens, ajustes = null }) {
+async function criar({ cliente, endereco, itens, clienteId = null, ajustes = null }) {
 
   const itensNormalizados = normalizarItens(itens);
 
@@ -233,6 +233,7 @@ async function criar({ cliente, endereco, itens, ajustes = null }) {
       subtotal,
       frete,
       total,
+      ...(clienteId ? { cliente_id: clienteId } : {}),
       ...(extras.colunas || {})
     };
 
@@ -299,6 +300,14 @@ async function criar({ cliente, endereco, itens, ajustes = null }) {
       statusNovo: 'aguardando_pagamento',
       origem: 'loja'
     });
+
+    // Pedido feito: esvazia o carrinho salvo do cliente
+    if (clienteId) {
+      await conexao.execute(
+        'DELETE FROM carrinho_itens WHERE cliente_id = ?',
+        [clienteId]
+      );
+    }
 
     if (extras.aposCriar) {
       await extras.aposCriar(conexao, pedidoId);
@@ -423,6 +432,32 @@ async function buscarCompleto(pedidoId, { clienteId = null } = {}) {
     itens,
     historico
   };
+}
+
+
+async function listarDoCliente(clienteId) {
+
+  const [pedidos] = await db.execute(
+    `SELECT
+        p.id,
+        p.status,
+        p.subtotal,
+        p.frete,
+        p.total,
+        p.criado_em,
+        p.codigo_rastreio,
+        (
+          SELECT COALESCE(SUM(i.quantidade), 0)
+          FROM pedidos_itens i
+          WHERE i.pedido_id = p.id
+        ) AS quantidade_itens
+     FROM pedidos p
+     WHERE p.cliente_id = ?
+     ORDER BY p.id DESC`,
+    [clienteId]
+  );
+
+  return pedidos;
 }
 
 
@@ -633,6 +668,7 @@ module.exports = {
   criar,
   listarAdmin,
   buscarCompleto,
+  listarDoCliente,
   avancarStatus,
   atualizarRastreio,
   cancelar

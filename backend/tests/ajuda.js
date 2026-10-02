@@ -30,6 +30,7 @@ const db = require('../src/config/db');
 const cloudinary = require('../src/config/cloudinary');
 const { migrar } = require('../scripts/migrar');
 const { criarApp } = require('../src/app');
+const { enviadosEmTeste } = require('../src/services/emailService');
 
 
 /* =============================================================
@@ -267,8 +268,55 @@ async function finalizarAmbiente(api) {
 }
 
 
+/*
+  Extrai o token de um link enviado por e-mail (ex.: ?token=abc).
+*/
+function tokenDoUltimoEmail(para, trechoAssunto) {
+
+  const email = [...enviadosEmTeste]
+    .reverse()
+    .find(e => e.para === para && e.assunto.includes(trechoAssunto));
+
+  if (!email) {
+    throw new Error(`Nenhum e-mail "${trechoAssunto}" para ${para}`);
+  }
+
+  return decodeURIComponent(email.texto.match(/token=([^\s&"]+)/)[1]);
+}
+
+
+// Aguarda tarefas assíncronas (eventos, e-mails, auditoria)
+function aguardar(ms = 150) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+
+async function cadastrarCliente(api, dados = {}) {
+
+  const corpo = {
+    nome: 'Maria Cliente',
+    email: 'maria@teste.com',
+    telefone: '(35) 98888-7777',
+    senha: 'Senha1234',
+    ...dados
+  };
+
+  const resposta = await api.post('/clientes/cadastro', corpo);
+
+  if (resposta.status !== 201) {
+    throw new Error(`Cadastro falhou: ${JSON.stringify(resposta.dados)}`);
+  }
+
+  return { ...resposta.dados, senha: corpo.senha };
+}
+
+
 module.exports = {
   db,
+  enviadosEmTeste,
+  tokenDoUltimoEmail,
+  aguardar,
+  cadastrarCliente,
   ADMIN,
   imagensRemovidas,
   resetarBanco,

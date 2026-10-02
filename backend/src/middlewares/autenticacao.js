@@ -86,18 +86,36 @@ function autorizar(...perfis) {
 }
 
 
-function autenticarCliente(req, res, next) {
-  req.cliente = lerToken(req, 'cliente');
+async function carregarCliente(req) {
+
+  const dados = lerToken(req, 'cliente');
+
+  const { validarSessao } = require('../services/clientesService');
+
+  const cliente = await validarSessao(dados);
+
+  return {
+    id: cliente.id,
+    nome: cliente.nome,
+    email: cliente.email
+  };
+}
+
+
+async function autenticarCliente(req, res, next) {
+  req.cliente = await carregarCliente(req);
   next();
 }
 
 
 // Identifica o cliente se houver token válido, sem exigir login
-function identificarCliente(req, res, next) {
+async function identificarCliente(req, res, next) {
+
+  req.cliente = null;
 
   if (req.headers.authorization) {
     try {
-      req.cliente = lerToken(req, 'cliente');
+      req.cliente = await carregarCliente(req);
     } catch {
       req.cliente = null;
     }

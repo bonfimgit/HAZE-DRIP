@@ -2,59 +2,94 @@ const { Router } = require('express');
 
 const valida = require('../../utils/validacao');
 const { requisicaoInvalida } = require('../../utils/erros');
+const { identificarCliente } = require('../../middlewares/autenticacao');
 const pedidosService = require('../../services/pedidosService');
+const enderecosService = require('../../services/enderecosService');
 
 const router = Router();
 
 
-/*
-  Valida e normaliza cliente e endereço enviados pelo checkout.
-  Exportada para ser reutilizada pelo checkout completo.
-*/
-function lerDadosEntrega(corpo) {
-
-  const { cliente, endereco } = corpo || {};
+function lerCliente(cliente) {
 
   if (!cliente || typeof cliente !== 'object') {
     throw requisicaoInvalida('Dados do cliente são obrigatórios');
   }
 
-  if (!endereco || typeof endereco !== 'object') {
-    throw requisicaoInvalida('Endereço incompleto');
-  }
-
-  const obrigatorioCliente = 'Dados do cliente são obrigatórios';
-  const obrigatorioEndereco = 'Endereço incompleto';
-
   return {
-
-    cliente: {
-      nome: valida.texto(cliente.nome, obrigatorioCliente, { max: 150 }),
-      email: valida.email(cliente.email),
-      telefone: valida.telefone(cliente.telefone)
-    },
-
-    endereco: {
-      cep: valida.cep(endereco.cep),
-      rua: valida.texto(endereco.rua, obrigatorioEndereco, { max: 150 }),
-      numero: valida.texto(endereco.numero, obrigatorioEndereco, { max: 20 }),
-      complemento: valida.texto(endereco.complemento, obrigatorioEndereco, { max: 100, opcional: true }),
-      bairro: valida.texto(endereco.bairro, obrigatorioEndereco, { max: 100 }),
-      cidade: valida.texto(endereco.cidade, obrigatorioEndereco, { max: 100 }),
-      estado: valida.uf(endereco.estado)
-    }
+    nome: valida.texto(cliente.nome, 'Dados do cliente são obrigatórios', { max: 150 }),
+    email: valida.email(cliente.email),
+    telefone: valida.telefone(cliente.telefone)
   };
 }
 
 
-router.post('/pedidos', async (req, res) => {
+function lerEndereco(endereco) {
 
-  const { cliente, endereco } = lerDadosEntrega(req.body);
+  if (!endereco || typeof endereco !== 'object') {
+    throw requisicaoInvalida('Endereço incompleto');
+  }
+
+  const mensagem = 'Endereço incompleto';
+
+  return {
+    cep: valida.cep(endereco.cep),
+    rua: valida.texto(endereco.rua, mensagem, { max: 150 }),
+    numero: valida.texto(endereco.numero, mensagem, { max: 20 }),
+    complemento: valida.texto(endereco.complemento, mensagem, { max: 100, opcional: true }),
+    bairro: valida.texto(endereco.bairro, mensagem, { max: 100 }),
+    cidade: valida.texto(endereco.cidade, mensagem, { max: 100 }),
+    estado: valida.uf(endereco.estado)
+  };
+}
+
+
+/*
+  Lê cliente e endereço do checkout.
+  Cliente logado pode enviar "endereco_id" de um endereço salvo.
+*/
+async function lerDadosEntrega(corpo, clienteLogado) {
+
+  const dados = corpo || {};
+
+  const cliente = lerCliente(dados.cliente);
+
+  let endereco;
+
+  if (dados.endereco_id != null && clienteLogado) {
+
+    const salvo = await enderecosService.buscar(
+      clienteLogado.id,
+      valida.id(dados.endereco_id, 'Endereço inválido')
+    );
+
+    endereco = {
+      cep: salvo.cep,
+      rua: salvo.rua,
+      numero: salvo.numero,
+      complemento: salvo.complemento,
+      bairro: salvo.bairro,
+      cidade: salvo.cidade,
+      estado: salvo.estado
+    };
+
+  } else {
+
+    endereco = lerEndereco(dados.endereco);
+  }
+
+  return { cliente, endereco };
+}
+
+
+router.post('/pedidos', identificarCliente, async (req, res) => {
+
+  const { cliente, endereco } = await lerDadosEntrega(req.body, req.cliente);
 
   const pedido = await pedidosService.criar({
     cliente,
     endereco,
-    itens: req.body.itens
+    itens: req.body.itens,
+    clienteId: req.cliente ? req.cliente.id : null
   });
 
   res.status(201).json({
@@ -66,3 +101,4 @@ router.post('/pedidos', async (req, res) => {
 
 module.exports = router;
 module.exports.lerDadosEntrega = lerDadosEntrega;
+module.exports.lerEndereco = lerEndereco;

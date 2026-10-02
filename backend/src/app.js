@@ -7,10 +7,12 @@ const config = require('./config/ambiente');
 const db = require('./config/db');
 const { auditoria } = require('./middlewares/auditoria');
 const { criarLimitador } = require('./middlewares/limiteTentativas');
+const notificacoes = require('./services/notificacoesService');
 const { tratarErros, rotaNaoEncontrada } = require('./middlewares/tratarErros');
 
 const rotasCatalogo = require('./routes/loja/catalogo');
 const rotasPedidosLoja = require('./routes/loja/pedidos');
+const rotasClientes = require('./routes/loja/clientes');
 const rotasAuthAdmin = require('./routes/admin/auth');
 const rotasProdutosAdmin = require('./routes/admin/produtos');
 const rotasCategoriasAdmin = require('./routes/admin/categorias');
@@ -18,11 +20,14 @@ const rotasCampanhasAdmin = require('./routes/admin/campanhas');
 const rotasPedidosAdmin = require('./routes/admin/pedidos');
 const rotasEstoqueAdmin = require('./routes/admin/estoque');
 const rotasUsuariosAdmin = require('./routes/admin/usuarios');
+const rotasClientesAdmin = require('./routes/admin/clientes');
 
 
 function criarApp() {
 
   const app = express();
+
+  notificacoes.registrar();
 
   // Railway fica atrás de proxy: usa o IP real do cliente em req.ip
   app.set('trust proxy', 1);
@@ -84,6 +89,7 @@ function criarApp() {
   // Loja
   app.use(rotasCatalogo);
   app.use(rotasPedidosLoja);
+  app.use(rotasClientes);
 
   // Painel administrativo
   app.use(rotasAuthAdmin);
@@ -93,6 +99,7 @@ function criarApp() {
   app.use(rotasPedidosAdmin);
   app.use(rotasEstoqueAdmin);
   app.use(rotasUsuariosAdmin);
+  app.use(rotasClientesAdmin);
 
 
   app.use(rotaNaoEncontrada);
