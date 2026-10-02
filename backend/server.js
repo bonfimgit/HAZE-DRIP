@@ -18,6 +18,18 @@ app.listen(config.porta, () => {
   logger.info('Servidor iniciado', { porta: config.porta });
 });
 
+/*
+  A cada 5 minutos cancela pedidos com pagamento vencido e devolve o
+  estoque (confere no Mercado Pago antes de cancelar).
+*/
+const pagamentosService = require('./src/services/pagamentosService');
+
+setInterval(() => {
+  pagamentosService.expirarPendentes().catch(erro =>
+    logger.erro('Erro na expiração de pedidos', { erro: erro.message })
+  );
+}, 5 * 60 * 1000).unref();
+
 db.query('SELECT 1')
   .then(() => logger.info('MySQL conectado'))
   .catch(erro => logger.erro('Erro ao conectar ao MySQL', { erro: erro.message }));

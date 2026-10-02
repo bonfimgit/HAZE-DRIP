@@ -6,6 +6,7 @@ const {
   removerImagemCloudinary
 } = require('../middlewares/upload');
 const logger = require('../utils/logger');
+const { CAMPANHA_VIGENTE } = require('./promocoesService');
 
 
 async function buscarAtivaLoja() {
@@ -18,9 +19,9 @@ async function buscarAtivaLoja() {
         imagem_url,
         texto_botao,
         link_botao
-     FROM campanhas
-     WHERE ativo = TRUE
-     ORDER BY atualizado_em DESC
+     FROM campanhas c
+     WHERE ${CAMPANHA_VIGENTE}
+     ORDER BY c.atualizado_em DESC
      LIMIT 1`
   );
 
@@ -32,13 +33,33 @@ async function buscarAtivaLoja() {
 }
 
 
+async function anexarProdutos(conexao, campanhas) {
+
+  if (campanhas.length === 0) {
+    return campanhas;
+  }
+
+  const [linhas] = await conexao.query(
+    'SELECT campanha_id, produto_id FROM campanha_produtos WHERE campanha_id IN (?)',
+    [campanhas.map(c => c.id)]
+  );
+
+  return campanhas.map(campanha => ({
+    ...campanha,
+    produto_ids: linhas
+      .filter(linha => linha.campanha_id === campanha.id)
+      .map(linha => linha.produto_id)
+  }));
+}
+
+
 async function listarTodas() {
 
   const [campanhas] = await db.execute(
     'SELECT * FROM campanhas ORDER BY atualizado_em DESC, id DESC'
   );
 
-  return campanhas;
+  return anexarProdutos(db, campanhas);
 }
 
 
@@ -53,7 +74,31 @@ async function buscar(conexao, id) {
     throw naoEncontrado('Campanha não encontrada');
   }
 
-  return campanhas[0];
+  const [campanha] = await anexarProdutos(conexao, campanhas);
+
+  return campanha;
+}
+
+
+// Substitui os produtos participantes da promoção
+async function salvarProdutos(conexao, campanhaId, produtoIds) {
+
+  if (produtoIds === undefined) {
+    return;
+  }
+
+  await conexao.execute(
+    'DELETE FROM campanha_produtos WHERE campanha_id = ?',
+    [campanhaId]
+  );
+
+  for (const produtoId of produtoIds) {
+    await conexao.execute(
+      `INSERT IGNORE INTO campanha_produtos (campanha_id, produto_id)
+       SELECT ?, id FROM produtos WHERE id = ?`,
+      [campanhaId, produtoId]
+    );
+  }
 }
 
 
@@ -84,8 +129,8 @@ async function criar(dados, buffer) {
       const [resultado] = await conexao.execute(
         `INSERT INTO campanhas
           (titulo, subtitulo, imagem_url, cloudinary_public_id,
-           texto_botao, link_botao, ativo)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+           texto_botao, link_botao, ativo, inicio_em, fim_em, desconto_percentual)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           dados.titulo,
           dados.subtitulo,
@@ -93,9 +138,14 @@ async function criar(dados, buffer) {
           imagem.public_id,
           dados.textoBotao,
           dados.linkBotao,
-          dados.ativo
+          dados.ativo,
+          dados.inicioEm,
+          dados.fimEm,
+          dados.descontoPercentual
         ]
       );
+
+      await salvarProdutos(conexao, resultado.insertId, dados.produtoIds);
 
       return buscar(conexao, resultado.insertId);
     });
@@ -152,7 +202,10 @@ async function atualizar(id, dados, buffer) {
             cloudinary_public_id = ?,
             texto_botao = ?,
             link_botao = ?,
-            ativo = ?
+            ativo = ?,
+            inicio_em = ?,
+            fim_em = ?,
+            desconto_percentual = ?
          WHERE id = ?`,
         [
           dados.titulo,
@@ -162,9 +215,14 @@ async function atualizar(id, dados, buffer) {
           dados.textoBotao,
           dados.linkBotao,
           dados.ativo,
+          dados.inicioEm,
+          dados.fimEm,
+          dados.descontoPercentual,
           id
         ]
       );
+
+      await salvarProdutos(conexao, id, dados.produtoIds);
 
       return {
         campanha: await buscar(conexao, id),

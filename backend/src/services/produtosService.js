@@ -1,5 +1,6 @@
 const db = require('../config/db');
 const { naoEncontrado, requisicaoInvalida } = require('../utils/erros');
+const promocoesService = require('./promocoesService');
 
 const SELECT_LISTAGEM = `
   SELECT
@@ -30,7 +31,7 @@ async function listarAtivos() {
     ORDER BY p.criado_em DESC, p.id DESC
   `);
 
-  return produtos;
+  return promocoesService.aplicarEmProdutos(produtos);
 }
 
 
@@ -43,7 +44,7 @@ async function listarDestaques() {
     ORDER BY p.criado_em DESC, p.id DESC
   `);
 
-  return produtos;
+  return promocoesService.aplicarEmProdutos(produtos);
 }
 
 
@@ -87,8 +88,10 @@ async function buscarAtivo(produtoId) {
     0
   );
 
+  const [produto] = await promocoesService.aplicarEmProdutos([produtos[0]]);
+
   return {
-    ...produtos[0],
+    ...produto,
     estoque_total: estoqueTotal,
     imagens,
     variacoes

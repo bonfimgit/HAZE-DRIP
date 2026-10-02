@@ -2,6 +2,7 @@ const db = require('../config/db');
 const { emTransacao } = require('../utils/transacao');
 const { requisicaoInvalida } = require('../utils/erros');
 const { arredondar } = require('../utils/dinheiro');
+const promocoesService = require('./promocoesService');
 
 const MAX_ITENS = 50;
 const MAX_QUANTIDADE = 99;
@@ -87,6 +88,10 @@ async function validar(itens) {
 
   const porId = new Map(linhas.map(linha => [linha.variacao_id, linha]));
 
+  const descontos = await promocoesService.descontosVigentes(
+    linhas.map(linha => linha.produto_id)
+  );
+
   const resultado = [];
 
   for (const { variacaoId, quantidade } of normalizados) {
@@ -121,18 +126,25 @@ async function validar(itens) {
       aviso = `Só restam ${estoque} unidade(s). A quantidade foi ajustada.`;
     }
 
+    const promocao = descontos.get(linha.produto_id);
+
+    const preco = promocao
+      ? promocoesService.precoComDesconto(linha.preco, promocao.desconto_percentual)
+      : Number(linha.preco);
+
     resultado.push({
       variacao_id: variacaoId,
       produto_id: linha.produto_id,
       nome: linha.nome,
       cor: linha.cor,
       tamanho: linha.tamanho,
-      preco: Number(linha.preco),
+      preco,
+      preco_original: promocao ? Number(linha.preco) : null,
       imagem: linha.imagem,
       estoque,
       quantidade: quantidadeFinal,
       quantidade_solicitada: quantidade,
-      subtotal: disponivel ? arredondar(Number(linha.preco) * quantidadeFinal) : 0,
+      subtotal: disponivel ? arredondar(preco * quantidadeFinal) : 0,
       disponivel,
       ajustado: quantidadeFinal !== quantidade,
       aviso

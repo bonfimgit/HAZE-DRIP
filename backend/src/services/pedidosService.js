@@ -9,6 +9,8 @@ const {
 const { arredondar } = require('../utils/dinheiro');
 const { publicar } = require('../utils/eventos');
 const estoqueService = require('./estoqueService');
+const promocoesService = require('./promocoesService');
+const cuponsService = require('./cuponsService');
 
 
 const STATUS = [
@@ -130,6 +132,11 @@ async function validarItensNoBanco(conexao, itens) {
 
   const validados = [];
 
+  const descontos = await promocoesService.descontosVigentes(
+    itens.map(item => item.produtoId),
+    conexao
+  );
+
   for (const item of itens) {
 
     const [linhas] = await conexao.query(
@@ -169,7 +176,12 @@ async function validarItensNoBanco(conexao, itens) {
       );
     }
 
-    const precoUnitario = Number(produto.preco);
+    // Preço da promoção vigente, se houver
+    const promocao = descontos.get(produto.produto_id);
+
+    const precoUnitario = promocao
+      ? promocoesService.precoComDesconto(produto.preco, promocao.desconto_percentual)
+      : Number(produto.preco);
 
     validados.push({
       produto_id: produto.produto_id,
@@ -179,6 +191,7 @@ async function validarItensNoBanco(conexao, itens) {
       cor: produto.cor,
       tamanho: produto.tamanho,
       preco_unitario: precoUnitario,
+      preco_original: promocao ? Number(produto.preco) : null,
       quantidade: item.quantidade,
       estoque: Number(produto.estoque),
       subtotal: arredondar(precoUnitario * item.quantidade)
@@ -198,7 +211,7 @@ async function validarItensNoBanco(conexao, itens) {
       frete, desconto, colunas: { coluna: valor }, aposCriar(conexao, pedidoId)
     }
 */
-async function criar({ cliente, endereco, itens, clienteId = null, ajustes = null }) {
+async function criar({ cliente, endereco, itens, clienteId = null, ajustes = null, publicarEvento = true }) {
 
   const itensNormalizados = normalizarItens(itens);
 
@@ -252,8 +265,8 @@ async function criar({ cliente, endereco, itens, clienteId = null, ajustes = nul
       await conexao.query(
         `INSERT INTO pedidos_itens
           (pedido_id, produto_id, variacao_id, produto_nome, sku,
-           cor, tamanho, preco_unitario, quantidade, subtotal)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           cor, tamanho, preco_unitario, preco_original, quantidade, subtotal)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           pedidoId,
           item.produto_id,
@@ -263,6 +276,7 @@ async function criar({ cliente, endereco, itens, clienteId = null, ajustes = nul
           item.cor,
           item.tamanho,
           item.preco_unitario,
+          item.preco_original,
           item.quantidade,
           item.subtotal
         ]
@@ -319,11 +333,15 @@ async function criar({ cliente, endereco, itens, clienteId = null, ajustes = nul
       subtotal,
       desconto,
       frete,
-      total
+      total,
+      ...(extras.retorno || {})
     };
   });
 
-  publicar('pedido:criado', { pedidoId: pedido.id });
+  // O checkout publica depois de criar o pagamento (e-mail com link de pagamento)
+  if (publicarEvento) {
+    publicar('pedido:criado', { pedidoId: pedido.id });
+  }
 
   return pedido;
 }
@@ -624,6 +642,9 @@ async function cancelar(pedidoId, {
         adminId
       });
     }
+
+    // O uso do cupom volta a ficar disponível
+    await cuponsService.liberarUso(conexao, pedidoId);
 
     await conexao.execute(
       `UPDATE pedidos

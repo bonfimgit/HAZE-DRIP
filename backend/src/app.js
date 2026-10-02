@@ -13,6 +13,7 @@ const { tratarErros, rotaNaoEncontrada } = require('./middlewares/tratarErros');
 const rotasCatalogo = require('./routes/loja/catalogo');
 const rotasPedidosLoja = require('./routes/loja/pedidos');
 const rotasClientes = require('./routes/loja/clientes');
+const rotasCheckout = require('./routes/loja/checkout');
 const rotasAuthAdmin = require('./routes/admin/auth');
 const rotasProdutosAdmin = require('./routes/admin/produtos');
 const rotasCategoriasAdmin = require('./routes/admin/categorias');
@@ -21,6 +22,7 @@ const rotasPedidosAdmin = require('./routes/admin/pedidos');
 const rotasEstoqueAdmin = require('./routes/admin/estoque');
 const rotasUsuariosAdmin = require('./routes/admin/usuarios');
 const rotasClientesAdmin = require('./routes/admin/clientes');
+const rotasVendasAdmin = require('./routes/admin/vendas');
 
 
 function criarApp() {
@@ -90,6 +92,7 @@ function criarApp() {
   app.use(rotasCatalogo);
   app.use(rotasPedidosLoja);
   app.use(rotasClientes);
+  app.use(rotasCheckout);
 
   // Painel administrativo
   app.use(rotasAuthAdmin);
@@ -100,6 +103,7 @@ function criarApp() {
   app.use(rotasEstoqueAdmin);
   app.use(rotasUsuariosAdmin);
   app.use(rotasClientesAdmin);
+  app.use(rotasVendasAdmin);
 
 
   app.use(rotaNaoEncontrada);

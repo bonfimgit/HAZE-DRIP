@@ -1,7 +1,7 @@
 const { Router } = require('express');
 
 const valida = require('../../utils/validacao');
-const { requisicaoInvalida } = require('../../utils/erros');
+const { requisicaoInvalida, proibido } = require('../../utils/erros');
 const { autenticarAdmin } = require('../../middlewares/autenticacao');
 const pedidosService = require('../../services/pedidosService');
 
@@ -88,11 +88,36 @@ router.patch('/admin/pedidos/:id/rastreio', autenticarAdmin, async (req, res) =>
 router.patch('/admin/pedidos/:id/cancelar', autenticarAdmin, async (req, res) => {
 
   const pedidoId = valida.id(req.params.id, ID_PEDIDO);
+  const motivo = valida.texto(req.body?.motivo, 'Motivo inválido', { max: 255, opcional: true });
+
+  /*
+    reembolsar: true devolve o valor pago no Mercado Pago e cancela.
+    Só o gerente pode reembolsar.
+  */
+  if (valida.paraBoolean(req.body?.reembolsar)) {
+
+    if (req.admin.perfil !== 'gerente') {
+      throw proibido('Somente o gerente pode reembolsar pedidos');
+    }
+
+    const pagamentosService = require('../../services/pagamentosService');
+
+    const reembolso = await pagamentosService.reembolsar(pedidoId, {
+      adminId: req.admin.id,
+      motivo: motivo || 'Pedido cancelado com reembolso'
+    });
+
+    return res.json({
+      mensagem: 'Pedido cancelado, valor reembolsado e estoque devolvido',
+      pedido: { id: pedidoId, status: 'cancelado' },
+      reembolso
+    });
+  }
 
   const pedido = await pedidosService.cancelar(pedidoId, {
     adminId: req.admin.id,
     origem: 'admin',
-    motivo: valida.texto(req.body?.motivo, 'Motivo inválido', { max: 255, opcional: true })
+    motivo
   });
 
   res.json({
