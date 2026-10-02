@@ -1,11 +1,12 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "API da loja Haze Drip",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node server.js"
+    "start": "node server.js",
+    "migrate": "node scripts/migrar.js",
+    "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\""
   },
   "keywords": [],
   "author": "",
