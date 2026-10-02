@@ -51,7 +51,8 @@ const config = {
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    database: process.env.DB_NAME,
+    ssl: sslBanco()
   },
 
   cloudinary: {
@@ -63,5 +64,26 @@ const config = {
 
 config.emTeste = config.ambiente === 'test';
 config.emProducao = config.ambiente === 'production';
+
+/*
+  SSL do banco (exigido por serviços gerenciados como o Aiven).
+  DB_SSL_CA: conteúdo do certificado CA (.pem); "\n" literal vira
+  quebra de linha, para caber numa variável de ambiente.
+  DB_SSL=true sem CA: SSL validando pelos certificados públicos.
+*/
+function sslBanco() {
+
+  const ca = (process.env.DB_SSL_CA || '').replace(/\\n/g, '\n').trim();
+
+  if (ca) {
+    return { ca, rejectUnauthorized: true };
+  }
+
+  if (process.env.DB_SSL === 'true') {
+    return { rejectUnauthorized: true };
+  }
+
+  return undefined;
+}
 
 module.exports = config;
