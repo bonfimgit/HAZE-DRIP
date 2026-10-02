@@ -91,14 +91,17 @@ test('bloqueia após 5 senhas erradas', async () => {
 
 test('ações de escrita do admin ficam na auditoria', async () => {
 
-  await api.post('/categorias', { nome: 'Bonés' }, { token: tokenAdmin });
+  const criada = await api.post('/categorias', { nome: 'Bonés' }, { token: tokenAdmin });
+  assert.equal(criada.status, 201);
 
-  // A auditoria é gravada após a resposta
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  const [linhas] = await db.query(
-    "SELECT * FROM auditoria_admin WHERE rota = '/categorias'"
-  );
+  // A auditoria é gravada depois da resposta: espera até ela aparecer
+  let linhas = [];
+  for (let tentativa = 0; tentativa < 30 && linhas.length === 0; tentativa++) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+    [linhas] = await db.query(
+      "SELECT * FROM auditoria_admin WHERE rota = '/categorias'"
+    );
+  }
 
   assert.equal(linhas.length, 1);
   assert.equal(linhas[0].metodo, 'POST');
