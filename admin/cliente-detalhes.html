@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Cliente — Haze Drip Admin</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+  <link
+  rel="stylesheet"
+  href="pedidos.css"
+>
+</head>
+
+<body class="admin-body pedidos-page">
+
+  <div class="admin-layout">
+
+    <aside class="admin-sidebar">
+
+      <div class="admin-logo">
+        HAZE DRIP
+      </div>
+
+      <nav class="admin-nav">
+
+        <a href="dashboard.html">
+          Dashboard
+        </a>
+
+        <a href="produtos.html">
+          Produtos
+        </a>
+
+        <a
+          href="pedidos.html"
+          class="active"
+        >
+          Pedidos
+        </a>
+
+        <a href="drops.html">
+          Drops
+        </a>
+
+        <a href="campanha.html">
+          Campanha
+        </a>
+
+      </nav>
+
+    </aside>
+
+
+    <!-- titulo: Cliente -->
+<!-- script: cliente-detalhes.js -->
+<main class="admin-main">
+
+      <a href="clientes.html" class="btn btn-sm btn-outline-light mb-4">← Voltar para clientes</a>
+
+      <div class="admin-page-header">
+        <div>
+          <span class="admin-eyebrow">Cliente</span>
+          <h1 id="cliente-nome">Carregando...</h1>
+          <p id="cliente-email" class="admin-muted-text"></p>
+        </div>
+        <span id="cliente-status" class="pedido-status-badge status-padrao"></span>
+      </div>
+
+      <div id="cliente-mensagem" class="admin-muted-text mb-4"></div>
+
+      <section class="admin-card mb-4">
+        <h3>Estatísticas</h3>
+        <div class="row g-3 mt-1" id="cliente-estatisticas"></div>
+      </section>
+
+      <section class="admin-card mb-4">
+        <h3>Dados da conta</h3>
+        <p><strong>Telefone:</strong> <span id="cliente-telefone"></span></p>
+        <p><strong>E-mail confirmado:</strong> <span id="cliente-verificado"></span></p>
+        <p><strong>Cadastro:</strong> <span id="cliente-criado"></span></p>
+        <p><strong>Último login:</strong> <span id="cliente-login"></span></p>
+        <p id="cliente-motivo" class="text-danger"></p>
+
+        <div class="mt-3">
+          <label for="cliente-motivo-input" class="form-label">Motivo do bloqueio (opcional)</label>
+          <div class="d-flex gap-2 flex-wrap">
+            <input type="text" id="cliente-motivo-input" maxlength="255" class="form-control bg-dark text-light border-secondary" style="max-width:420px">
+            <button type="button" id="cliente-bloquear" class="btn btn-outline-danger">Bloquear</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="admin-card mb-4">
+        <h3>Endereços</h3>
+        <div id="cliente-enderecos"></div>
+      </section>
+
+      <section class="admin-card">
+        <h3>Pedidos</h3>
+        <div class="table-responsive">
+          <table class="table table-dark table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Pedido</th>
+                <th>Data</th>
+                <th>Total</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="cliente-pedidos"></tbody>
+          </table>
+        </div>
+      </section>
+
+    </main>
+
+
+  </div>
+
+
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+  <script src="cliente-detalhes.js"></script>
+
+</body>
+
+</html>

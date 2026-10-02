@@ -316,6 +316,25 @@ configurarCancelamento(
     );
 
 
+    renderizarHistorico(
+      resultado.historico || []
+    );
+
+    configurarRastreio(
+      resultado
+    );
+
+    if (
+      resultado.status === 'cancelado' &&
+      resultado.motivo_cancelamento
+    ) {
+
+      pedidoCancelarMensagem.textContent =
+        `Motivo: ${resultado.motivo_cancelamento}`;
+
+    }
+
+
     mensagem.textContent = '';
 
 
@@ -399,7 +418,12 @@ pedidoStatusSalvar.addEventListener(
             body:
               JSON.stringify({
                 status:
-                  novoStatus
+                  novoStatus,
+                ...(
+                  novoStatus === 'enviado'
+                    ? lerCamposRastreio()
+                    : {}
+                )
               })
 
           }
@@ -439,6 +463,10 @@ pedidoStatusSalvar.addEventListener(
 
       pedidoStatusMensagem.textContent =
         'Status atualizado com sucesso.';
+
+
+      // Recarrega para mostrar histórico e datas atualizados
+      await carregarPedido();
 
 
     } catch (erro) {
@@ -545,6 +573,12 @@ pedidoCancelar.addEventListener(
     }
 
 
+    const motivo =
+      window.prompt(
+        'Motivo do cancelamento (opcional):'
+      ) || '';
+
+
     const token =
       pegarTokenAdmin();
 
@@ -573,10 +607,19 @@ pedidoCancelar.addEventListener(
 
             headers: {
 
+              'Content-Type':
+                'application/json',
+
               Authorization:
                 `Bearer ${token}`
 
-            }
+            },
+
+            body:
+              JSON.stringify({
+                motivo:
+                  motivo.trim() || undefined
+              })
 
           }
         );
@@ -594,6 +637,9 @@ pedidoCancelar.addEventListener(
         );
 
       }
+
+
+      await carregarPedido();
 
 
       /* ATUALIZA STATUS DA TELA */
@@ -769,3 +815,145 @@ function configurarFluxoStatus(
 }
 
 carregarPedido();
+
+/* =============================================================
+   HISTÓRICO DE STATUS
+============================================================= */
+
+function renderizarHistorico(historico) {
+
+  const lista =
+    document.getElementById(
+      'pedido-historico'
+    );
+
+
+  if (historico.length === 0) {
+
+    lista.innerHTML =
+      '<li>Sem registros.</li>';
+
+    return;
+
+  }
+
+
+  const origens = {
+    loja: 'Loja',
+    admin: 'Painel',
+    pagamento: 'Pagamento',
+    sistema: 'Sistema'
+  };
+
+
+  lista.innerHTML =
+    historico.map(etapa => `
+      <li>
+        <strong>${escaparHtml(formatarStatus(etapa.status_novo))}</strong>
+        <small>
+          ${escaparHtml(dataPainel(etapa.criado_em, true))}
+          · ${escaparHtml(etapa.admin_nome || origens[etapa.origem] || etapa.origem)}
+        </small>
+        ${etapa.observacao
+          ? `<small>${escaparHtml(etapa.observacao)}</small>`
+          : ''}
+      </li>
+    `).join('');
+
+}
+
+
+
+/* =============================================================
+   RASTREIO
+============================================================= */
+
+const pedidoRastreio =
+  document.getElementById(
+    'pedido-rastreio'
+  );
+
+
+const pedidoRastreioSalvar =
+  document.getElementById(
+    'pedido-rastreio-salvar'
+  );
+
+
+function lerCamposRastreio() {
+
+  const valor = id =>
+    document.getElementById(id).value.trim() || undefined;
+
+  return {
+    codigo_rastreio:
+      valor('pedido-rastreio-codigo'),
+    transportadora:
+      valor('pedido-rastreio-transportadora'),
+    url_rastreio:
+      valor('pedido-rastreio-url')
+  };
+
+}
+
+
+function configurarRastreio(pedido) {
+
+  // Campos aparecem ao preparar o envio e ficam editáveis depois
+  const mostrar = [
+    'em_preparacao',
+    'enviado',
+    'entregue'
+  ].includes(pedido.status);
+
+
+  pedidoRastreio.hidden = !mostrar;
+
+
+  pedidoRastreioSalvar.hidden = ![
+    'enviado',
+    'entregue'
+  ].includes(pedido.status);
+
+
+  document.getElementById('pedido-rastreio-codigo').value =
+    pedido.codigo_rastreio || '';
+
+  document.getElementById('pedido-rastreio-transportadora').value =
+    pedido.transportadora || '';
+
+  document.getElementById('pedido-rastreio-url').value =
+    pedido.url_rastreio || '';
+
+}
+
+
+pedidoRastreioSalvar.addEventListener(
+  'click',
+  async () => {
+
+    pedidoStatusMensagem.textContent =
+      'Salvando rastreio...';
+
+    try {
+
+      await adminApi(
+        `/admin/pedidos/${pedidoId}/rastreio`,
+        {
+          metodo: 'PATCH',
+          corpo: lerCamposRastreio()
+        }
+      );
+
+      pedidoStatusMensagem.textContent =
+        'Rastreio atualizado.';
+
+    } catch (erro) {
+
+      pedidoStatusMensagem.textContent =
+        erro.message;
+
+    }
+
+  }
+);
