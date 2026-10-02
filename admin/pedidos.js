@@ -35,6 +35,24 @@ function pegarTokenAdmin() {
 }
 
 
+
+/* =============================================================
+   SEGURANÇA DE HTML
+   Dados do pedido vêm do cliente: sempre escapar antes de
+   inserir em innerHTML.
+============================================================= */
+
+function escaparHtml(valor) {
+
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+}
+
 /* =============================================================
    FORMATAR DINHEIRO
 ============================================================= */
@@ -165,21 +183,21 @@ function renderizarPedidos(
       linha.innerHTML = `
 
         <td>
-          #${pedido.id}
+          #${Number(pedido.id)}
         </td>
 
 
         <td>
 
           <strong>
-            ${pedido.cliente_nome}
+            ${escaparHtml(pedido.cliente_nome)}
           </strong>
 
         </td>
 
 
         <td>
-          ${pedido.cliente_email}
+          ${escaparHtml(pedido.cliente_email)}
         </td>
 
 
@@ -204,9 +222,9 @@ function renderizarPedidos(
               )}
             "
           >
-            ${formatarStatus(
+            ${escaparHtml(formatarStatus(
               pedido.status
-            )}
+            ))}
           </span>
 
         </td>
@@ -215,7 +233,7 @@ function renderizarPedidos(
         <td>
 
           <a
-            href="pedido-detalhes.html?id=${pedido.id}"
+            href="pedido-detalhes.html?id=${Number(pedido.id)}"
             class="btn btn-sm btn-outline-light"
           >
             Ver pedido

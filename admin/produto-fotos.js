@@ -369,7 +369,7 @@ function renderizarFotos(imagens) {
         <div class="admin-photo-preview">
 
           <img
-            src="${imagem.url}"
+            src="${escaparFotos(imagem.url)}"
             alt="Foto do produto"
           >
 
@@ -389,7 +389,7 @@ function renderizarFotos(imagens) {
         <div class="admin-photo-info">
 
           <span>
-            Imagem #${imagem.id}
+            Imagem #${Number(imagem.id)}
           </span>
 
         </div>
@@ -404,7 +404,7 @@ function renderizarFotos(imagens) {
                 <button
                   type="button"
                   class="admin-photo-main-btn"
-                  data-imagem-id="${imagem.id}"
+                  data-imagem-id="${Number(imagem.id)}"
                 >
                   Definir como principal
                 </button>
@@ -420,7 +420,7 @@ function renderizarFotos(imagens) {
           <button
             type="button"
             class="admin-photo-delete-btn"
-            data-imagem-id="${imagem.id}"
+            data-imagem-id="${Number(imagem.id)}"
           >
             Remover
           </button>
@@ -976,6 +976,23 @@ async function removerFoto(
       erro.message;
 
   }
+
+}
+
+
+
+/* =============================================================
+   SEGURANÇA DE HTML
+============================================================= */
+
+function escaparFotos(valor) {
+
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 
 }
 

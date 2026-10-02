@@ -176,7 +176,7 @@ if (formulario) {
         sessionStorage.setItem(
           'hazeAdmin',
           JSON.stringify(
-            resultado.admin
+            resultado.usuario || resultado.admin
           )
         );
 

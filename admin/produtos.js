@@ -173,7 +173,7 @@ function renderizarProdutosAdmin(produtos) {
             <div class="admin-product-image">
 
               <img
-                src="${imagem}"
+                src="${escaparHtmlAdmin(imagem)}"
                 alt="${escaparHtmlAdmin(produto.nome)}"
               >
 

@@ -1,9 +1,12 @@
 const express = require('express');
 const cors = require('cors');
+const helmet = require('helmet');
+const compression = require('compression');
 
 const config = require('./config/ambiente');
 const db = require('./config/db');
 const { auditoria } = require('./middlewares/auditoria');
+const { criarLimitador } = require('./middlewares/limiteTentativas');
 const { tratarErros, rotaNaoEncontrada } = require('./middlewares/tratarErros');
 
 const rotasCatalogo = require('./routes/loja/catalogo');
@@ -14,6 +17,7 @@ const rotasCategoriasAdmin = require('./routes/admin/categorias');
 const rotasCampanhasAdmin = require('./routes/admin/campanhas');
 const rotasPedidosAdmin = require('./routes/admin/pedidos');
 const rotasEstoqueAdmin = require('./routes/admin/estoque');
+const rotasUsuariosAdmin = require('./routes/admin/usuarios');
 
 
 function criarApp() {
@@ -23,6 +27,23 @@ function criarApp() {
   // Railway fica atrás de proxy: usa o IP real do cliente em req.ip
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
+
+  // Cabeçalhos de segurança. As imagens antigas em /uploads são
+  // exibidas pela loja em outro domínio, por isso "cross-origin".
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' }
+  }));
+
+  app.use(compression());
+
+  // Limite geral: 300 requisições por minuto por IP
+  const limiteGeral = criarLimitador({
+    maximo: 300,
+    janelaMs: 60 * 1000,
+    mensagem: 'Muitas requisições. Aguarde um minuto e tente novamente.'
+  });
+
+  app.use(limiteGeral.middleware);
 
   app.use(cors({
     origin(origem, callback) {
@@ -71,6 +92,7 @@ function criarApp() {
   app.use(rotasCampanhasAdmin);
   app.use(rotasPedidosAdmin);
   app.use(rotasEstoqueAdmin);
+  app.use(rotasUsuariosAdmin);
 
 
   app.use(rotaNaoEncontrada);

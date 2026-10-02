@@ -45,8 +45,26 @@ function lerToken(req, tipoEsperado) {
 }
 
 
-function autenticarAdmin(req, res, next) {
-  req.admin = lerToken(req, 'admin');
+/*
+  Valida o token e confere no banco se o administrador continua
+  ativo e com a mesma versão de token (senha não foi trocada).
+*/
+async function autenticarAdmin(req, res, next) {
+
+  const dados = lerToken(req, 'admin');
+
+  // require aqui evita dependência circular com o serviço
+  const { validarSessao } = require('../services/adminAuthService');
+
+  const usuario = await validarSessao(dados);
+
+  req.admin = {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    perfil: usuario.perfil
+  };
+
   next();
 }
 

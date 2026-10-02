@@ -238,7 +238,7 @@ function renderizarDrops(
         <div class="admin-drop-image">
 
           <img
-            src="${imagem}"
+            src="${escaparDrops(imagem)}"
             alt=""
           >
 

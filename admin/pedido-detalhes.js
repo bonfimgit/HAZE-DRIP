@@ -67,6 +67,23 @@ function formatarStatus(status) {
 }
 
 
+/* =============================================================
+   SEGURANÇA DE HTML
+   Dados do pedido vêm do cliente: sempre escapar antes de
+   inserir em innerHTML.
+============================================================= */
+
+function escaparHtml(valor) {
+
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+
+}
+
 async function carregarPedido() {
 
   const mensagem =
@@ -257,23 +274,23 @@ configurarCancelamento(
         linha.innerHTML = `
 
           <td>
-            ${item.produto_nome}
+            ${escaparHtml(item.produto_nome)}
           </td>
 
           <td>
-            ${item.sku || '-'}
+            ${escaparHtml(item.sku || '-')}
           </td>
 
           <td>
-            ${item.cor || '-'}
+            ${escaparHtml(item.cor || '-')}
           </td>
 
           <td>
-            ${item.tamanho || '-'}
+            ${escaparHtml(item.tamanho || '-')}
           </td>
 
           <td>
-            ${item.quantidade}
+            ${Number(item.quantidade)}
           </td>
 
           <td>

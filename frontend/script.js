@@ -7,6 +7,27 @@ document.querySelectorAll('.logo-img').forEach(img => {
 
 
 const API_URL = "https://hazedrip-production-6a67.up.railway.app";
+
+/*
+  Escapa textos antes de inserir em innerHTML.
+  Evita que nomes de produto ou dados salvos no navegador
+  executem código na página (XSS).
+*/
+function escaparHtml(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function formatarMoeda(valor) {
+  return Number(valor).toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  });
+}
 async function carregarCatalogo() {
 
     const grid = document.getElementById('catalogo-grid');
@@ -72,8 +93,8 @@ async function carregarCatalogo() {
                     </button>
 
                     <img
-                        src="${imagem}"
-                        alt="${produto.nome}"
+                        src="${escaparHtml(imagem)}"
+                        alt="${escaparHtml(produto.nome)}"
                         loading="lazy"
                     >
 
@@ -82,7 +103,7 @@ async function carregarCatalogo() {
                 <div class="card-info">
 
                     <span class="card-name">
-                        ${produto.nome}
+                        ${escaparHtml(produto.nome)}
                     </span>
 
                     <span class="card-price mono">
@@ -215,8 +236,8 @@ async function carregarDestaques() {
                     </button>
 
                     <img
-                        src="${imagem}"
-                        alt="${produto.nome}"
+                        src="${escaparHtml(imagem)}"
+                        alt="${escaparHtml(produto.nome)}"
                         loading="lazy"
                     >
 
@@ -225,7 +246,7 @@ async function carregarDestaques() {
                 <div class="card-info">
 
                     <span class="card-name">
-                        ${produto.nome}
+                        ${escaparHtml(produto.nome)}
                     </span>
 
                     <span class="card-price mono">
@@ -1415,8 +1436,8 @@ function carregarSacola() {
       <div class="sacola-item-imagem">
 
         <img
-          src="${item.imagem || '../assets/haze-logo.png'}"
-          alt="${item.nome}"
+          src="${escaparHtml(item.imagem || '../assets/haze-logo.png')}"
+          alt="${escaparHtml(item.nome)}"
         >
 
       </div>
@@ -1425,22 +1446,22 @@ function carregarSacola() {
       <div class="sacola-item-info">
 
         <h3>
-          ${item.nome}
+          ${escaparHtml(item.nome)}
         </h3>
 
         <p>
-          Cor: ${item.cor}
+          Cor: ${escaparHtml(item.cor)}
         </p>
 
         <p>
-          Tamanho: ${item.tamanho}
+          Tamanho: ${escaparHtml(item.tamanho)}
         </p>
 
         <p class="sacola-estoque">
   ${
     Number(item.estoque) === 1
       ? 'Última unidade disponível'
-      : `${item.estoque} unidades disponíveis`
+      : `${Number(item.estoque)} unidades disponíveis`
   }
 </p>
 
@@ -1455,7 +1476,7 @@ function carregarSacola() {
   </button>
 
   <span>
-    ${item.quantidade}
+    ${Number(item.quantidade)}
   </span>
 
   <button
@@ -1658,22 +1679,22 @@ function carregarCheckout() {
     div.innerHTML = `
 
       <img
-        src="${item.imagem || '../assets/haze-logo.png'}"
-        alt="${item.nome}"
+        src="${escaparHtml(item.imagem || '../assets/haze-logo.png')}"
+        alt="${escaparHtml(item.nome)}"
       >
 
       <div>
 
         <h3>
-          ${item.nome}
+          ${escaparHtml(item.nome)}
         </h3>
 
         <p>
-          ${item.cor}
+          ${escaparHtml(item.cor)}
           ·
-          ${item.tamanho}
+          ${escaparHtml(item.tamanho)}
           ·
-          ${item.quantidade}x
+          ${Number(item.quantidade)}x
         </p>
 
       </div>
