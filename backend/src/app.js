@@ -23,6 +23,7 @@ const rotasEstoqueAdmin = require('./routes/admin/estoque');
 const rotasUsuariosAdmin = require('./routes/admin/usuarios');
 const rotasClientesAdmin = require('./routes/admin/clientes');
 const rotasVendasAdmin = require('./routes/admin/vendas');
+const rotasRelatoriosAdmin = require('./routes/admin/relatorios');
 
 
 function criarApp() {
@@ -104,6 +105,7 @@ function criarApp() {
   app.use(rotasUsuariosAdmin);
   app.use(rotasClientesAdmin);
   app.use(rotasVendasAdmin);
+  app.use(rotasRelatoriosAdmin);
 
 
   app.use(rotaNaoEncontrada);

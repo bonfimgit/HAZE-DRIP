@@ -3,6 +3,12 @@
   Em produção (Railway) as variáveis já vêm do ambiente.
 */
 
+/*
+  Fuso da loja: datas de pedidos e relatórios em horário de Brasília,
+  mesmo com o servidor (Railway) em UTC.
+*/
+process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
+
 const { loadEnvFile } = require('node:process');
 const path = require('path');
 
