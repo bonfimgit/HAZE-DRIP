@@ -6,7 +6,17 @@ document.querySelectorAll('.logo-img').forEach(img => {
 
 
 
-const API_URL = "https://hazedrip-production-6a67.up.railway.app";
+/*
+  Endereço da API.
+  - Em localhost/127.0.0.1: API local (npm start no backend)
+  - Em produção: API publicada no Railway
+  Pode ser sobrescrito definindo window.HAZE_API_URL antes deste arquivo.
+*/
+const API_URL = window.HAZE_API_URL || (
+  ['localhost', '127.0.0.1'].includes(window.location.hostname)
+    ? 'http://localhost:3000'
+    : 'https://hazedrip-production-6a67.up.railway.app'
+);
 
 /*
   Escapa textos antes de inserir em innerHTML.
@@ -772,10 +782,7 @@ if (addBtn) {
     }
 
 
-    localStorage.setItem(
-      'hazeCarrinho',
-      JSON.stringify(carrinho)
-    );
+    salvarCarrinho(carrinho);
 
 
     atualizarContadorCarrinho();
@@ -795,6 +802,20 @@ if (addBtn) {
     }, 1600);
 
   });
+}
+
+/*
+  Grava a sacola no navegador e avisa a sincronização com a conta
+  do cliente (cliente.js), quando houver login.
+*/
+function salvarCarrinho(carrinho) {
+
+  localStorage.setItem(
+    'hazeCarrinho',
+    JSON.stringify(carrinho)
+  );
+
+  window.HazeCliente?.carrinhoAlterado?.();
 }
 
 //contador
@@ -1412,12 +1433,21 @@ function carregarSacola() {
 
   let total = 0;
 
+  let temIndisponivel = false;
+
 
   carrinho.forEach((item, index) => {
 
-    const subtotal =
-      Number(item.preco) *
-      Number(item.quantidade);
+    // Item marcado pela API como esgotado/inativo não entra no total
+    const disponivel = item.disponivel !== false;
+
+    if (!disponivel) {
+      temIndisponivel = true;
+    }
+
+    const subtotal = disponivel
+      ? Number(item.preco) * Number(item.quantidade)
+      : 0;
 
 
     total += subtotal;
@@ -1427,8 +1457,9 @@ function carregarSacola() {
       document.createElement('article');
 
 
-    artigo.className =
-      'sacola-item';
+    artigo.className = disponivel
+      ? 'sacola-item'
+      : 'sacola-item sacola-item-indisponivel';
 
 
     artigo.innerHTML = `
@@ -1456,6 +1487,12 @@ function carregarSacola() {
         <p>
           Tamanho: ${escaparHtml(item.tamanho)}
         </p>
+
+        ${
+          item.aviso
+            ? `<p class="sacola-aviso">${escaparHtml(item.aviso)}</p>`
+            : ''
+        }
 
         <p class="sacola-estoque">
   ${
@@ -1551,10 +1588,7 @@ botaoMenos.addEventListener('click', () => {
 
     carrinho[index].quantidade--;
 
-    localStorage.setItem(
-      'hazeCarrinho',
-      JSON.stringify(carrinho)
-    );
+    salvarCarrinho(carrinho);
 
     atualizarContadorCarrinho();
     carregarSacola();
@@ -1577,10 +1611,7 @@ botaoMais.addEventListener('click', () => {
   carrinho[index].quantidade++;
 
 
-  localStorage.setItem(
-    'hazeCarrinho',
-    JSON.stringify(carrinho)
-  );
+  salvarCarrinho(carrinho);
 
 
   atualizarContadorCarrinho();
@@ -1594,10 +1625,7 @@ botaoRemover.addEventListener('click', () => {
   carrinho.splice(index, 1);
 
 
-  localStorage.setItem(
-    'hazeCarrinho',
-    JSON.stringify(carrinho)
-  );
+  salvarCarrinho(carrinho);
 
 
   atualizarContadorCarrinho();
@@ -1626,6 +1654,25 @@ botaoRemover.addEventListener('click', () => {
 
   totalEl.textContent =
     totalFormatado;
+
+
+  // Não deixa seguir para o checkout com item esgotado/indisponível
+  const finalizar =
+    document.querySelector('.sacola-finalizar');
+
+  if (finalizar) {
+
+    finalizar.classList.toggle('desativado', temIndisponivel);
+
+    finalizar.setAttribute('aria-disabled', temIndisponivel ? 'true' : 'false');
+
+    finalizar.onclick = temIndisponivel
+      ? evento => {
+          evento.preventDefault();
+          alert('Remova os itens indisponíveis da sacola para continuar.');
+        }
+      : null;
+  }
 }
 
 

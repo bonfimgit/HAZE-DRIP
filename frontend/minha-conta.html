@@ -9,11 +9,11 @@
       content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Produto — Haze Drip</title>
+    <title>Minha conta — Haze Drip</title>
 
     <meta
       name="description"
-      content="Produto Haze Drip Streetwear."
+      content="Pedidos, dados e endereços da sua conta Haze Drip."
     >
 
 
@@ -46,6 +46,7 @@
       rel="stylesheet"
       href="style.css"
     >
+    <meta name="robots" content="noindex">
   </head>
 
 
@@ -211,116 +212,231 @@
 
     </header>
 
-    <main class="pedido-confirmado-page">
+
+<main class="conta-page">
 
   <div class="wrap">
 
-    <section class="pedido-confirmado-card">
-
-      <div class="pedido-check">
-        ✓
-      </div>
-
-      <p class="pedido-eyebrow">
-        PEDIDO RECEBIDO
-      </p>
-
-      <h1>
-        Obrigado pela compra.
-      </h1>
-
-      <p class="pedido-confirmado-texto">
-        Seu pedido foi registrado com sucesso.
-      </p>
-
-
-      <div class="pedido-numero">
-
-        <span>Número do pedido</span>
-
-        <strong id="confirmacao-id">
-          #---
-        </strong>
-
-      </div>
-
-
-      <div class="pedido-confirmado-info">
-
-        <div>
-          <span>Status</span>
-
-          <strong id="confirmacao-status">
-            ---
-          </strong>
-        </div>
-
-
-        <div>
-          <span>Subtotal</span>
-
-          <strong id="confirmacao-subtotal">
-            R$ 0,00
-          </strong>
-        </div>
-
-
-        <div>
-          <span>Frete</span>
-
-          <strong id="confirmacao-frete">
-            R$ 0,00
-          </strong>
-        </div>
-
-
-        <div class="pedido-confirmado-total">
-          <span>Total</span>
-
-          <strong id="confirmacao-total">
-            R$ 0,00
-          </strong>
-        </div>
-
-      </div>
-
-
-      <div class="pedido-pagamento">
-
-        <h2>Pagamento</h2>
-
-        <p>
-          Seu pedido está aguardando pagamento.
-          A forma de pagamento será configurada
-          na próxima etapa do checkout.
+    <div class="conta-head conta-head-linha">
+      <div>
+        <p class="breadcrumb">
+          <a href="index.html">Início</a> / Minha conta
         </p>
+        <h1>Olá, <span id="conta-nome">cliente</span></h1>
+      </div>
+      <button type="button" class="conta-sair" id="conta-sair">Sair</button>
+    </div>
+
+    <div class="conta-aviso" id="conta-aviso-email" hidden>
+      <span>Confirme seu e-mail para receber as atualizações dos pedidos.</span>
+      <button type="button" class="conta-link-botao" id="conta-reenviar">Reenviar e-mail</button>
+    </div>
+
+    <div class="conta-layout">
+
+      <nav class="conta-menu" aria-label="Seções da conta">
+        <a href="#pedidos" class="conta-menu-link" data-secao="pedidos">Meus pedidos</a>
+        <a href="#dados" class="conta-menu-link" data-secao="dados">Meus dados</a>
+        <a href="#enderecos" class="conta-menu-link" data-secao="enderecos">Endereços</a>
+        <a href="#seguranca" class="conta-menu-link" data-secao="seguranca">Senha</a>
+        <a href="#privacidade" class="conta-menu-link" data-secao="privacidade">Privacidade</a>
+      </nav>
+
+      <div class="conta-conteudo">
+
+        <!-- PEDIDOS -->
+        <section class="conta-secao" id="secao-pedidos" data-secao="pedidos">
+
+          <h2>Meus pedidos</h2>
+
+          <div id="pedidos-lista" class="conta-pedidos" aria-live="polite">
+            <p class="conta-carregando">Carregando pedidos...</p>
+          </div>
+
+          <div id="pedido-detalhe" class="checkout-bloco conta-pedido-detalhe" hidden>
+            <button type="button" class="conta-link-botao" id="pedido-voltar">← Voltar para a lista</button>
+            <div id="pedido-detalhe-conteudo"></div>
+          </div>
+
+        </section>
+
+        <!-- DADOS -->
+        <section class="conta-secao" id="secao-dados" data-secao="dados" hidden>
+
+          <h2>Meus dados</h2>
+
+          <form id="form-dados" class="checkout-bloco conta-form" novalidate>
+
+            <div class="checkout-campo">
+              <label for="dados-nome">Nome completo</label>
+              <input type="text" id="dados-nome" autocomplete="name" maxlength="150" required>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="dados-email">E-mail</label>
+              <input type="email" id="dados-email" disabled>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="dados-telefone">Telefone</label>
+              <input type="tel" id="dados-telefone" autocomplete="tel" maxlength="15">
+            </div>
+
+            <p class="conta-mensagem" id="dados-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao">Salvar</button>
+
+          </form>
+
+        </section>
+
+        <!-- ENDEREÇOS -->
+        <section class="conta-secao" id="secao-enderecos" data-secao="enderecos" hidden>
+
+          <div class="conta-secao-topo">
+            <h2>Endereços</h2>
+            <button type="button" class="btn conta-botao-pequeno" id="endereco-novo">+ Novo endereço</button>
+          </div>
+
+          <div id="enderecos-lista" class="conta-enderecos" aria-live="polite"></div>
+
+          <form id="form-endereco" class="checkout-bloco conta-form" hidden novalidate>
+
+            <h3 id="endereco-form-titulo">Novo endereço</h3>
+
+            <input type="hidden" id="endereco-id">
+
+            <div class="checkout-grid">
+
+              <div class="checkout-campo">
+                <label for="endereco-apelido">Apelido (ex.: Casa)</label>
+                <input type="text" id="endereco-apelido" maxlength="50">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-destinatario">Destinatário</label>
+                <input type="text" id="endereco-destinatario" maxlength="150">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-cep">CEP</label>
+                <input type="text" id="endereco-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" required>
+              </div>
+
+              <div class="checkout-campo checkout-full">
+                <label for="endereco-rua">Rua</label>
+                <input type="text" id="endereco-rua" maxlength="150" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-numero">Número</label>
+                <input type="text" id="endereco-numero" maxlength="20" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-complemento">Complemento</label>
+                <input type="text" id="endereco-complemento" maxlength="100">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-bairro">Bairro</label>
+                <input type="text" id="endereco-bairro" maxlength="100" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-cidade">Cidade</label>
+                <input type="text" id="endereco-cidade" maxlength="100" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-estado">Estado (UF)</label>
+                <input type="text" id="endereco-estado" maxlength="2" placeholder="MG" required>
+              </div>
+
+            </div>
+
+            <label class="conta-check">
+              <input type="checkbox" id="endereco-principal">
+              <span>Usar como endereço principal</span>
+            </label>
+
+            <p class="conta-mensagem" id="endereco-mensagem" role="alert"></p>
+
+            <div class="conta-acoes">
+              <button type="submit" class="btn conta-botao">Salvar endereço</button>
+              <button type="button" class="conta-link-botao" id="endereco-cancelar">Cancelar</button>
+            </div>
+
+          </form>
+
+        </section>
+
+        <!-- SENHA -->
+        <section class="conta-secao" id="secao-seguranca" data-secao="seguranca" hidden>
+
+          <h2>Alterar senha</h2>
+
+          <form id="form-senha" class="checkout-bloco conta-form" novalidate>
+
+            <div class="checkout-campo">
+              <label for="senha-atual">Senha atual</label>
+              <input type="password" id="senha-atual" autocomplete="current-password" required>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="senha-nova">Nova senha</label>
+              <input type="password" id="senha-nova" autocomplete="new-password" minlength="8" required>
+              <small class="conta-dica">Mínimo de 8 caracteres, com letras e números. As outras sessões abertas serão encerradas.</small>
+            </div>
+
+            <p class="conta-mensagem" id="senha-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao">Alterar senha</button>
+
+          </form>
+
+        </section>
+
+        <!-- PRIVACIDADE -->
+        <section class="conta-secao" id="secao-privacidade" data-secao="privacidade" hidden>
+
+          <h2>Privacidade e dados (LGPD)</h2>
+
+          <div class="checkout-bloco conta-form">
+
+            <h3>Baixar meus dados</h3>
+            <p class="conta-texto">Receba uma cópia dos dados pessoais, endereços e pedidos ligados à sua conta.</p>
+            <button type="button" class="btn conta-botao-pequeno" id="privacidade-exportar">Baixar dados (JSON)</button>
+
+          </div>
+
+          <form id="form-excluir" class="checkout-bloco conta-form conta-perigo" novalidate>
+
+            <h3>Excluir conta</h3>
+            <p class="conta-texto">Seus dados pessoais e endereços serão apagados e você sairá da conta. Os registros dos pedidos são mantidos pelo prazo exigido pela legislação fiscal. Essa ação não pode ser desfeita.</p>
+
+            <div class="checkout-campo">
+              <label for="excluir-senha">Confirme sua senha</label>
+              <input type="password" id="excluir-senha" autocomplete="current-password" required>
+            </div>
+
+            <p class="conta-mensagem" id="excluir-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao-perigo">Excluir minha conta</button>
+
+          </form>
+
+        </section>
 
       </div>
 
-
-      <div class="pedido-confirmado-acoes">
-
-        <a
-          href="catalogo.html"
-          class="btn"
-        >
-          Continuar comprando
-        </a>
-
-        <a
-          href="index.html"
-          class="pedido-voltar"
-        >
-          Voltar para o início
-        </a>
-
-      </div>
-
-    </section>
+    </div>
 
   </div>
 
 </main>
+
+    
 
     <!-- =====================================================
          RODAPÉ
@@ -633,6 +749,7 @@
 
     <script src="script.js"></script>
     <script src="cliente.js"></script>
+    <script src="conta.js"></script>
 
   </body>
 

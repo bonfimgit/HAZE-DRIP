@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
   <head>
     <meta charset="UTF-8">
 
@@ -8,14 +9,18 @@
       content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Haze Drip — Streetwear</title>
+    <title>Entrar — Haze Drip</title>
 
     <meta
       name="description"
-      content="Haze Drip. Streetwear de verdade. Feito pra quem vive, não pra quem assiste."
+      content="Entre ou crie sua conta Haze Drip."
     >
 
-    <!-- Fontes -->
+
+    <!-- =========================================
+         FONTES
+    ========================================== -->
+
     <link
       rel="preconnect"
       href="https://fonts.googleapis.com"
@@ -32,21 +37,30 @@
       rel="stylesheet"
     >
 
-    <!-- CSS -->
+
+    <!-- =========================================
+         CSS
+    ========================================== -->
+
     <link
       rel="stylesheet"
       href="style.css"
     >
+    <meta name="robots" content="noindex">
   </head>
+
 
   <body>
 
     <!-- =====================================================
          CABEÇALHO
     ====================================================== -->
+
     <header class="nav">
+
       <div class="wrap">
 
+        <!-- Logo -->
         <a
           href="index.html"
           class="nav-logo"
@@ -58,7 +72,10 @@
           >
         </a>
 
+
+        <!-- Navegação desktop -->
         <ul class="nav-links">
+
           <li>
             <a href="catalogo.html">
               Catálogo
@@ -84,10 +101,14 @@
               Contato
             </a>
           </li>
+
         </ul>
 
+
+        <!-- Ícones -->
         <div class="nav-right">
 
+          <!-- Moeda -->
           <a
             href="#"
             class="nav-icon-btn currency mono"
@@ -96,6 +117,8 @@
             <span class="chev">▾</span>
           </a>
 
+
+          <!-- Conta -->
           <a
             href="#"
             class="nav-icon-btn account"
@@ -119,6 +142,8 @@
             </svg>
           </a>
 
+
+          <!-- Busca -->
           <a
             href="#"
             class="nav-icon-btn mobile-search"
@@ -142,8 +167,10 @@
             </svg>
           </a>
 
+
+          <!-- Carrinho -->
           <a
-            href="sacola.html"
+            href="#"
             class="nav-icon-btn cart-link"
             aria-label="Carrinho"
           >
@@ -167,6 +194,8 @@
             </span>
           </a>
 
+
+          <!-- Menu mobile -->
           <button
             class="nav-burger"
             type="button"
@@ -178,212 +207,104 @@
           </button>
 
         </div>
+
       </div>
+
     </header>
 
 
-    <!-- =====================================================
-         HERO
-    ====================================================== -->
-    <section class="hero">
+<main class="conta-page">
 
-  <div class="wrap hero-grid">
+  <div class="wrap conta-wrap">
 
-
-    <div class="hero-copy">
-
-      <img
-        src="/hazedrip/assets/haze-logo.png"
-        alt="Haze Drip"
-        class="logo-img hero-logo"
-      >
-
-
-      <span
-        id="home-campanha-titulo"
-        class="hero-campaign-title"
-      >
-        Haze Drip
-      </span>
-
-
-      <p
-        id="home-campanha-subtitulo"
-        class="hero-tagline"
-      >
-        Streetwear de verdade.
-        Feito pra quem vive,
-        não pra quem assiste.
+    <div class="conta-head">
+      <p class="breadcrumb">
+        <a href="index.html">Início</a> / Conta
       </p>
+      <h1>Sua conta</h1>
+    </div>
 
+    <div class="conta-abas" role="tablist">
+      <button type="button" class="conta-aba ativa" data-aba="entrar" role="tab" aria-selected="true">Entrar</button>
+      <button type="button" class="conta-aba" data-aba="cadastrar" role="tab" aria-selected="false">Criar conta</button>
+    </div>
 
-      <div class="hero-cta">
+    <!-- LOGIN -->
+    <form id="form-login" class="checkout-bloco conta-form" data-painel="entrar" novalidate>
 
-        <a
-          href="catalogo.html"
-          id="home-campanha-botao"
-          class="btn"
-        >
-          Catálogo →
-        </a>
-
+      <div class="checkout-campo">
+        <label for="login-email">E-mail</label>
+        <input type="email" id="login-email" autocomplete="email" required>
       </div>
 
-    </div>
+      <div class="checkout-campo">
+        <label for="login-senha">Senha</label>
+        <input type="password" id="login-senha" autocomplete="current-password" required>
+      </div>
 
+      <p class="conta-mensagem" id="login-mensagem" role="alert"></p>
 
+      <button type="submit" class="btn conta-botao">Entrar</button>
 
-    <div class="hero-media">
+      <a href="recuperar-senha.html" class="conta-link">Esqueci minha senha</a>
 
-      <img
-        id="home-campanha-imagem"
-        alt="Campanha Haze Drip"
-      >
+    </form>
 
-    </div>
+    <!-- CADASTRO -->
+    <form id="form-cadastro" class="checkout-bloco conta-form" data-painel="cadastrar" hidden novalidate>
 
+      <div class="checkout-campo">
+        <label for="cadastro-nome">Nome completo</label>
+        <input type="text" id="cadastro-nome" autocomplete="name" maxlength="150" required>
+      </div>
+
+      <div class="checkout-campo">
+        <label for="cadastro-email">E-mail</label>
+        <input type="email" id="cadastro-email" autocomplete="email" maxlength="150" required>
+      </div>
+
+      <div class="checkout-campo">
+        <label for="cadastro-telefone">Telefone (opcional)</label>
+        <input type="tel" id="cadastro-telefone" autocomplete="tel" maxlength="15">
+      </div>
+
+      <div class="checkout-campo">
+        <label for="cadastro-senha">Senha</label>
+        <input type="password" id="cadastro-senha" autocomplete="new-password" minlength="8" required aria-describedby="cadastro-senha-dica">
+        <small id="cadastro-senha-dica" class="conta-dica">Mínimo de 8 caracteres, com letras e números.</small>
+      </div>
+
+      <label class="conta-check">
+        <input type="checkbox" id="cadastro-termos" required>
+        <span>Li e aceito os <a href="termos.html" target="_blank">Termos de uso</a> e a <a href="privacidade.html" target="_blank">Política de privacidade</a>.</span>
+      </label>
+
+      <p class="conta-mensagem" id="cadastro-mensagem" role="alert"></p>
+
+      <button type="submit" class="btn conta-botao">Criar conta</button>
+
+    </form>
 
   </div>
 
-</section>
-    <!-- =====================================================
-         MARQUEE
-    ====================================================== -->
-    <div class="marquee">
-      <div class="marquee-track">
+</main>
 
-        <span>Novo Drop</span>
-        <span>Nome da Coleção</span>
-        <span>Disponível agora</span>
-        <span>Frete grátis acima de R$399</span>
-
-        <span>Novo Drop</span>
-        <span>Nome da Coleção</span>
-        <span>Disponível agora</span>
-        <span>Frete grátis acima de R$399</span>
-
-      </div>
-    </div>
-
-
-    <!-- =====================================================
-         DROPS EM DESTAQUE
-    ====================================================== -->
-    <section class="section">
-      <div class="wrap">
-
-        <div class="section-head">
-          <h2>Drops em destaque</h2>
-
-          <a href="catalogo.html">
-            Ver todos →
-          </a>
-        </div>
-
-        <div
-          class="grid"
-          id="destaques-grid"
-        >
-          <p>
-            Carregando destaques...
-          </p>
-        </div>
-
-      </div>
-    </section>
-
-
-    <!-- =====================================================
-         NEWSLETTER
-    ====================================================== -->
-    <section class="newsletter">
-      <div class="wrap newsletter-box">
-
-        <div>
-          <h3>
-            Faça parte do movimento
-          </h3>
-
-          <p>
-            Receba novidades, drops exclusivos e benefícios especiais.
-          </p>
-
-          <form
-            class="newsletter-form js-newsletter"
-            style="margin-top: 22px;"
-          >
-            <input
-              type="email"
-              placeholder="Digite seu e-mail"
-              required
-            >
-
-            <button
-              type="submit"
-              aria-label="Enviar"
-            >
-              →
-            </button>
-          </form>
-        </div>
-
-        <svg
-          viewBox="0 0 200 200"
-          width="160"
-          style="opacity: 0.9;"
-        >
-          <path
-            d="M100 20 L112 75 L165 60 L120 95 L150 145 L100 115 L50 145 L80 95 L35 60 L88 75 Z"
-            fill="none"
-            stroke="url(#g1)"
-            stroke-width="3"
-            stroke-linejoin="round"
-          />
-
-          <defs>
-            <linearGradient
-              id="g1"
-              x1="0"
-              y1="0"
-              x2="1"
-              y2="1"
-            >
-              <stop
-                offset="0%"
-                stop-color="#cfe0ff"
-              />
-
-              <stop
-                offset="35%"
-                stop-color="#dcc9f5"
-              />
-
-              <stop
-                offset="70%"
-                stop-color="#ffd0e6"
-              />
-
-              <stop
-                offset="100%"
-                stop-color="#c8f3e6"
-              />
-            </linearGradient>
-          </defs>
-        </svg>
-
-      </div>
-    </section>
-
+    
 
     <!-- =====================================================
          RODAPÉ
     ====================================================== -->
+
     <footer class="footer">
+
       <div class="wrap">
 
         <div class="footer-grid">
 
+
+          <!-- Marca -->
           <div>
+
             <a
               href="index.html"
               class="nav-logo"
@@ -400,10 +321,17 @@
               Feito pra quem vive,
               não pra quem assiste.
             </p>
+
           </div>
 
+
+
+          <!-- Catálogo -->
           <div>
-            <h4>Catálogo</h4>
+
+            <h4>
+              Catálogo
+            </h4>
 
             <ul>
               <li>
@@ -436,10 +364,17 @@
                 </a>
               </li>
             </ul>
+
           </div>
 
+
+
+          <!-- Informações -->
           <div>
-            <h4>Informações</h4>
+
+            <h4>
+              Informações
+            </h4>
 
             <ul>
               <li>
@@ -462,20 +397,21 @@
 
               <li>
                 <a href="#">
-                  Pagamento
-                </a>
-              </li>
-
-              <li>
-                <a href="#">
                   Privacidade
                 </a>
               </li>
             </ul>
+
           </div>
 
+
+
+          <!-- Ajuda -->
           <div>
-            <h4>Ajuda</h4>
+
+            <h4>
+              Ajuda
+            </h4>
 
             <ul>
               <li>
@@ -502,11 +438,15 @@
                 </a>
               </li>
             </ul>
+
           </div>
+
 
         </div>
 
+
         <div class="footer-bottom">
+
           <span>
             © 2026 Haze Drip. Todos os direitos reservados.
           </span>
@@ -514,21 +454,25 @@
           <span>
             Siga a Haze · Instagram · TikTok · X
           </span>
+
         </div>
 
       </div>
+
     </footer>
+
 
 
     <!-- =====================================================
          NAVEGAÇÃO MOBILE
     ====================================================== -->
+
     <nav class="bottom-nav">
 
-      <a
-        href="index.html"
-        class="active"
-      >
+
+      <!-- Início -->
+      <a href="index.html">
+
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -544,10 +488,17 @@
           />
         </svg>
 
-        Inicio
+        Início
+
       </a>
 
-      <a href="catalogo.html">
+
+
+      <!-- Catálogo -->
+      <a
+        href="catalogo.html"
+      >
+
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -564,9 +515,14 @@
         </svg>
 
         Catálogo
+
       </a>
 
+
+
+      <!-- Drops -->
       <a href="catalogo.html">
+
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -579,9 +535,14 @@
         </svg>
 
         Drops
+
       </a>
 
+
+
+      <!-- Carrinho -->
       <a href="#">
+
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -602,9 +563,14 @@
         </span>
 
         Carrinho
+
       </a>
 
+
+
+      <!-- Perfil -->
       <a href="#">
+
         <svg
           viewBox="0 0 24 24"
           fill="none"
@@ -623,14 +589,21 @@
         </svg>
 
         Perfil
+
       </a>
 
     </nav>
 
 
-    <!-- JavaScript -->
+
+    <!-- =========================================
+         JAVASCRIPT
+    ========================================== -->
+
     <script src="script.js"></script>
     <script src="cliente.js"></script>
+    <script src="conta.js"></script>
 
   </body>
+
 </html>
