@@ -9,7 +9,7 @@
       content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Produto — Haze Drip</title>
+    <title>Pedido — Haze Drip</title>
 
     <meta
       name="description"
@@ -65,7 +65,7 @@
           class="nav-logo"
         >
           <img
-            src="../assets/haze-logo.png"
+            src="../assets/haze-logo.webp"
             alt="Haze Drip"
             class="logo-img nav"
           >
@@ -83,7 +83,7 @@
           </li>
 
           <li>
-            <a href="#">
+            <a href="sobre.html">
               Sobre
               <span class="chev">▾</span>
             </a>
@@ -96,7 +96,7 @@
           </li>
 
           <li>
-            <a href="#">
+            <a href="contato.html">
               Contato
             </a>
           </li>
@@ -111,6 +111,8 @@
           <a
             href="#"
             class="nav-icon-btn currency mono"
+            aria-hidden="true"
+            tabindex="-1"
           >
             BRL
             <span class="chev">▾</span>
@@ -119,7 +121,7 @@
 
           <!-- Conta -->
           <a
-            href="#"
+            href="conta.html"
             class="nav-icon-btn account"
             aria-label="Minha conta"
           >
@@ -144,7 +146,7 @@
 
           <!-- Busca -->
           <a
-            href="#"
+            href="catalogo.html"
             class="nav-icon-btn mobile-search"
             aria-label="Buscar"
           >
@@ -169,7 +171,7 @@
 
           <!-- Carrinho -->
           <a
-            href="#"
+            href="sacola.html"
             class="nav-icon-btn cart-link"
             aria-label="Carrinho"
           >
@@ -217,103 +219,87 @@
 
     <section class="pedido-confirmado-card">
 
-      <div class="pedido-check">
-        ✓
-      </div>
+      <div class="pedido-check" id="confirmacao-icone">✓</div>
 
-      <p class="pedido-eyebrow">
-        PEDIDO RECEBIDO
+      <p class="pedido-eyebrow" id="confirmacao-eyebrow">PEDIDO RECEBIDO</p>
+
+      <h1 id="confirmacao-titulo">Obrigado pela compra.</h1>
+
+      <p class="pedido-confirmado-texto" id="confirmacao-texto">
+        Carregando seu pedido...
       </p>
-
-      <h1>
-        Obrigado pela compra.
-      </h1>
-
-      <p class="pedido-confirmado-texto">
-        Seu pedido foi registrado com sucesso.
-      </p>
-
 
       <div class="pedido-numero">
-
         <span>Número do pedido</span>
+        <strong id="confirmacao-id">#---</strong>
+      </div>
 
-        <strong id="confirmacao-id">
-          #---
-        </strong>
+      <!-- PAGAMENTO -->
+      <div class="pedido-pagamento" id="confirmacao-pagamento" hidden>
+
+        <h2>Pagamento</h2>
+
+        <div id="pagamento-pix" hidden>
+          <p class="conta-texto">Abra o app do seu banco e pague com o QR Code ou com o código PIX copia e cola.</p>
+          <img id="pagamento-qr" class="pedido-qr" alt="QR Code PIX do pedido">
+          <div class="pedido-pix-copia">
+            <input type="text" id="pagamento-codigo" readonly aria-label="Código PIX copia e cola">
+            <button type="button" class="btn conta-botao-pequeno" id="pagamento-copiar">Copiar</button>
+          </div>
+          <p class="conta-dica" id="pagamento-expira"></p>
+        </div>
+
+        <a href="#" class="btn conta-botao" id="pagamento-link" target="_self" hidden>Pagar com Mercado Pago</a>
+
+        <div id="pagamento-novo" hidden>
+          <p class="conta-texto" id="pagamento-novo-texto">Gere um novo pagamento para concluir o pedido:</p>
+          <div class="conta-acoes">
+            <button type="button" class="btn conta-botao-pequeno" data-metodo="pix">Gerar PIX</button>
+            <button type="button" class="btn conta-botao-pequeno" data-metodo="mercadopago">Cartão ou boleto</button>
+          </div>
+        </div>
+
+        <p class="conta-mensagem" id="pagamento-mensagem" role="status"></p>
 
       </div>
 
+      <!-- RASTREIO -->
+      <div class="conta-rastreio" id="confirmacao-rastreio" hidden></div>
 
       <div class="pedido-confirmado-info">
 
         <div>
           <span>Status</span>
-
-          <strong id="confirmacao-status">
-            ---
-          </strong>
+          <strong id="confirmacao-status">---</strong>
         </div>
-
 
         <div>
           <span>Subtotal</span>
-
-          <strong id="confirmacao-subtotal">
-            R$ 0,00
-          </strong>
+          <strong id="confirmacao-subtotal">R$ 0,00</strong>
         </div>
 
+        <div id="confirmacao-desconto-linha" hidden>
+          <span>Desconto</span>
+          <strong id="confirmacao-desconto">R$ 0,00</strong>
+        </div>
 
         <div>
           <span>Frete</span>
-
-          <strong id="confirmacao-frete">
-            R$ 0,00
-          </strong>
+          <strong id="confirmacao-frete">R$ 0,00</strong>
         </div>
-
 
         <div class="pedido-confirmado-total">
           <span>Total</span>
-
-          <strong id="confirmacao-total">
-            R$ 0,00
-          </strong>
+          <strong id="confirmacao-total">R$ 0,00</strong>
         </div>
 
       </div>
 
-
-      <div class="pedido-pagamento">
-
-        <h2>Pagamento</h2>
-
-        <p>
-          Seu pedido está aguardando pagamento.
-          A forma de pagamento será configurada
-          na próxima etapa do checkout.
-        </p>
-
-      </div>
-
+      <ol class="conta-historico pedido-confirmado-historico" id="confirmacao-historico"></ol>
 
       <div class="pedido-confirmado-acoes">
-
-        <a
-          href="catalogo.html"
-          class="btn"
-        >
-          Continuar comprando
-        </a>
-
-        <a
-          href="index.html"
-          class="pedido-voltar"
-        >
-          Voltar para o início
-        </a>
-
+        <a href="catalogo.html" class="btn">Continuar comprando</a>
+        <a href="minha-conta.html#pedidos" class="pedido-voltar" id="confirmacao-conta">Ver meus pedidos</a>
       </div>
 
     </section>
@@ -341,7 +327,7 @@
               class="nav-logo"
             >
               <img
-                src="../assets/haze-logo.png"
+                src="../assets/haze-logo.webp"
                 alt="Haze Drip"
                 class="logo-img footer"
               >
@@ -409,25 +395,25 @@
 
             <ul>
               <li>
-                <a href="#">
+                <a href="sobre.html">
                   Sobre nós
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="termos.html">
                   Políticas
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="minha-conta.html#pedidos">
                   Rastreamento
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="privacidade.html">
                   Privacidade
                 </a>
               </li>
@@ -446,25 +432,25 @@
 
             <ul>
               <li>
-                <a href="#">
+                <a href="contato.html">
                   Contato
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="trocas.html">
                   Trocas e devoluções
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="trocas.html#envio">
                   Envio e prazos
                 </a>
               </li>
 
               <li>
-                <a href="#">
+                <a href="contato.html#faq">
                   FAQ
                 </a>
               </li>
@@ -528,7 +514,6 @@
       <!-- Catálogo -->
       <a
         href="catalogo.html"
-        class="active"
       >
 
         <svg
@@ -546,7 +531,7 @@
           />
         </svg>
 
-        
+        Catálogo
 
       </a>
 
@@ -573,7 +558,7 @@
 
 
       <!-- Carrinho -->
-      <a href="#">
+      <a href="sacola.html">
 
         <svg
           viewBox="0 0 24 24"
@@ -601,7 +586,7 @@
 
 
       <!-- Perfil -->
-      <a href="#">
+      <a href="conta.html">
 
         <svg
           viewBox="0 0 24 24"
@@ -633,6 +618,8 @@
     ========================================== -->
 
     <script src="script.js"></script>
+    <script src="cliente.js"></script>
+    <script src="pedido-confirmado.js"></script>
 
   </body>
 

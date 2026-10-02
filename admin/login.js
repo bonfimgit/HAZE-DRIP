@@ -1,5 +1,5 @@
 const API_URL =
-  'https://hazedrip-production-6a67.up.railway.app';
+  HAZE_API_URL;
 
 
 const formulario =
@@ -176,7 +176,7 @@ if (formulario) {
         sessionStorage.setItem(
           'hazeAdmin',
           JSON.stringify(
-            resultado.admin
+            resultado.usuario || resultado.admin
           )
         );
 

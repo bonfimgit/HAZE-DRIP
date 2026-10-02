@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+  <head>
+    <meta charset="UTF-8">
+
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Minha conta — Haze Drip</title>
+
+    <meta
+      name="description"
+      content="Pedidos, dados e endereços da sua conta Haze Drip."
+    >
+
+
+    <!-- =========================================
+         FONTES
+    ========================================== -->
+
+    <link
+      rel="preconnect"
+      href="https://fonts.googleapis.com"
+    >
+
+    <link
+      rel="preconnect"
+      href="https://fonts.gstatic.com"
+      crossorigin
+    >
+
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Rubik+Wet+Paint&family=Space+Mono:wght@400;700&display=swap"
+      rel="stylesheet"
+    >
+
+
+    <!-- =========================================
+         CSS
+    ========================================== -->
+
+    <link
+      rel="stylesheet"
+      href="style.css"
+    >
+    <meta name="robots" content="noindex">
+  </head>
+
+
+  <body>
+
+    <!-- =====================================================
+         CABEÇALHO
+    ====================================================== -->
+
+    <header class="nav">
+
+      <div class="wrap">
+
+        <!-- Logo -->
+        <a
+          href="index.html"
+          class="nav-logo"
+        >
+          <img
+            src="../assets/haze-logo.webp"
+            alt="Haze Drip"
+            class="logo-img nav"
+          >
+        </a>
+
+
+        <!-- Navegação desktop -->
+        <ul class="nav-links">
+
+          <li>
+            <a href="catalogo.html">
+              Catálogo
+              <span class="chev">▾</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="sobre.html">
+              Sobre
+              <span class="chev">▾</span>
+            </a>
+          </li>
+
+          <li>
+            <a href="catalogo.html">
+              Drops
+            </a>
+          </li>
+
+          <li>
+            <a href="contato.html">
+              Contato
+            </a>
+          </li>
+
+        </ul>
+
+
+        <!-- Ícones -->
+        <div class="nav-right">
+
+          <!-- Moeda -->
+          <a
+            href="#"
+            class="nav-icon-btn currency mono"
+            aria-hidden="true"
+            tabindex="-1"
+          >
+            BRL
+            <span class="chev">▾</span>
+          </a>
+
+
+          <!-- Conta -->
+          <a
+            href="conta.html"
+            class="nav-icon-btn account"
+            aria-label="Minha conta"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <circle
+                cx="12"
+                cy="8"
+                r="3.6"
+              />
+
+              <path
+                d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"
+              />
+            </svg>
+          </a>
+
+
+          <!-- Busca -->
+          <a
+            href="catalogo.html"
+            class="nav-icon-btn mobile-search"
+            aria-label="Buscar"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <circle
+                cx="11"
+                cy="11"
+                r="7"
+              />
+
+              <path
+                d="m20 20-3.5-3.5"
+              />
+            </svg>
+          </a>
+
+
+          <!-- Carrinho -->
+          <a
+            href="sacola.html"
+            class="nav-icon-btn cart-link"
+            aria-label="Carrinho"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.6"
+            >
+              <path
+                d="M6 8h12l-1 12H7L6 8Z"
+              />
+
+              <path
+                d="M9 8V6a3 3 0 0 1 6 0v2"
+              />
+            </svg>
+
+            <span class="cart-badge js-cart-count">
+              0
+            </span>
+          </a>
+
+
+          <!-- Menu mobile -->
+          <button
+            class="nav-burger"
+            type="button"
+            aria-label="Abrir menu"
+          >
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
+
+        </div>
+
+      </div>
+
+    </header>
+
+
+<main class="conta-page">
+
+  <div class="wrap">
+
+    <div class="conta-head conta-head-linha">
+      <div>
+        <p class="breadcrumb">
+          <a href="index.html">Início</a> / Minha conta
+        </p>
+        <h1>Olá, <span id="conta-nome">cliente</span></h1>
+      </div>
+      <button type="button" class="conta-sair" id="conta-sair">Sair</button>
+    </div>
+
+    <div class="conta-aviso" id="conta-aviso-email" hidden>
+      <span>Confirme seu e-mail para receber as atualizações dos pedidos.</span>
+      <button type="button" class="conta-link-botao" id="conta-reenviar">Reenviar e-mail</button>
+    </div>
+
+    <div class="conta-layout">
+
+      <nav class="conta-menu" aria-label="Seções da conta">
+        <a href="#pedidos" class="conta-menu-link" data-secao="pedidos">Meus pedidos</a>
+        <a href="#dados" class="conta-menu-link" data-secao="dados">Meus dados</a>
+        <a href="#enderecos" class="conta-menu-link" data-secao="enderecos">Endereços</a>
+        <a href="#avaliacoes" class="conta-menu-link" data-secao="avaliacoes">Avaliações</a>
+        <a href="#seguranca" class="conta-menu-link" data-secao="seguranca">Senha</a>
+        <a href="#privacidade" class="conta-menu-link" data-secao="privacidade">Privacidade</a>
+      </nav>
+
+      <div class="conta-conteudo">
+
+        <!-- PEDIDOS -->
+        <section class="conta-secao" id="secao-pedidos" data-secao="pedidos">
+
+          <h2>Meus pedidos</h2>
+
+          <div id="pedidos-lista" class="conta-pedidos" aria-live="polite">
+            <p class="conta-carregando">Carregando pedidos...</p>
+          </div>
+
+          <div id="pedido-detalhe" class="checkout-bloco conta-pedido-detalhe" hidden>
+            <button type="button" class="conta-link-botao" id="pedido-voltar">← Voltar para a lista</button>
+            <div id="pedido-detalhe-conteudo"></div>
+          </div>
+
+        </section>
+
+        <!-- DADOS -->
+        <section class="conta-secao" id="secao-dados" data-secao="dados" hidden>
+
+          <h2>Meus dados</h2>
+
+          <form id="form-dados" class="checkout-bloco conta-form" novalidate>
+
+            <div class="checkout-campo">
+              <label for="dados-nome">Nome completo</label>
+              <input type="text" id="dados-nome" autocomplete="name" maxlength="150" required>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="dados-email">E-mail</label>
+              <input type="email" id="dados-email" disabled>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="dados-telefone">Telefone</label>
+              <input type="tel" id="dados-telefone" autocomplete="tel" maxlength="15">
+            </div>
+
+            <p class="conta-mensagem" id="dados-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao">Salvar</button>
+
+          </form>
+
+        </section>
+
+        <!-- ENDEREÇOS -->
+        <section class="conta-secao" id="secao-enderecos" data-secao="enderecos" hidden>
+
+          <div class="conta-secao-topo">
+            <h2>Endereços</h2>
+            <button type="button" class="btn conta-botao-pequeno" id="endereco-novo">+ Novo endereço</button>
+          </div>
+
+          <div id="enderecos-lista" class="conta-enderecos" aria-live="polite"></div>
+
+          <form id="form-endereco" class="checkout-bloco conta-form" hidden novalidate>
+
+            <h3 id="endereco-form-titulo">Novo endereço</h3>
+
+            <input type="hidden" id="endereco-id">
+
+            <div class="checkout-grid">
+
+              <div class="checkout-campo">
+                <label for="endereco-apelido">Apelido (ex.: Casa)</label>
+                <input type="text" id="endereco-apelido" maxlength="50">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-destinatario">Destinatário</label>
+                <input type="text" id="endereco-destinatario" maxlength="150">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-cep">CEP</label>
+                <input type="text" id="endereco-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" required>
+              </div>
+
+              <div class="checkout-campo checkout-full">
+                <label for="endereco-rua">Rua</label>
+                <input type="text" id="endereco-rua" maxlength="150" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-numero">Número</label>
+                <input type="text" id="endereco-numero" maxlength="20" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-complemento">Complemento</label>
+                <input type="text" id="endereco-complemento" maxlength="100">
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-bairro">Bairro</label>
+                <input type="text" id="endereco-bairro" maxlength="100" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-cidade">Cidade</label>
+                <input type="text" id="endereco-cidade" maxlength="100" required>
+              </div>
+
+              <div class="checkout-campo">
+                <label for="endereco-estado">Estado (UF)</label>
+                <input type="text" id="endereco-estado" maxlength="2" placeholder="MG" required>
+              </div>
+
+            </div>
+
+            <label class="conta-check">
+              <input type="checkbox" id="endereco-principal">
+              <span>Usar como endereço principal</span>
+            </label>
+
+            <p class="conta-mensagem" id="endereco-mensagem" role="alert"></p>
+
+            <div class="conta-acoes">
+              <button type="submit" class="btn conta-botao">Salvar endereço</button>
+              <button type="button" class="conta-link-botao" id="endereco-cancelar">Cancelar</button>
+            </div>
+
+          </form>
+
+        </section>
+
+        <!-- AVALIAÇÕES -->
+        <section class="conta-secao" id="secao-avaliacoes" data-secao="avaliacoes" hidden>
+
+          <h2>Avaliar produtos</h2>
+          <p class="conta-texto">Produtos dos seus pedidos entregues. Sua avaliação ajuda outros clientes.</p>
+
+          <div id="avaliacoes-produtos" class="conta-enderecos" aria-live="polite">
+            <p class="conta-carregando">Carregando...</p>
+          </div>
+
+        </section>
+
+        <!-- SENHA -->
+        <section class="conta-secao" id="secao-seguranca" data-secao="seguranca" hidden>
+
+          <h2>Alterar senha</h2>
+
+          <form id="form-senha" class="checkout-bloco conta-form" novalidate>
+
+            <div class="checkout-campo">
+              <label for="senha-atual">Senha atual</label>
+              <input type="password" id="senha-atual" autocomplete="current-password" required>
+            </div>
+
+            <div class="checkout-campo">
+              <label for="senha-nova">Nova senha</label>
+              <input type="password" id="senha-nova" autocomplete="new-password" minlength="8" required>
+              <small class="conta-dica">Mínimo de 8 caracteres, com letras e números. As outras sessões abertas serão encerradas.</small>
+            </div>
+
+            <p class="conta-mensagem" id="senha-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao">Alterar senha</button>
+
+          </form>
+
+        </section>
+
+        <!-- PRIVACIDADE -->
+        <section class="conta-secao" id="secao-privacidade" data-secao="privacidade" hidden>
+
+          <h2>Privacidade e dados (LGPD)</h2>
+
+          <div class="checkout-bloco conta-form">
+
+            <h3>Baixar meus dados</h3>
+            <p class="conta-texto">Receba uma cópia dos dados pessoais, endereços e pedidos ligados à sua conta.</p>
+            <button type="button" class="btn conta-botao-pequeno" id="privacidade-exportar">Baixar dados (JSON)</button>
+
+          </div>
+
+          <form id="form-excluir" class="checkout-bloco conta-form conta-perigo" novalidate>
+
+            <h3>Excluir conta</h3>
+            <p class="conta-texto">Seus dados pessoais e endereços serão apagados e você sairá da conta. Os registros dos pedidos são mantidos pelo prazo exigido pela legislação fiscal. Essa ação não pode ser desfeita.</p>
+
+            <div class="checkout-campo">
+              <label for="excluir-senha">Confirme sua senha</label>
+              <input type="password" id="excluir-senha" autocomplete="current-password" required>
+            </div>
+
+            <p class="conta-mensagem" id="excluir-mensagem" role="alert"></p>
+
+            <button type="submit" class="btn conta-botao-perigo">Excluir minha conta</button>
+
+          </form>
+
+        </section>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</main>
+
+    
+
+    <!-- =====================================================
+         RODAPÉ
+    ====================================================== -->
+
+    <footer class="footer">
+
+      <div class="wrap">
+
+        <div class="footer-grid">
+
+
+          <!-- Marca -->
+          <div>
+
+            <a
+              href="index.html"
+              class="nav-logo"
+            >
+              <img
+                src="../assets/haze-logo.webp"
+                alt="Haze Drip"
+                class="logo-img footer"
+              >
+            </a>
+
+            <p>
+              Streetwear de verdade.
+              Feito pra quem vive,
+              não pra quem assiste.
+            </p>
+
+          </div>
+
+
+
+          <!-- Catálogo -->
+          <div>
+
+            <h4>
+              Catálogo
+            </h4>
+
+            <ul>
+              <li>
+                <a href="catalogo.html">
+                  Camisetas
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Moletons
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Calças
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Bonés
+                </a>
+              </li>
+
+              <li>
+                <a href="catalogo.html">
+                  Acessórios
+                </a>
+              </li>
+            </ul>
+
+          </div>
+
+
+
+          <!-- Informações -->
+          <div>
+
+            <h4>
+              Informações
+            </h4>
+
+            <ul>
+              <li>
+                <a href="sobre.html">
+                  Sobre nós
+                </a>
+              </li>
+
+              <li>
+                <a href="termos.html">
+                  Políticas
+                </a>
+              </li>
+
+              <li>
+                <a href="minha-conta.html#pedidos">
+                  Rastreamento
+                </a>
+              </li>
+
+              <li>
+                <a href="privacidade.html">
+                  Privacidade
+                </a>
+              </li>
+            </ul>
+
+          </div>
+
+
+
+          <!-- Ajuda -->
+          <div>
+
+            <h4>
+              Ajuda
+            </h4>
+
+            <ul>
+              <li>
+                <a href="contato.html">
+                  Contato
+                </a>
+              </li>
+
+              <li>
+                <a href="trocas.html">
+                  Trocas e devoluções
+                </a>
+              </li>
+
+              <li>
+                <a href="trocas.html#envio">
+                  Envio e prazos
+                </a>
+              </li>
+
+              <li>
+                <a href="contato.html#faq">
+                  FAQ
+                </a>
+              </li>
+            </ul>
+
+          </div>
+
+
+        </div>
+
+
+        <div class="footer-bottom">
+
+          <span>
+            © 2026 Haze Drip. Todos os direitos reservados.
+          </span>
+
+          <span>
+            Siga a Haze · Instagram · TikTok · X
+          </span>
+
+        </div>
+
+      </div>
+
+    </footer>
+
+
+
+    <!-- =====================================================
+         NAVEGAÇÃO MOBILE
+    ====================================================== -->
+
+    <nav class="bottom-nav">
+
+
+      <!-- Início -->
+      <a href="index.html">
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M4 11.5 12 4l8 7.5"
+          />
+
+          <path
+            d="M6 10v10h12V10"
+          />
+        </svg>
+
+        Início
+
+      </a>
+
+
+
+      <!-- Catálogo -->
+      <a
+        href="catalogo.html"
+      >
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M6 8h12l-1 12H7L6 8Z"
+          />
+
+          <path
+            d="M9 8V6a3 3 0 0 1 6 0v2"
+          />
+        </svg>
+
+        Catálogo
+
+      </a>
+
+
+
+      <!-- Drops -->
+      <a href="catalogo.html">
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M12 3v6M12 15v6M4.5 7.5l4.2 2.4M15.3 14.1l4.2 2.4M4.5 16.5l4.2-2.4M15.3 9.9l4.2-2.4"
+          />
+        </svg>
+
+        Drops
+
+      </a>
+
+
+
+      <!-- Carrinho -->
+      <a href="sacola.html">
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <path
+            d="M6 8h12l-1 12H7L6 8Z"
+          />
+
+          <path
+            d="M9 8V6a3 3 0 0 1 6 0v2"
+          />
+        </svg>
+
+        <span class="badge js-cart-count">
+          0
+        </span>
+
+        Carrinho
+
+      </a>
+
+
+
+      <!-- Perfil -->
+      <a href="conta.html">
+
+        <svg
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+        >
+          <circle
+            cx="12"
+            cy="8"
+            r="3.6"
+          />
+
+          <path
+            d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"
+          />
+        </svg>
+
+        Perfil
+
+      </a>
+
+    </nav>
+
+
+
+    <!-- =========================================
+         JAVASCRIPT
+    ========================================== -->
+
+    <script src="script.js"></script>
+    <script src="cliente.js"></script>
+    <script src="conta.js"></script>
+
+  </body>
+
+</html>

@@ -1,5 +1,5 @@
 const EDITAR_API_URL =
-  'https://hazedrip-production-6a67.up.railway.app';
+  HAZE_API_URL;
 
 
 const parametrosProduto =

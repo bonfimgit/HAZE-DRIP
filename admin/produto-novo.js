@@ -1,5 +1,5 @@
 const NOVO_PRODUTO_API =
-  'https://hazedrip-production-6a67.up.railway.app';
+  HAZE_API_URL;
 
 
 const novoForm =

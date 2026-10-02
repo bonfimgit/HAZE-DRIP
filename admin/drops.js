@@ -1,5 +1,5 @@
 const DROPS_API_URL =
-  'https://hazedrip-production-6a67.up.railway.app';
+  HAZE_API_URL;
 
 
 let produtosDrops = [];
@@ -206,7 +206,7 @@ function renderizarDrops(
 
       const imagem =
         produto.imagem_principal ||
-        '/hazedrip/assets/haze-logo.png';
+        '../assets/haze-logo.webp';
 
 
       const preco =
@@ -238,7 +238,7 @@ function renderizarDrops(
         <div class="admin-drop-image">
 
           <img
-            src="${imagem}"
+            src="${escaparDrops(imagem)}"
             alt=""
           >
 

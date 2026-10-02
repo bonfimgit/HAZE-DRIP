@@ -1,531 +1,142 @@
-\# Haze Drip — E-commerce Full Stack
+# Haze Drip — E-commerce Full Stack
 
+E-commerce de streetwear desenvolvido do zero: loja virtual, área do cliente, checkout com Mercado Pago, painel administrativo, API REST com regras de negócio, controle de estoque transacional e relatórios.
 
+O projeto foi criado para aplicar na prática conhecimentos da minha formação em **Sistemas de Informação** e dos meus estudos em desenvolvimento web.
 
-E-commerce de streetwear desenvolvido do zero como projeto Full Stack, com loja virtual, painel administrativo, API REST, autenticação, gerenciamento de produtos, controle de estoque e fluxo completo de pedidos.
+> 🚀 **Status:** versão 2.0, com o fluxo completo de compra, pagamento, entrega e gestão da loja.
 
+## 🌐 Demonstração
 
+**Loja:** https://6a9ed0deee28f68217553dad--ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
 
-O projeto foi criado para aplicar na prática conhecimentos adquiridos durante minha formação em \*\*Sistemas de Informação\*\* e meus estudos em desenvolvimento web.
+**Painel administrativo:** tem autenticação própria; as credenciais não são públicas.
 
+## ✨ Funcionalidades
 
+### Loja e cliente
+- Catálogo com busca, filtros (categoria, tamanho, cor, preço, promoção, estoque), ordenação e paginação
+- Página de produto com galeria, variações, avaliações de compra verificada e produtos relacionados
+- Sacola salva na conta e sincronizada entre dispositivos, com conferência de preço e estoque
+- Cadastro, login com renovação automática de sessão, confirmação de e-mail e recuperação de senha
+- Endereços salvos, "Meus pedidos" com rastreio e linha do tempo do pedido
+- LGPD: download dos dados e exclusão da conta
 
-> 🚀 \*\*Status:\*\* MVP funcional publicado e em evolução.
+### Checkout e pagamentos
+- Frete por tabela (faixa de CEP, estado ou padrão), prazo e frete grátis acima de um valor
+- Cupons (percentual, valor fixo, frete grátis) com validade e limites de uso
+- Promoções por campanha com período e desconto automáticos
+- **Mercado Pago:** PIX com QR Code na própria loja ou cartão/boleto pelo Checkout Pro
+- Webhook com verificação de assinatura, conferência do valor pago e expiração automática
+- Proteção contra pedido duplicado (chave de idempotência)
 
+### Painel administrativo
+- Dashboard: faturamento, ticket médio, conversão, cancelamentos, clientes e gráfico de vendas
+- Produtos, fotos (Cloudinary), variações, categorias, destaques e campanha da Home
+- Estoque: inventário, entrada, ajuste, estoque mínimo e histórico de movimentações
+- Pedidos: fluxo de status, rastreio, cancelamento e reembolso total ou parcial
+- Clientes (com bloqueio), cupons, frete, moderação de avaliações
+- Relatórios em CSV, usuários com perfis (gerente/operador) e auditoria das ações
 
+### Qualidade e segurança
+- **71 testes automatizados** de API (pedidos simultâneos, estoque, pagamentos, permissões), rodando contra MySQL 8 no GitHub Actions
+- Senhas com bcrypt, JWT com sessões revogáveis, limite de tentativas, Helmet, CORS restrito
+- Proteção contra XSS e SQL Injection, validação centralizada, logs estruturados
 
-\## 🌐 Demonstração
+## 🧱 Regras de negócio que valem destacar
 
-
-
-\*\*Loja:\*\*  
-
-\[Ver Haze Drip online] https://6a9ed0deee28f68217553dad--ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
-
-
-
-\*\*Painel administrativo:\*\*  
-
-Possui autenticação própria e não disponibilizo credenciais publicamente.
-
-
-
-\## 🎯 Principais desafios implementados
-
-
-
-\- Desenvolvimento de uma API REST com Node.js e Express
-
-\- Integração entre frontend, backend e banco MySQL
-
-\- Autenticação administrativa utilizando JWT
-
-\- Modelagem de produtos com imagens, cores, tamanhos e estoque
-
-\- Controle transacional de pedidos
-
-\- Baixa automática de estoque após compras
-
-\- Reposição de estoque após cancelamentos válidos
-
-\- Controle do fluxo de status dos pedidos
-
-\- Upload e gerenciamento de imagens com Cloudinary
-
-\- Deploy separado de frontend, backend e banco de dados
-
-
-
-
-
-\## Fluxo de pedidos
-
-
-
-O sistema possui controle do ciclo de vida dos pedidos:
-
-
+- **Estoque sem venda dupla:** a criação do pedido trava as variações (`SELECT ... FOR UPDATE`) em ordem fixa e só baixa o estoque com `estoque >= quantidade`. Os testes disparam pedidos simultâneos pela última unidade.
+- **Preço do servidor:** valores enviados pelo navegador são ignorados. Preço, promoção, cupom e frete são recalculados no banco.
+- **Tudo ou nada:** pedido, itens, baixa de estoque, uso do cupom e histórico ficam na mesma transação.
+- **Pagamento confiável:** o webhook não é usado como fonte de verdade. A API consulta o pagamento no Mercado Pago e compara o valor pago com o total.
 
 ```text
-
-Aguardando pagamento
-
-&#x20;       ↓
-
-Pago
-
-&#x20;       ↓
-
-Em preparação
-
-&#x20;       ↓
-
-Enviado
-
-&#x20;       ↓
-
-Entregue
-
-Pedidos elegíveis também podem ser cancelados, com devolução automática dos produtos ao estoque.
-
-
-
-Controle de estoque
-
-
-
-Durante a criação de um pedido, o backend:
-
-
-
-Valida a existência das variações.
-
-Verifica o estoque disponível.
-
-Calcula os valores do pedido.
-
-Registra o pedido e seus itens.
-
-Atualiza o estoque.
-
-Executa as operações dentro de uma transação no banco de dados.
-
-
-
-Isso evita que um pedido seja criado parcialmente caso alguma etapa falhe.
-
-
-
-\## 🛠️ Tecnologias utilizadas
-
-
-
-\### Frontend
-
-\- HTML5
-
-\- CSS3
-
-\- JavaScript
-
-\- Bootstrap no painel administrativo
-
-
-
-\### Backend
-
-\- Node.js
-
-\- Express.js
-
-\- API REST
-
-\- JWT para autenticação
-
-
-
-\### Banco de dados
-
-\- MySQL
-
-\- Transações
-
-\- Relacionamentos entre produtos, variações, imagens e pedidos
-
-
-
-\### Infraestrutura e serviços
-
-\- Railway — API e banco de dados
-
-\- Netlify — frontend e painel administrativo
-
-\- Cloudinary — armazenamento de imagens
-
-
-
-\### Ferramentas
-
-\- Git
-
-\- GitHub
-
-\- Visual Studio Code
-
-\- PowerShell
-
-
-
-
-Arquitetura
-
-Cliente
-
-&#x20;  │
-
-&#x20;  ▼
-
-Frontend / Netlify
-
-&#x20;  │
-
-&#x20;  │ HTTP / REST
-
-&#x20;  ▼
-
-Node.js + Express / Railway
-
-&#x20;  │
-
-&#x20;  ├──────────► Cloudinary
-
-&#x20;  │             Imagens
-
-&#x20;  │
-
-&#x20;  ▼
-
-MySQL / Railway
-
-O frontend consome uma API REST responsável pelas regras de negócio e comunicação com o banco de dados.
-
-Estrutura do projeto
-
-haze-drip/
-
-│
-
-├── admin/
-
-│   └── Painel administrativo
-
-│
-
-├── assets/
-
-│   └── Arquivos estáticos
-
-│
-
+Aguardando pagamento → Pago → Em preparação → Enviado → Entregue
+        │                │           │
+        └────────────────┴───────────┴──→ Cancelado (devolve estoque e cupom; reembolso opcional)
+```
+
+## 🛠️ Tecnologias
+
+| Camada | Tecnologias |
+|---|---|
+| Frontend | HTML5, CSS3, JavaScript (sem framework), Bootstrap no painel |
+| Backend | Node.js, Express 5, JWT, bcrypt, Multer, Helmet |
+| Banco | MySQL 8 (transações, índices, migrações versionadas) |
+| Serviços | Mercado Pago, Cloudinary, Resend, ViaCEP |
+| Infra | Railway (API e banco), Netlify (loja e painel), GitHub Actions (CI) |
+| Testes | `node:test` + `fetch` contra banco real |
+
+## 🗂️ Estrutura
+
+```text
+HAZE-DRIP/
+├── frontend/            Loja (catálogo, produto, sacola, checkout, conta, páginas legais)
+├── admin/               Painel administrativo
 ├── backend/
+│   ├── server.js        Inicia o servidor e a expiração de pedidos
+│   ├── src/
+│   │   ├── app.js       Middlewares e rotas
+│   │   ├── config/      Ambiente, banco, Cloudinary
+│   │   ├── routes/      loja/ e admin/ (camada HTTP)
+│   │   ├── services/    Regras de negócio e SQL
+│   │   ├── middlewares/ Autenticação, limites, upload, auditoria, erros
+│   │   ├── integracoes/ Mercado Pago
+│   │   ├── emails/      Modelos de e-mail
+│   │   └── utils/       Validação, transações, logs, eventos
+│   ├── migrations/      Esquema do banco versionado
+│   └── tests/           Testes de API
+├── docs/                API, deploy e checklist de produção
+└── assets/              Logo
+```
 
-│   ├── server.js
+## ▶️ Executando localmente
 
-│   ├── db.js
-
-│   ├── cloudinary.js
-
-│   ├── package.json
-
-│   └── .env.example
-
-│
-
-├── frontend/
-
-│   ├── index.html
-
-│   ├── catalogo.html
-
-│   ├── produto.html
-
-│   ├── sacola.html
-
-│   ├── checkout.html
-
-│   └── pedido-confirmado.html
-
-│
-
-└── README.md
-
-Executando o backend localmente
-
-Clone o repositório:
-git clone: https://github.com/bonfimgit/HAZE-DRIP
-
-Entre na pasta:
-
-cd Haze-Drip-Portfolio/backend
-
-
-
-Instale as dependências:
-
+```bash
+git clone https://github.com/bonfimgit/HAZE-DRIP
+cd HAZE-DRIP/backend
+cp .env.example .env        # configure o MySQL e o JWT_SECRET
 npm install
+npm run migrate             # cria/atualiza o banco
+node criar-admin.js "SenhaForte123"
+npm start                   # API em http://localhost:3000
+```
 
+Sirva a raiz do repositório na porta 5500 (Live Server ou `python3 -m http.server 5500`) e acesse `http://127.0.0.1:5500/frontend/`. Em `localhost`, a loja e o painel usam a API local automaticamente.
 
+Testes: `npm test` (veja as variáveis `TEST_DB_*` em [docs/DEPLOY.md](docs/DEPLOY.md#9-desenvolvimento-local)).
 
-Crie o arquivo .env utilizando .env.example como referência.
+## 📚 Documentação
 
-NODE\_ENV=development
+- [Referência da API](docs/API.md): 104 rotas
+- [Deploy e operação](docs/DEPLOY.md): variáveis, migrações, Mercado Pago, e-mails, backup e monitoramento
+- [Checklist de produção](docs/PRODUCAO.md)
 
-PORT=3000
+## 🔐 Segurança
 
-
-
-DB\_HOST=localhost
-
-DB\_PORT=3306
-
-DB\_USER=seu\_usuario
-
-DB\_PASSWORD=sua\_senha
-
-DB\_NAME=haze\_drip
-
-
-
-JWT\_SECRET=adicione\_um\_segredo\_seguro\_aqui
-
-
-
-CLOUDINARY\_CLOUD\_NAME=seu\_cloud\_name
-
-CLOUDINARY\_API\_KEY=sua\_api\_key
-
-CLOUDINARY\_API\_SECRET=seu\_api\_secret
-
-
-
-FRONTEND\_URLS=http://127.0.0.1:5500,http://localhost:5500
-
-
-
-Depois execute:
-
-npm start
-
-
-
-Segurança
-
-
-
-Informações sensíveis não são armazenadas no repositório.
-
-
-
-Arquivos como:
-
-
-
-.env
-
-node\_modules/
-
-uploads/
-
-arquivos SQL
-
-
-
-são ignorados pelo Git.
-
-
-
-As configurações necessárias estão documentadas em: backend/.env.example
-
-
-
-Deploy
-
-
-
-A versão MVP foi publicada utilizando:
-
-
-
-Netlify para o frontend e painel administrativo
-
-Railway para API e banco MySQL
-
-Cloudinary para armazenamento de imagens
-
-
-
-Demonstração
-
-
-
-Loja online: https://6a9ed0deee28f68217553dad--ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
-
-O painel administrativo possui autenticação e seu acesso não é disponibilizado publicamente.
-
-Status do projeto
-
-
-
-✅ MVP concluído
-
-✅Loja virtual
-
-✅ API REST
-
-✅ Banco de dados
-
-✅ Autenticação administrativa
-
-✅ CRUD de produtos
-
-✅ Imagens
-
-✅ Variações
-
-✅ Controle de estoque
-
-✅ Checkout
-
-✅ Pedidos
-
-✅ Fluxo de status
-
-✅ Deploy
-
-
-\## 🔭 Próximas melhorias
-
-
-
-\- \[ ] Integração com gateway de pagamento
-
-\- \[ ] Recuperação de senha
-
-\- \[ ] Testes automatizados
-
-\- \[ ] Validação e documentação mais completa da API
-
-\- \[ ] Melhorias de acessibilidade
-
-\- \[ ] Melhorias de responsividade e UX
-
-\- \[ ] Logs e monitoramento
-
-\- \[ ] Refatoração gradual da arquitetura do backend
+Informações sensíveis ficam em variáveis de ambiente e nunca no repositório (`.env`, uploads e arquivos SQL estão no `.gitignore`). Modelo das variáveis: [`backend/.env.example`](backend/.env.example).
 
 ## 📸 Screenshots
 
+### Loja — Página inicial
+![Home da Haze Drip](screenshots/home.png)
 
+### Painel administrativo — Produtos
+![Gerenciamento de produtos](screenshots/admin-produtos.png)
 
-\### Loja — Página inicial
+### Painel administrativo — Pedidos
+![Gerenciamento de pedidos](screenshots/admin-pedidos.png)
 
+## 🎓 Objetivo acadêmico e profissional
 
+Este projeto faz parte da minha formação em Sistemas de Informação e desenvolvimento Full Stack. A Haze Drip foi usada para praticar desenvolvimento frontend, APIs REST, modelagem de banco de dados, autenticação, regras de negócio, controle de estoque, transações e concorrência, integração com pagamentos, testes automatizados, Git e deploy.
 
-!\[Home da Haze Drip](screenshots/home.png)
+## 👨‍💻 Autor
 
+**João Victor Silva Bonfim Santos**
 
+Estudante de **Sistemas de Informação** e desenvolvedor Full Stack em formação. Estou buscando minha primeira oportunidade profissional na área de desenvolvimento de software, onde possa continuar evoluindo e contribuir com projetos reais.
 
-\### Loja — Página de produto
-
-
-
-!\[Página de produto da Haze Drip](screenshots/produto.png)
-
-
-
-\### Painel administrativo — Produtos
-
-
-
-!\[Gerenciamento de produtos](screenshots/admin-produtos.png)
-
-
-
-\### Painel administrativo — Pedidos
-
-
-
-!\[Gerenciamento de pedidos](screenshots/admin-pedidos.png)
-
-
-
-Objetivo acadêmico e profissional
-
-
-
-Este projeto faz parte do meu processo de formação em Sistemas de Informação e desenvolvimento Full Stack.
-
-
-
-A Haze Drip foi utilizada para colocar em prática conceitos de:
-
-
-
-desenvolvimento frontend;
-
-criação de APIs REST;
-
-modelagem e manipulação de banco de dados;
-
-autenticação;
-
-regras de negócio;
-
-controle de estoque;
-
-transações;
-
-Git e versionamento;
-
-deploy e configuração de ambientes.
-
-
-
-\## 👨‍💻 Autor
-
-
-
-\*\*João Victor Silva Bonfim Santos\*\*
-
-
-
-Estudante de \*\*Sistemas de Informação\*\* e desenvolvedor Full Stack em formação.
-
-
-
-Atualmente estou buscando minha primeira oportunidade profissional na área de desenvolvimento de software, onde possa continuar evoluindo e contribuir com projetos reais.
-
-
-
-\### Áreas de interesse
-
-
-
-\- Desenvolvimento Full Stack
-
-\- Desenvolvimento Backend
-
-\- Node.js
-
-\- JavaScript
-
-\- APIs REST
-
-\- Banco de Dados
-
-\- Desenvolvimento Web
-
-
+**Áreas de interesse:** desenvolvimento Full Stack e Backend, Node.js, JavaScript, APIs REST, banco de dados e desenvolvimento web.
 
 📍 Passos — MG, Brasil
-

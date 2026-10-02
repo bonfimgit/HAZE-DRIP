@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Clientes — Haze Drip Admin</title>
+
+  <link
+    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+    rel="stylesheet"
+  >
+
+  <link
+    rel="stylesheet"
+    href="admin.css"
+  >
+  <link
+  rel="stylesheet"
+  href="pedidos.css"
+>
+</head>
+
+<body class="admin-body pedidos-page">
+
+  <div class="admin-layout">
+
+    <aside class="admin-sidebar">
+
+      <div class="admin-logo">
+        HAZE DRIP
+      </div>
+
+      <nav class="admin-nav">
+
+        <a href="dashboard.html">
+          Dashboard
+        </a>
+
+        <a href="produtos.html">
+          Produtos
+        </a>
+
+        <a
+          href="pedidos.html"
+          class="active"
+        >
+          Pedidos
+        </a>
+
+        <a href="drops.html">
+          Drops
+        </a>
+
+        <a href="campanha.html">
+          Campanha
+        </a>
+
+      </nav>
+
+    </aside>
+
+
+    <!-- titulo: Clientes -->
+<!-- script: clientes.js -->
+<main class="admin-main">
+
+      <div class="admin-page-header">
+        <div>
+          <span class="admin-eyebrow">Gestão</span>
+          <h1>Clientes</h1>
+          <p class="admin-muted-text">Contas cadastradas na loja, com pedidos e total gasto.</p>
+        </div>
+      </div>
+
+      <section class="admin-card">
+
+        <form class="pedidos-filtros" id="clientes-filtro">
+          <input
+            type="search"
+            id="clientes-busca"
+            class="form-control bg-dark text-light border-secondary"
+            placeholder="Buscar por nome, e-mail ou telefone"
+          >
+          <button type="submit" class="btn btn-outline-light">Buscar</button>
+        </form>
+
+        <div id="clientes-mensagem" class="admin-muted-text mb-3">Carregando clientes...</div>
+
+        <div class="table-responsive">
+          <table class="table table-dark table-hover align-middle">
+            <thead>
+              <tr>
+                <th>Cliente</th>
+                <th>Telefone</th>
+                <th>Cadastro</th>
+                <th>Pedidos</th>
+                <th>Total gasto</th>
+                <th>Status</th>
+                <th>Ações</th>
+              </tr>
+            </thead>
+            <tbody id="clientes-lista"></tbody>
+          </table>
+        </div>
+
+        <div class="d-flex gap-2 justify-content-end mt-3">
+          <button type="button" class="btn btn-sm btn-outline-light" id="clientes-anterior" disabled>← Anterior</button>
+          <button type="button" class="btn btn-sm btn-outline-light" id="clientes-proxima" disabled>Próxima →</button>
+        </div>
+
+      </section>
+
+    </main>
+
+
+  </div>
+
+
+  <script src="config.js"></script>
+  <script src="admin.js"></script>
+  <script src="clientes.js"></script>
+
+</body>
+
+</html>

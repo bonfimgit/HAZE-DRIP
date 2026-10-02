@@ -444,3 +444,58 @@
   }
 
 }
+/* =============================================================
+   HISTÓRICO DO PEDIDO
+============================================================= */
+
+.pedido-historico {
+  list-style: none;
+  margin: 12px 0 0;
+  padding: 0 0 0 18px;
+  border-left: 1px solid #333;
+}
+
+.pedido-historico li {
+  position: relative;
+  padding: 6px 0 12px 8px;
+}
+
+.pedido-historico li::before {
+  content: '';
+  position: absolute;
+  left: -23px;
+  top: 12px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #dcc9f5;
+}
+
+.pedido-historico small {
+  display: block;
+  color: #8c8c8c;
+}
+
+.pedidos-page .admin-logout {
+  margin-top: 24px;
+  width: 100%;
+  padding: 10px;
+  background: none;
+  border: 1px solid #262626;
+  color: #8c8c8c;
+  border-radius: 6px;
+}
+
+/* Diálogo de ajuste de estoque */
+.estoque-dialogo {
+  width: min(460px, calc(100vw - 32px));
+  padding: 24px;
+  border: 1px solid #333;
+  border-radius: 12px;
+  background: #111;
+  color: #f5f5f5;
+}
+
+.estoque-dialogo::backdrop {
+  background: rgba(0, 0, 0, .7);
+}

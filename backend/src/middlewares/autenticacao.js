@@ -1,0 +1,133 @@
+const jwt = require('jsonwebtoken');
+
+const config = require('../config/ambiente');
+const { naoAutorizado, proibido } = require('../utils/erros');
+
+/*
+  Lê e valida o token "Authorization: Bearer <token>".
+  O campo "tipo" separa tokens de administradores e de clientes,
+  impedindo que um cliente use seu token em rotas do painel.
+*/
+function lerToken(req, tipoEsperado) {
+
+  const authorization = req.headers.authorization;
+
+  if (!authorization) {
+    throw naoAutorizado('Token não fornecido');
+  }
+
+  const partes = authorization.split(' ');
+
+  if (partes.length !== 2 || partes[0] !== 'Bearer') {
+    throw naoAutorizado('Formato de token inválido');
+  }
+
+  let dados;
+
+  try {
+    dados = jwt.verify(partes[1], config.jwtSecret);
+  } catch (erro) {
+    throw naoAutorizado(
+      erro.name === 'TokenExpiredError'
+        ? 'Token expirado'
+        : 'Token inválido'
+    );
+  }
+
+  // Tokens antigos de admin não têm "tipo": tratados como admin
+  const tipo = dados.tipo || 'admin';
+
+  if (tipo !== tipoEsperado) {
+    throw naoAutorizado('Token inválido');
+  }
+
+  return dados;
+}
+
+
+/*
+  Valida o token e confere no banco se o administrador continua
+  ativo e com a mesma versão de token (senha não foi trocada).
+*/
+async function autenticarAdmin(req, res, next) {
+
+  const dados = lerToken(req, 'admin');
+
+  // require aqui evita dependência circular com o serviço
+  const { validarSessao } = require('../services/adminAuthService');
+
+  const usuario = await validarSessao(dados);
+
+  req.admin = {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    perfil: usuario.perfil
+  };
+
+  next();
+}
+
+
+/*
+  Restringe a rota a determinados perfis de administrador.
+  Uso: autorizar('gerente')
+*/
+function autorizar(...perfis) {
+
+  return (req, res, next) => {
+
+    if (!req.admin || !perfis.includes(req.admin.perfil)) {
+      throw proibido('Você não tem permissão para esta ação');
+    }
+
+    next();
+  };
+}
+
+
+async function carregarCliente(req) {
+
+  const dados = lerToken(req, 'cliente');
+
+  const { validarSessao } = require('../services/clientesService');
+
+  const cliente = await validarSessao(dados);
+
+  return {
+    id: cliente.id,
+    nome: cliente.nome,
+    email: cliente.email
+  };
+}
+
+
+async function autenticarCliente(req, res, next) {
+  req.cliente = await carregarCliente(req);
+  next();
+}
+
+
+// Identifica o cliente se houver token válido, sem exigir login
+async function identificarCliente(req, res, next) {
+
+  req.cliente = null;
+
+  if (req.headers.authorization) {
+    try {
+      req.cliente = await carregarCliente(req);
+    } catch {
+      req.cliente = null;
+    }
+  }
+
+  next();
+}
+
+
+module.exports = {
+  autenticarAdmin,
+  autorizar,
+  autenticarCliente,
+  identificarCliente
+};

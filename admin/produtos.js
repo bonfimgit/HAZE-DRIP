@@ -1,5 +1,5 @@
 const PRODUTOS_API_URL =
-  'https://hazedrip-production-6a67.up.railway.app';
+  HAZE_API_URL;
 
 
 let adminProdutos = [];
@@ -141,7 +141,7 @@ function renderizarProdutosAdmin(produtos) {
 
       const imagem =
         produto.imagem_principal ||
-        '../assets/haze-logo.png';
+        '../assets/haze-logo.webp';
 
 
       const categoria =
@@ -173,7 +173,7 @@ function renderizarProdutosAdmin(produtos) {
             <div class="admin-product-image">
 
               <img
-                src="${imagem}"
+                src="${escaparHtmlAdmin(imagem)}"
                 alt="${escaparHtmlAdmin(produto.nome)}"
               >
 
