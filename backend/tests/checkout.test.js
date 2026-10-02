@@ -42,19 +42,32 @@ mercadoPago.criarPreferencia = async ({ pedidoId }) => ({
   url: `https://mp.teste/checkout/${pedidoId}`
 });
 
-mercadoPago.buscarPagamento = async id => {
-  const p = pagamentosMp.get(String(id));
-  return {
-    id: String(id),
+/*
+  buscarPagamento real, com fetch simulado: garante que respostas da
+  API sem campos opcionais (status_detail etc.) não quebram o banco.
+*/
+const fetchOriginal = global.fetch;
+
+global.fetch = async (url, opcoes) => {
+
+  const m = String(url).match(/^https:\/\/api\.mercadopago\.com\/v1\/payments\/(\d+)$/);
+
+  if (!m) {
+    return fetchOriginal(url, opcoes);
+  }
+
+  const p = pagamentosMp.get(m[1]);
+
+  return new Response(JSON.stringify({
+    id: Number(m[1]),
     status: p.status,
-    status_detalhe: null,
-    valor: p.valor,
-    valor_reembolsado: p.reembolsado || 0,
-    metodo: 'pix',
-    tipo: 'bank_transfer',
-    pedido_id: p.pedido_id
-  };
+    transaction_amount: p.valor,
+    transaction_amount_refunded: p.reembolsado || 0,
+    external_reference: String(p.pedido_id)
+  }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
+
+process.env.MERCADOPAGO_ACCESS_TOKEN = 'TEST-token';
 
 mercadoPago.reembolsar = async (id, valor) => {
   reembolsos.push({ id, valor });

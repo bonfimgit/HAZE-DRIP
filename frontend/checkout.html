@@ -9,7 +9,7 @@
       content="width=device-width, initial-scale=1.0"
     >
 
-    <title>Produto — Haze Drip</title>
+    <title>Checkout — Haze Drip</title>
 
     <meta
       name="description"
@@ -216,206 +216,104 @@
   <div class="wrap">
 
     <div class="checkout-head">
-
       <p class="breadcrumb">
-        <a href="index.html">Início</a>
-        /
-        <a href="sacola.html">Sacola</a>
-        /
-        Checkout
+        <a href="index.html">Início</a> / <a href="sacola.html">Sacola</a> / Checkout
       </p>
-
       <h1>Finalizar pedido</h1>
-
+      <p class="conta-texto" id="checkout-login-aviso">
+        Já tem conta? <a href="conta.html?voltar=checkout.html" class="conta-link">Entre</a> para usar seus endereços salvos e acompanhar o pedido.
+      </p>
     </div>
-
 
     <div class="checkout-layout">
 
-      <!-- DADOS DO CLIENTE -->
-      <section class="checkout-form">
+      <form class="checkout-form" id="checkout-form" novalidate>
 
+        <!-- 1. IDENTIFICAÇÃO -->
         <div class="checkout-bloco">
-
           <h2>1. Identificação</h2>
-
           <div class="checkout-grid">
-
             <div class="checkout-campo checkout-full">
-
-              <label for="checkout-nome">
-                Nome completo
-              </label>
-
-              <input
-                type="text"
-                id="checkout-nome"
-                autocomplete="name"
-                required
-              >
-
+              <label for="checkout-nome">Nome completo</label>
+              <input type="text" id="checkout-nome" autocomplete="name" maxlength="150" required>
             </div>
-
-
             <div class="checkout-campo">
-
-              <label for="checkout-email">
-                E-mail
-              </label>
-
-              <input
-                type="email"
-                id="checkout-email"
-                autocomplete="email"
-                required
-              >
-
+              <label for="checkout-email">E-mail</label>
+              <input type="email" id="checkout-email" autocomplete="email" maxlength="150" required>
             </div>
-
-
             <div class="checkout-campo">
-
-              <label for="checkout-telefone">
-                Telefone
-              </label>
-
-              <input
-                type="tel"
-                id="checkout-telefone"
-                autocomplete="tel"
-                required
-              >
-
+              <label for="checkout-telefone">Telefone</label>
+              <input type="tel" id="checkout-telefone" autocomplete="tel" maxlength="15" required>
             </div>
-
           </div>
-
         </div>
 
-
-        <!-- ENDEREÇO -->
+        <!-- 2. ENTREGA -->
         <div class="checkout-bloco">
-
           <h2>2. Endereço de entrega</h2>
 
-          <div class="checkout-grid">
-
-            <div class="checkout-campo">
-
-              <label for="checkout-cep">
-                CEP
-              </label>
-
-              <input
-                type="text"
-                id="checkout-cep"
-                maxlength="9"
-                autocomplete="postal-code"
-                required
-              >
-
-            </div>
-
-
-            <div class="checkout-campo checkout-full">
-
-              <label for="checkout-rua">
-                Rua
-              </label>
-
-              <input
-                type="text"
-                id="checkout-rua"
-                autocomplete="address-line1"
-                required
-              >
-
-            </div>
-
-
-            <div class="checkout-campo">
-
-              <label for="checkout-numero">
-                Número
-              </label>
-
-              <input
-                type="text"
-                id="checkout-numero"
-                required
-              >
-
-            </div>
-
-
-            <div class="checkout-campo">
-
-              <label for="checkout-complemento">
-                Complemento
-              </label>
-
-              <input
-                type="text"
-                id="checkout-complemento"
-                autocomplete="address-line2"
-              >
-
-            </div>
-
-
-            <div class="checkout-campo">
-
-              <label for="checkout-bairro">
-                Bairro
-              </label>
-
-              <input
-                type="text"
-                id="checkout-bairro"
-                required
-              >
-
-            </div>
-
-
-            <div class="checkout-campo">
-
-              <label for="checkout-cidade">
-                Cidade
-              </label>
-
-              <input
-                type="text"
-                id="checkout-cidade"
-                autocomplete="address-level2"
-                required
-              >
-
-            </div>
-
-
-            <div class="checkout-campo">
-
-              <label for="checkout-estado">
-                Estado
-              </label>
-
-              <input
-                type="text"
-                id="checkout-estado"
-                maxlength="2"
-                placeholder="MG"
-                required
-              >
-
-            </div>
-
+          <div class="checkout-campo checkout-enderecos-salvos" id="checkout-enderecos-salvos" hidden>
+            <label for="checkout-endereco-salvo">Seus endereços</label>
+            <select id="checkout-endereco-salvo"></select>
           </div>
 
+          <div class="checkout-grid" id="checkout-endereco-campos">
+            <div class="checkout-campo">
+              <label for="checkout-cep">CEP</label>
+              <input type="text" id="checkout-cep" inputmode="numeric" maxlength="9" autocomplete="postal-code" required>
+            </div>
+            <div class="checkout-campo checkout-full">
+              <label for="checkout-rua">Rua</label>
+              <input type="text" id="checkout-rua" autocomplete="address-line1" maxlength="150" required>
+            </div>
+            <div class="checkout-campo">
+              <label for="checkout-numero">Número</label>
+              <input type="text" id="checkout-numero" maxlength="20" required>
+            </div>
+            <div class="checkout-campo">
+              <label for="checkout-complemento">Complemento</label>
+              <input type="text" id="checkout-complemento" autocomplete="address-line2" maxlength="100">
+            </div>
+            <div class="checkout-campo">
+              <label for="checkout-bairro">Bairro</label>
+              <input type="text" id="checkout-bairro" maxlength="100" required>
+            </div>
+            <div class="checkout-campo">
+              <label for="checkout-cidade">Cidade</label>
+              <input type="text" id="checkout-cidade" autocomplete="address-level2" maxlength="100" required>
+            </div>
+            <div class="checkout-campo">
+              <label for="checkout-estado">Estado (UF)</label>
+              <input type="text" id="checkout-estado" maxlength="2" placeholder="MG" required>
+            </div>
+          </div>
+
+          <p class="checkout-frete-info" id="checkout-frete-info" aria-live="polite"></p>
         </div>
 
-      </section>
+        <!-- 3. PAGAMENTO -->
+        <div class="checkout-bloco">
+          <h2>3. Pagamento</h2>
 
+          <div class="checkout-pagamentos" role="radiogroup" aria-label="Forma de pagamento">
+            <label class="checkout-pagamento">
+              <input type="radio" name="metodo_pagamento" value="pix" checked>
+              <span>
+                <strong>PIX</strong>
+                <small>Aprovação na hora. O código vale por 30 minutos.</small>
+              </span>
+            </label>
+            <label class="checkout-pagamento">
+              <input type="radio" name="metodo_pagamento" value="mercadopago">
+              <span>
+                <strong>Cartão ou boleto</strong>
+                <small>Pagamento seguro pelo Mercado Pago.</small>
+              </span>
+            </label>
+          </div>
+        </div>
+
+      </form>
 
       <!-- RESUMO -->
       <aside class="checkout-resumo">
@@ -424,36 +322,43 @@
 
         <div id="checkout-itens"></div>
 
+        <form class="checkout-cupom" id="checkout-cupom-form" novalidate>
+          <label for="checkout-cupom" class="visually-hidden">Cupom de desconto</label>
+          <input type="text" id="checkout-cupom" placeholder="Cupom de desconto" maxlength="40" autocomplete="off">
+          <button type="submit">Aplicar</button>
+        </form>
+        <p class="conta-mensagem" id="checkout-cupom-mensagem" role="status"></p>
 
         <div class="checkout-total-linha">
-
           <span>Subtotal</span>
-
-          <strong id="checkout-subtotal">
-            R$ 0,00
-          </strong>
-
+          <strong id="checkout-subtotal">R$ 0,00</strong>
         </div>
 
+        <div class="checkout-total-linha" id="checkout-desconto-linha" hidden>
+          <span>Desconto <small id="checkout-cupom-codigo"></small></span>
+          <strong id="checkout-desconto">- R$ 0,00</strong>
+        </div>
+
+        <div class="checkout-total-linha">
+          <span>Frete</span>
+          <strong id="checkout-frete">Informe o CEP</strong>
+        </div>
 
         <div class="checkout-total-linha checkout-total">
-
           <span>Total</span>
-
-          <strong id="checkout-total">
-            R$ 0,00
-          </strong>
-
+          <strong id="checkout-total">R$ 0,00</strong>
         </div>
 
+        <p class="conta-mensagem" id="checkout-mensagem" role="alert"></p>
 
-        <button
-          type="button"
-          class="btn checkout-continuar"
-          id="checkout-continuar"
-        >
-          Continuar
+        <button type="button" class="btn checkout-continuar" id="checkout-continuar">
+          Finalizar pedido
         </button>
+
+        <p class="checkout-seguranca">
+          Ao finalizar, você concorda com os <a href="termos.html">Termos de uso</a>
+          e a <a href="trocas.html">Política de trocas</a>.
+        </p>
 
       </aside>
 
@@ -775,6 +680,7 @@
 
     <script src="script.js"></script>
     <script src="cliente.js"></script>
+    <script src="checkout.js"></script>
 
   </body>
 

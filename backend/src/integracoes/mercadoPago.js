@@ -13,7 +13,10 @@ const crypto = require('crypto');
 
 const { ErroApp } = require('../utils/erros');
 
-const BASE = 'https://api.mercadopago.com';
+// Pode apontar para um simulador local em desenvolvimento
+function base() {
+  return process.env.MERCADOPAGO_API_URL || 'https://api.mercadopago.com';
+}
 
 
 function configurado() {
@@ -36,7 +39,7 @@ async function requisitar(metodo, caminho, { corpo, chaveIdempotencia } = {}) {
     headers['X-Idempotency-Key'] = chaveIdempotencia;
   }
 
-  const resposta = await fetch(`${BASE}${caminho}`, {
+  const resposta = await fetch(`${base()}${caminho}`, {
     method: metodo,
     headers,
     body: corpo ? JSON.stringify(corpo) : undefined,
@@ -102,7 +105,7 @@ const mercadoPago = {
     return {
       id: String(pagamento.id),
       status: pagamento.status,
-      status_detalhe: pagamento.status_detail,
+      status_detalhe: pagamento.status_detail ?? null,
       qr_code: transacao.qr_code || null,
       qr_code_base64: transacao.qr_code_base64 || null,
       url: transacao.ticket_url || null
@@ -152,11 +155,12 @@ const mercadoPago = {
     return {
       id: String(pagamento.id),
       status: pagamento.status,
-      status_detalhe: pagamento.status_detail,
+      // Campos opcionais da API viram null (o banco não aceita undefined)
+      status_detalhe: pagamento.status_detail ?? null,
       valor: Number(pagamento.transaction_amount),
       valor_reembolsado: Number(pagamento.transaction_amount_refunded || 0),
-      metodo: pagamento.payment_method_id,
-      tipo: pagamento.payment_type_id,
+      metodo: pagamento.payment_method_id ?? null,
+      tipo: pagamento.payment_type_id ?? null,
       pedido_id: Number(pagamento.external_reference)
     };
   },
@@ -171,7 +175,7 @@ const mercadoPago = {
     return {
       id: String(reembolso.id),
       valor: Number(reembolso.amount),
-      status: reembolso.status
+      status: reembolso.status ?? null
     };
   },
 

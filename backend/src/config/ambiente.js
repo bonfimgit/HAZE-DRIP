@@ -6,11 +6,14 @@
 const { loadEnvFile } = require('node:process');
 const path = require('path');
 
-try {
-  loadEnvFile(path.join(__dirname, '..', '..', '.env'));
-} catch (erro) {
-  if (erro.code !== 'ENOENT') {
-    throw erro;
+// Nos testes o .env de desenvolvimento não é carregado (ambiente isolado)
+if (process.env.NODE_ENV !== 'test') {
+  try {
+    loadEnvFile(path.join(__dirname, '..', '..', '.env'));
+  } catch (erro) {
+    if (erro.code !== 'ENOENT') {
+      throw erro;
+    }
   }
 }
 
