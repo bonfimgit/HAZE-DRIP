@@ -12,6 +12,7 @@ const path = require('path');
 const fs = require('fs');
 
 const db = require('../db');
+const config = require('../src/config/ambiente');
 
 const PASTA_MIGRACOES = path.join(__dirname, '..', 'migrations');
 
@@ -76,6 +77,8 @@ function criarAuxiliares(conexao) {
 async function migrar({ silencioso = false } = {}) {
 
   const log = silencioso ? () => {} : console.log;
+
+  log(`Banco: ${config.db.host}:${config.db.port}/${config.db.database} — ${config.descricaoSslBanco}`);
 
   const conexao = await db.getConnection();
 
@@ -151,6 +154,14 @@ if (require.main === module) {
     .then(() => db.end())
     .catch(async erro => {
       console.error('Erro ao executar migrações:', erro.message);
+
+      if (/certificate|self.signed|SSL|insecure transport/i.test(erro.message)) {
+        console.error(
+          'Dica: o banco exige SSL com o CA certificate do serviço (Aiven: aba Overview > CA certificate).\n' +
+          'Use DB_SSL_CA (conteúdo do .pem) ou DB_SSL_CA_FILE (caminho do arquivo). Veja docs/DEPLOY.md.'
+        );
+      }
+
       await db.end();
       process.exit(1);
     });
