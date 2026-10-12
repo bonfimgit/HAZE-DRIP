@@ -88,7 +88,7 @@ npm run migrate
 
 ## 8. Netlify (loja e painel)
 
-- Publique a raiz do repositório (configurado em `netlify.toml`). A loja fica em `/frontend/` e o painel em `/admin/`; a raiz `/` redireciona para a loja e links antigos `/hazedrip/...` continuam funcionando.
+- Publique a raiz do repositório (configurado em `netlify.toml`). A loja fica em `/frontend/` e o painel em `/admin/` (abre o `login.html`); a raiz `/` redireciona para a loja e links antigos `/hazedrip/...` continuam funcionando.
 - A URL da API está em `frontend/script.js` e `admin/config.js` (em `localhost` usa a API local automaticamente).
 - Inclua o domínio do Netlify em `FRONTEND_URLS` na API.
 

@@ -9,6 +9,17 @@
   to = "/frontend/"
   status = 302
 
+# Painel não tem index.html: entrada pelo login
+[[redirects]]
+  from = "/admin"
+  to = "/admin/login.html"
+  status = 302
+
+[[redirects]]
+  from = "/admin/"
+  to = "/admin/login.html"
+  status = 302
+
 # Links antigos do deploy manual (/hazedrip/frontend/...)
 [[redirects]]
   from = "/hazedrip/*"
