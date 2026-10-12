@@ -1,0 +1,29 @@
+# Netlify: publica a raiz do repositório (loja em /frontend/, painel em /admin/)
+[build]
+  publish = "."
+  command = ""
+
+# Endereço principal abre a loja
+[[redirects]]
+  from = "/"
+  to = "/frontend/"
+  status = 302
+
+# Links antigos do deploy manual (/hazedrip/frontend/...)
+[[redirects]]
+  from = "/hazedrip/*"
+  to = "/:splat"
+  status = 301
+
+# Código e documentação do backend não são servidos pelo site
+[[redirects]]
+  from = "/backend/*"
+  to = "/frontend/"
+  status = 302
+  force = true
+
+[[redirects]]
+  from = "/docs/*"
+  to = "/frontend/"
+  status = 302
+  force = true
