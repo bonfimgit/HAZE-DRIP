@@ -8,7 +8,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 
 ## 🌐 Demonstração
 
-**Loja:** https://ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
+**Loja:** https://ubiquitous-squirrel-39e709.netlify.app/
 
 **Painel administrativo:** tem autenticação própria; as credenciais não são públicas.
 
