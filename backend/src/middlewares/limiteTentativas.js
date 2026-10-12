@@ -2,7 +2,7 @@
   Limitador de requisições em memória.
 
   Suficiente para uma única instância da API (cenário atual no
-  Railway). Com várias instâncias, trocar por um armazenamento
+  Render). Com várias instâncias, trocar por um armazenamento
   compartilhado (ex.: Redis).
 */
 

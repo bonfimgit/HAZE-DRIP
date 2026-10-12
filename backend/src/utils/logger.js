@@ -1,6 +1,6 @@
 /*
   Logs estruturados em JSON (uma linha por evento).
-  O Railway exibe e permite filtrar esses logs.
+  O Render exibe e permite filtrar esses logs.
 */
 
 const config = require('../config/ambiente');
