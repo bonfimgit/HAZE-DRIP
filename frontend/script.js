@@ -1,13 +1,13 @@
 /*
   Endereço da API.
   - Em localhost/127.0.0.1: API local (npm start no backend)
-  - Em produção: API publicada no Railway
+  - Em produção: API publicada no Render
   Pode ser sobrescrito definindo window.HAZE_API_URL antes deste arquivo.
 */
 const API_URL = window.HAZE_API_URL || (
   ['localhost', '127.0.0.1'].includes(window.location.hostname)
     ? 'http://localhost:3000'
-    : 'https://hazedrip-production-6a67.up.railway.app'
+    : 'https://haze-drip.onrender.com'
 );
 
 /*

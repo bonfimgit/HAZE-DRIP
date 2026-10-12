@@ -5,7 +5,7 @@ const LENTA_MS = 1000;
 
 /*
   Uma linha de log por requisição (método, rota, status, duração).
-  Base para monitorar erros e lentidão no painel do Railway.
+  Base para monitorar erros e lentidão no painel do Render.
 */
 function registroRequisicoes(req, res, next) {
 

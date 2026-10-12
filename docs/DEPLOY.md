@@ -1,21 +1,36 @@
 # Deploy e operação
 
-Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Railway** (API Node.js + MySQL 8) → **Cloudinary** (imagens), **Mercado Pago** (pagamentos), **Resend** (e-mails).
+Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Render** (API Node.js, plano Free) → **Aiven** (MySQL 8, plano Free) → **Cloudinary** (imagens), **Mercado Pago** (pagamentos), **Resend** (e-mails).
 
 ## 1. Antes de publicar esta versão
 
-1. **Troque as credenciais que estavam no repositório.** Uma versão antiga de `backend/.env.example` tinha valores reais. Gere um novo `JWT_SECRET`, gere novas chaves no Cloudinary e troque a senha do banco, se for a mesma. Atualize tudo no Railway. Trocar o `JWT_SECRET` desloga todo mundo, o que é o esperado.
+1. **Troque as credenciais que estavam no repositório.** Uma versão antiga de `backend/.env.example` tinha valores reais. Gere um novo `JWT_SECRET`, gere novas chaves no Cloudinary e troque a senha do banco, se for a mesma. Atualize tudo no Render. Trocar o `JWT_SECRET` desloga todo mundo, o que é o esperado.
 2. **Faça backup do banco** (seção 6).
 3. Publique a API e rode as migrações (seção 3).
 
-## 2. Variáveis de ambiente (Railway → serviço da API → Variables)
+## 2. Render (API)
+
+Serviço **Web Service** ligado a `bonfimgit/HAZE-DRIP`, branch `main`:
+
+| Campo | Valor |
+|---|---|
+| Root Directory | `backend` |
+| Build Command | `npm ci` |
+| Start Command | `npm run migrate && npm start` |
+| Health Check Path | `/health` |
+| Instance Type | Free |
+
+URL atual: `https://haze-drip.onrender.com`. O plano Free dorme após 15 minutos sem acesso; o monitor da seção 7 mantém a API acordada.
+
+## 2.1 Variáveis de ambiente (Render → serviço → Environment)
 
 Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). Em produção:
 
 | Variável | Valor |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Do serviço MySQL do Railway |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Aiven → serviço MySQL → *Connection information* |
+| `DB_SSL_CA` ou `DB_SSL_CA_FILE` | Aiven → *CA certificate* (conteúdo do `.pem`, ou o arquivo em *Secret Files* com `DB_SSL_CA_FILE=/etc/secrets/ca.pem`) |
 | `JWT_SECRET` | 64+ caracteres aleatórios |
 | `FRONTEND_URLS` | Domínio(s) do Netlify, ex.: `https://hazedrip.com.br,https://www.hazedrip.com.br` |
 | `STORE_URL` | URL pública da loja, ex.: `https://hazedrip.com.br/frontend` |
@@ -38,7 +53,7 @@ npm run migrate
 ```
 
 - **Banco atual (produção):** a migração `001` usa `CREATE TABLE IF NOT EXISTS` e não altera as tabelas existentes. As seguintes só **adicionam** colunas, índices e tabelas que ainda não existem.
-- No Railway: rode localmente apontando o `.env` para o banco de produção (variáveis públicas do MySQL do Railway) ou adicione `npm run migrate &&` antes do comando de start.
+- No Render as migrações rodam a cada início (`npm run migrate && npm start`); se nada estiver pendente, não fazem nada.
 - Banco novo: `npm run migrate` cria tudo. Depois crie o gerente: `node criar-admin.js "SenhaForte123"`.
 
 ## 4. Mercado Pago
@@ -56,18 +71,18 @@ npm run migrate
 
 ## 6. Backup e recuperação
 
-- **Railway:** ative os backups do volume do MySQL (aba *Backups* do serviço) com agendamento diário e retenção mínima de 7 dias.
-- **Cópia manual** (antes de migrações e mudanças grandes), com as variáveis públicas do MySQL do Railway:
+- **Aiven:** o plano Free inclui backups do serviço. Confira na aba *Backups* e não dependa só deles: faça a cópia manual abaixo com frequência.
+- **Cópia manual** (antes de migrações e mudanças grandes), com os dados de conexão do Aiven:
   ```bash
-  mysqldump -h <host> -P <porta> -u <usuario> -p --single-transaction --routines <banco> > backup-$(date +%F).sql
+  mysqldump -h <host> -P <porta> -u avnadmin -p --ssl-ca=ca.pem --single-transaction --no-tablespaces --set-gtid-purged=OFF <banco> > backup-$(date +%F).sql
   ```
-- **Restaurar:** `mysql -h <host> -P <porta> -u <usuario> -p <banco> < backup.sql`. Teste a restauração em um banco separado pelo menos uma vez.
+- **Restaurar:** `mysql -h <host> -P <porta> -u avnadmin -p --ssl-ca=ca.pem <banco> < backup.sql`. Teste a restauração em um banco separado pelo menos uma vez.
 - Arquivos `.sql` estão no `.gitignore`: **nunca** versione backups.
 
 ## 7. Monitoramento e alertas
 
 - **Disponibilidade:** cadastre `https://<sua-api>/health` no UptimeRobot (ou similar) a cada 5 minutos, com alerta por e-mail/WhatsApp. Responde 500 se o banco cair.
-- **Logs:** a API escreve uma linha JSON por requisição (rota, status, duração). No Railway, filtre por `"nivel":"error"` (erros) e `"Requisição lenta"` (mais de 1 s).
+- **Logs:** a API escreve uma linha JSON por requisição (rota, status, duração). No Render (aba *Logs*), filtre por `"nivel":"error"` (erros) e `"Requisição lenta"` (mais de 1 s).
 - **Pagamentos a revisar:** o dashboard mostra pedidos com pagamento divergente ou pago após cancelamento.
 - **Auditoria:** ações do painel ficam na tabela `auditoria_admin`.
 

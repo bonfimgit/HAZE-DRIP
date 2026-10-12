@@ -34,7 +34,7 @@ function criarApp() {
 
   notificacoes.registrar();
 
-  // Railway fica atrás de proxy: usa o IP real do cliente em req.ip
+  // Render fica atrás de proxy: usa o IP real do cliente em req.ip
   app.set('trust proxy', 1);
   app.disable('x-powered-by');
 
@@ -84,7 +84,7 @@ function criarApp() {
   });
 
   /*
-    Health check para monitoramento externo (UptimeRobot, Railway).
+    Health check para monitoramento externo (UptimeRobot, Render).
     Responde 500 se o banco estiver fora, para disparar alerta.
   */
   app.get('/health', async (req, res) => {

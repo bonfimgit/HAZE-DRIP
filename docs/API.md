@@ -1,6 +1,6 @@
 # Referência da API
 
-Base: `https://<sua-api>.up.railway.app` (local: `http://localhost:3000`).
+Base: `https://haze-drip.onrender.com` (local: `http://localhost:3000`).
 
 - Corpo e respostas em JSON (exceto upload de imagem, multipart).
 - Erros: `{ "mensagem": "...", "erro": "..." }` (mesmo texto nos dois campos) com status HTTP adequado.

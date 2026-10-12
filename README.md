@@ -8,7 +8,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 
 ## 🌐 Demonstração
 
-**Loja:** https://6a9ed0deee28f68217553dad--ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
+**Loja:** https://ubiquitous-squirrel-39e709.netlify.app/hazedrip/frontend/
 
 **Painel administrativo:** tem autenticação própria; as credenciais não são públicas.
 
@@ -64,7 +64,7 @@ Aguardando pagamento → Pago → Em preparação → Enviado → Entregue
 | Backend | Node.js, Express 5, JWT, bcrypt, Multer, Helmet |
 | Banco | MySQL 8 (transações, índices, migrações versionadas) |
 | Serviços | Mercado Pago, Cloudinary, Resend, ViaCEP |
-| Infra | Railway (API e banco), Netlify (loja e painel), GitHub Actions (CI) |
+| Infra | Render (API), Aiven (MySQL), Netlify (loja e painel), GitHub Actions (CI) |
 | Testes | `node:test` + `fetch` contra banco real |
 
 ## 🗂️ Estrutura

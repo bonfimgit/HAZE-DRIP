@@ -1,11 +1,11 @@
 /*
   Carrega o .env (quando existir) e centraliza as configurações.
-  Em produção (Railway) as variáveis já vêm do ambiente.
+  Em produção (Render) as variáveis já vêm do ambiente.
 */
 
 /*
   Fuso da loja: datas de pedidos e relatórios em horário de Brasília,
-  mesmo com o servidor (Railway) em UTC.
+  mesmo com o servidor (Render) em UTC.
 */
 process.env.TZ = process.env.TZ || 'America/Sao_Paulo';
 
