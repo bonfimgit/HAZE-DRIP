@@ -2506,6 +2506,11 @@ a.card-name:hover {
   line-height: 1.75;
 }
 
+/* Espaço entre parágrafos seguidos */
+.pagina-texto p + p {
+  margin-top: 18px;
+}
+
 .pagina-texto ul,
 .pagina-texto ol {
   padding-left: 20px;
