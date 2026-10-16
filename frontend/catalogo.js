@@ -189,6 +189,7 @@
     salvarUrl();
     marcarControles();
     carregarProdutos();
+    atualizarTamanhosCores();
   }
 
 
@@ -206,8 +207,22 @@
 
     try {
 
-      const resposta = await fetch(`${API_URL}/catalogo/filtros`);
+      // Já pede a contagem de tamanhos e cores da categoria da URL
+      categoriasDasFacetas = [...filtros.categorias].sort().join(',');
+      const consulta = categoriasDasFacetas ? `?categoria=${encodeURIComponent(categoriasDasFacetas)}` : '';
+
+      const [resposta, respostaCategoria] = await Promise.all([
+        fetch(`${API_URL}/catalogo/filtros`),
+        consulta ? fetch(`${API_URL}/catalogo/filtros${consulta}`) : null
+      ]);
+
       const facetas = await resposta.json();
+
+      if (respostaCategoria?.ok) {
+        const daCategoria = await respostaCategoria.json();
+        facetas.tamanhos = daCategoria.tamanhos;
+        facetas.cores = daCategoria.cores;
+      }
 
       $('filtro-categorias').innerHTML = facetas.categorias.map(c => `
         <label class="filter-opt">
@@ -215,17 +230,7 @@
           <span class="count">${Number(c.total)}</span>
         </label>`).join('') || '<p class="estado-carregando">Sem categorias.</p>';
 
-      $('filtro-tamanhos').innerHTML = facetas.tamanhos.map(t => `
-        <label class="filtro-chip">
-          <input type="checkbox" data-filtro="tamanhos" value="${escaparHtml(t.valor)}">
-          <span>${escaparHtml(t.valor)}</span>
-        </label>`).join('');
-
-      $('filtro-cores').innerHTML = facetas.cores.map(c => `
-        <label class="filtro-chip filtro-cor" title="${escaparHtml(c.valor)}">
-          <input type="checkbox" data-filtro="cores" value="${escaparHtml(c.valor)}">
-          <span><i style="background:${corCss(c.valor)}"></i>${escaparHtml(c.valor)}</span>
-        </label>`).join('');
+      montarTamanhosCores(facetas);
 
       if (facetas.preco.maximo) {
         $('filtro-preco-min').placeholder = `Mín. ${Math.floor(facetas.preco.minimo)}`;
@@ -247,11 +252,62 @@
   }
 
 
+  // Tamanhos e cores com a quantidade de produtos; o que não
+  // existe na categoria escolhida fica desabilitado
+  function montarTamanhosCores(facetas) {
+
+    const chip = (filtro, opcao, conteudo, extra = '') => {
+      const vazio = opcao.total === 0;
+      return `
+        <label class="filtro-chip${extra}" title="${escaparHtml(opcao.valor)}${vazio ? ' (indisponível nesta categoria)' : ''}">
+          <input type="checkbox" data-filtro="${filtro}" value="${escaparHtml(opcao.valor)}"${vazio ? ' data-vazio' : ''}>
+          <span>${conteudo}<small class="count">${Number(opcao.total)}</small></span>
+        </label>`;
+    };
+
+    $('filtro-tamanhos').innerHTML = facetas.tamanhos.map(t =>
+      chip('tamanhos', t, escaparHtml(t.valor))
+    ).join('');
+
+    $('filtro-cores').innerHTML = facetas.cores.map(c =>
+      chip('cores', c, `<i style="background:${corCss(c.valor)}"></i>${escaparHtml(c.valor)}`, ' filtro-cor')
+    ).join('');
+  }
+
+
+  // Recarrega tamanhos e cores quando a categoria muda
+  let categoriasDasFacetas = '';
+
+  async function atualizarTamanhosCores() {
+
+    const chave = [...filtros.categorias].sort().join(',');
+    if (chave === categoriasDasFacetas) return;
+    categoriasDasFacetas = chave;
+
+    try {
+      const consulta = chave ? `?categoria=${encodeURIComponent(chave)}` : '';
+      const resposta = await fetch(`${API_URL}/catalogo/filtros${consulta}`);
+      if (!resposta.ok) return;
+      const facetas = await resposta.json();
+
+      // Outra troca de categoria chegou antes desta resposta
+      if (chave !== categoriasDasFacetas) return;
+
+      montarTamanhosCores(facetas);
+      marcarControles();
+    } catch {
+      // Mantém os chips que já estão na tela
+    }
+  }
+
+
   // Reflete o estado atual nos controles da tela
   function marcarControles() {
 
     document.querySelectorAll('[data-filtro]').forEach(caixa => {
       caixa.checked = filtros[caixa.dataset.filtro].has(caixa.value);
+      // Marcado continua clicável, para o cliente poder desmarcar
+      caixa.disabled = caixa.hasAttribute('data-vazio') && !caixa.checked;
     });
 
     $('catalogo-busca').value = filtros.busca;

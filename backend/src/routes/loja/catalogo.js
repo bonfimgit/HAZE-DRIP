@@ -50,7 +50,9 @@ router.get('/catalogo', cachePublico(60), async (req, res) => {
 });
 
 router.get('/catalogo/filtros', cachePublico(300), async (req, res) => {
-  res.json(await catalogoService.facetas());
+  res.json(await catalogoService.facetas({
+    categorias: lista(req.query.categoria)?.map(id => valida.id(id, 'Categoria inválida'))
+  }));
 });
 
 router.get('/produtos', cachePublico(60), async (req, res) => {

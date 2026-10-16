@@ -2249,6 +2249,17 @@ h1,h2,h3,h4{
   background: rgba(220, 201, 245, .08);
 }
 
+.filtro-chip .count {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--fog-dim);
+}
+
+.filtro-chip input:disabled + span {
+  opacity: .35;
+  cursor: not-allowed;
+}
+
 .filtro-chip input:focus-visible + span {
   outline: 2px solid var(--holo-2);
   outline-offset: 2px;

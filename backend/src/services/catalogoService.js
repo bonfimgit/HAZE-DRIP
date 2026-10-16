@@ -186,8 +186,11 @@ async function buscar(filtros) {
 
 /*
   Opções para a barra de filtros, com contagem de produtos.
+  Com categorias escolhidas, a contagem de tamanhos e cores
+  considera só os produtos delas (a lista continua completa,
+  com total 0 no que a categoria não tem).
 */
-async function facetas() {
+async function facetas({ categorias: escolhidas } = {}) {
 
   const [categorias] = await db.query(
     `SELECT c.id, c.nome, COUNT(p.id) AS total
@@ -215,6 +218,11 @@ async function facetas() {
      ORDER BY v.cor`
   );
 
+  if (escolhidas?.length) {
+    await contarNasCategorias(tamanhos, 'tamanho', escolhidas);
+    await contarNasCategorias(cores, 'cor', escolhidas);
+  }
+
   const [[faixa]] = await db.query(
     `SELECT MIN(preco_efetivo) AS minimo, MAX(preco_efetivo) AS maximo
      FROM (${BASE}) AS base`
@@ -241,6 +249,26 @@ async function facetas() {
       maximo: faixa.maximo != null ? Number(faixa.maximo) : 0
     }
   };
+}
+
+
+// Troca o total de cada opção pelo total dentro das categorias
+async function contarNasCategorias(opcoes, coluna, categorias) {
+
+  const [linhas] = await db.query(
+    `SELECT v.${coluna} AS valor, COUNT(DISTINCT v.produto_id) AS total
+     FROM produto_variacoes v
+     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE
+     WHERE v.ativo = TRUE AND v.estoque > 0 AND p.categoria_id IN (?)
+     GROUP BY v.${coluna}`,
+    [categorias]
+  );
+
+  const totais = new Map(linhas.map(l => [l.valor, Number(l.total)]));
+
+  opcoes.forEach(opcao => {
+    opcao.total = totais.get(opcao.valor) || 0;
+  });
 }
 
 
