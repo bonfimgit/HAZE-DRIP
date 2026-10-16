@@ -43,6 +43,24 @@ function formatarMoeda(valor) {
 }
 
 /*
+  Linha "de" da promoção: preço anterior riscado + "24% OFF".
+  Vazia quando o produto não está em promoção.
+*/
+function montarPrecoPromocional(produto) {
+
+  if (!produto.preco_original || !produto.promocao) {
+    return '';
+  }
+
+  return `
+    <span class="preco-promocao">
+      <span class="preco-original">${formatarMoeda(produto.preco_original)}</span>
+      <span class="preco-desconto">${Number(produto.promocao.desconto_percentual)}% OFF</span>
+    </span>`;
+}
+
+
+/*
   Card de produto usado na Home, no catálogo e em "Você também pode gostar".
 */
 function criarCardProduto(produto) {
@@ -59,7 +77,9 @@ function criarCardProduto(produto) {
     ? `<span class="card-nota" aria-label="Nota ${produto.avaliacao_media} de 5">★ ${Number(produto.avaliacao_media).toLocaleString('pt-BR')} <small>(${Number(produto.avaliacao_total)})</small></span>`
     : '';
 
-  const esgotado = produto.estoque_total === 0;
+  const estoqueTotal = produto.estoque_total == null ? null : Number(produto.estoque_total);
+
+  const esgotado = estoqueTotal === 0;
 
   card.innerHTML = `
     <a class="card-art" href="produto.html?id=${Number(produto.id)}" aria-label="${escaparHtml(produto.nome)}">
@@ -71,12 +91,9 @@ function criarCardProduto(produto) {
     </a>
     <div class="card-info">
       <a class="card-name" href="produto.html?id=${Number(produto.id)}">${escaparHtml(produto.nome)}</a>
-      <span class="card-price mono">
-        ${produto.preco_original
-          ? `<span class="preco-original">${formatarMoeda(produto.preco_original)}</span>`
-          : ''}
-        ${formatarMoeda(produto.preco)}
-      </span>
+      ${montarPrecoPromocional(produto)}
+      <span class="card-price mono">${formatarMoeda(produto.preco)}</span>
+      ${estoqueTotal === 1 ? '<span class="aviso-ultima-peca">Atenção, última peça!</span>' : ''}
       ${nota}
     </div>`;
 
@@ -994,9 +1011,18 @@ async function carregarProduto() {
     // Preço efetivo guardado no elemento (usado ao adicionar à sacola)
     precoEl.dataset.preco = preco;
 
-    precoEl.innerHTML = produto.preco_original
-      ? `<span class="preco-original">${formatarMoeda(produto.preco_original)}</span>${formatarMoeda(preco)}`
-      : formatarMoeda(preco);
+    precoEl.innerHTML =
+      montarPrecoPromocional(produto) +
+      `<span class="preco-atual">${formatarMoeda(preco)}</span>`;
+
+
+    /* =========================================
+       ÚLTIMA PEÇA
+    ========================================== */
+
+    document.getElementById(
+      'produto-ultima-peca'
+    ).hidden = Number(produto.estoque_total) !== 1;
 
 
     /* =========================================

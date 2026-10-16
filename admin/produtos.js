@@ -210,6 +210,12 @@ function renderizarProdutosAdmin(produtos) {
 
             ${preco}
 
+            ${produto.preco_promocional != null
+              ? `<br><small class="admin-muted-text">Promoção: ${
+                  Number(produto.preco_promocional).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+                }</small>`
+              : ''}
+
           </td>
 
 

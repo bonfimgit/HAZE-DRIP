@@ -150,6 +150,7 @@ async function validarItensNoBanco(conexao, itens) {
           v.ativo AS variacao_ativa,
           p.nome AS produto_nome,
           p.preco,
+          p.preco_promocional,
           p.ativo AS produto_ativo
        FROM produto_variacoes v
        INNER JOIN produtos p
@@ -177,11 +178,12 @@ async function validarItensNoBanco(conexao, itens) {
     }
 
     // Preço da promoção vigente, se houver
-    const promocao = descontos.get(produto.produto_id);
-
-    const precoUnitario = promocao
-      ? promocoesService.precoComDesconto(produto.preco, promocao.desconto_percentual)
-      : Number(produto.preco);
+    const { preco: precoUnitario, preco_original: precoOriginal } =
+      promocoesService.calcularPreco(
+        produto.preco,
+        produto.preco_promocional,
+        descontos.get(produto.produto_id)
+      );
 
     validados.push({
       produto_id: produto.produto_id,
@@ -191,7 +193,7 @@ async function validarItensNoBanco(conexao, itens) {
       cor: produto.cor,
       tamanho: produto.tamanho,
       preco_unitario: precoUnitario,
-      preco_original: promocao ? Number(produto.preco) : null,
+      preco_original: precoOriginal,
       quantidade: item.quantidade,
       estoque: Number(produto.estoque),
       subtotal: arredondar(precoUnitario * item.quantidade)

@@ -2135,10 +2135,50 @@ h1,h2,h3,h4{
 ============================================================= */
 
 .preco-original {
-  margin-right: 8px;
   color: var(--fog-dim);
   text-decoration: line-through;
   font-weight: 400;
+}
+
+/* Linha "de": preço anterior riscado + "24% OFF" */
+.preco-promocao {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.preco-desconto {
+  color: var(--fog);
+  font-weight: 700;
+  letter-spacing: .04em;
+}
+
+.product-price .preco-promocao {
+  margin-bottom: 4px;
+  font-size: 15px;
+}
+
+.product-price .preco-atual {
+  display: block;
+}
+
+/* "Atenção, última peça!" */
+.aviso-ultima-peca {
+  color: var(--orange);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.aviso-ultima-peca[hidden] {
+  display: none;
+}
+
+.product-info .aviso-ultima-peca {
+  margin: 4px 0 16px;
+  font-size: 15px;
 }
 
 .selo-promocao {

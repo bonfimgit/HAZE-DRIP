@@ -22,6 +22,7 @@ function lerProduto(corpo, { edicao = false } = {}) {
     nome,
     descricao,
     preco,
+    preco_promocional: precoPromocional,
     categoria_id: categoriaId,
     ativo,
     destaque_home: destaqueHome
@@ -45,6 +46,15 @@ function lerProduto(corpo, { edicao = false } = {}) {
   }
 
   dados.preco = valida.dinheiro(preco, 'Preço deve ser um número maior que zero');
+
+  // Preço promocional ("por"): opcional e menor que o preço normal
+  dados.precoPromocional = precoPromocional == null || precoPromocional === ''
+    ? null
+    : valida.dinheiro(precoPromocional, 'Preço promocional deve ser um número maior que zero');
+
+  if (dados.precoPromocional != null && dados.precoPromocional >= dados.preco) {
+    throw requisicaoInvalida('Preço promocional deve ser menor que o preço normal');
+  }
   dados.categoriaId = valida.id(categoriaId, 'Categoria inválida ou inativa');
   dados.ativo = valida.paraBoolean(ativo);
   dados.destaqueHome = valida.paraBoolean(destaqueHome);

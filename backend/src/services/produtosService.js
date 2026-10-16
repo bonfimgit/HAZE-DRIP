@@ -12,7 +12,12 @@ const SELECT_LISTAGEM = `
       WHERE pi.produto_id = p.id
       AND pi.principal = TRUE
       LIMIT 1
-    ) AS imagem_principal
+    ) AS imagem_principal,
+    (
+      SELECT COALESCE(SUM(v.estoque), 0)
+      FROM produto_variacoes v
+      WHERE v.produto_id = p.id AND v.ativo = TRUE
+    ) AS estoque_total
   FROM produtos p
   LEFT JOIN categorias c
     ON c.id = p.categoria_id
@@ -215,7 +220,7 @@ async function motivoParaNaoPublicar(produtoId) {
 }
 
 
-async function criar({ nome, descricao, preco, categoriaId, ativo, destaqueHome }) {
+async function criar({ nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome }) {
 
   await validarCategoriaAtiva(categoriaId);
 
@@ -229,9 +234,9 @@ async function criar({ nome, descricao, preco, categoriaId, ativo, destaqueHome 
 
   const [resultado] = await db.execute(
     `INSERT INTO produtos
-      (nome, descricao, preco, categoria_id, ativo, destaque_home)
-     VALUES (?, ?, ?, ?, FALSE, ?)`,
-    [nome, descricao, preco, categoriaId, destaqueHome]
+      (nome, descricao, preco, preco_promocional, categoria_id, ativo, destaque_home)
+     VALUES (?, ?, ?, ?, ?, FALSE, ?)`,
+    [nome, descricao, preco, precoPromocional, categoriaId, destaqueHome]
   );
 
   const [produtos] = await db.execute(
@@ -253,7 +258,7 @@ const AVISOS_ATIVACAO = {
 };
 
 
-async function atualizar(produtoId, { nome, descricao, preco, categoriaId, ativo, destaqueHome }) {
+async function atualizar(produtoId, { nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome }) {
 
   await validarCategoriaAtiva(categoriaId);
 
@@ -276,11 +281,12 @@ async function atualizar(produtoId, { nome, descricao, preco, categoriaId, ativo
         nome = ?,
         descricao = ?,
         preco = ?,
+        preco_promocional = ?,
         categoria_id = ?,
         ativo = ?,
         destaque_home = ?
      WHERE id = ?`,
-    [nome, descricao, preco, categoriaId, ativoFinal, destaqueHome, produtoId]
+    [nome, descricao, preco, precoPromocional, categoriaId, ativoFinal, destaqueHome, produtoId]
   );
 
   if (resultado.affectedRows === 0) {

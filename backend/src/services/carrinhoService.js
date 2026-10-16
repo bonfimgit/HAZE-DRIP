@@ -72,6 +72,7 @@ async function validar(itens) {
         v.ativo AS variacao_ativa,
         p.nome,
         p.preco,
+        p.preco_promocional,
         p.ativo AS produto_ativo,
         (
           SELECT pi.url
@@ -126,11 +127,11 @@ async function validar(itens) {
       aviso = `Só restam ${estoque} unidade(s). A quantidade foi ajustada.`;
     }
 
-    const promocao = descontos.get(linha.produto_id);
-
-    const preco = promocao
-      ? promocoesService.precoComDesconto(linha.preco, promocao.desconto_percentual)
-      : Number(linha.preco);
+    const { preco, preco_original: precoOriginal } = promocoesService.calcularPreco(
+      linha.preco,
+      linha.preco_promocional,
+      descontos.get(linha.produto_id)
+    );
 
     resultado.push({
       variacao_id: variacaoId,
@@ -139,7 +140,7 @@ async function validar(itens) {
       cor: linha.cor,
       tamanho: linha.tamanho,
       preco,
-      preco_original: promocao ? Number(linha.preco) : null,
+      preco_original: precoOriginal,
       imagem: linha.imagem,
       estoque,
       quantidade: quantidadeFinal,
