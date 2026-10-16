@@ -36,6 +36,12 @@ const editarPreco =
   );
 
 
+const editarPrecoPromocional =
+  document.getElementById(
+    'editar-preco-promocional'
+  );
+
+
 const editarCategoria =
   document.getElementById(
     'editar-categoria'
@@ -279,6 +285,13 @@ const produto =
         .toFixed(2);
 
 
+    editarPrecoPromocional.value =
+      produto.preco_promocional == null
+        ? ''
+        : Number(produto.preco_promocional)
+          .toFixed(2);
+
+
     editarCategoria.value =
       String(produto.categoria_id);
 
@@ -446,6 +459,12 @@ if (editarForm) {
         Number(editarPreco.value);
 
 
+      const precoPromocional =
+        editarPrecoPromocional.value === ''
+          ? null
+          : Number(editarPrecoPromocional.value);
+
+
       const categoriaId =
         Number(
           editarCategoria.value
@@ -471,6 +490,23 @@ if (editarForm) {
 
         editarMensagem.textContent =
           'Informe um preço válido.';
+
+        return;
+
+      }
+
+
+      if (
+        precoPromocional !== null &&
+        (
+          !Number.isFinite(precoPromocional) ||
+          precoPromocional <= 0 ||
+          precoPromocional >= preco
+        )
+      ) {
+
+        editarMensagem.textContent =
+          'O preço promocional deve ser menor que o preço normal.';
 
         return;
 
@@ -508,6 +544,9 @@ const categoriaNome =
 
   preco:
     preco,
+
+  preco_promocional:
+    precoPromocional,
 
 
   categoria_id:

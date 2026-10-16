@@ -26,6 +26,12 @@ const novoPreco =
   );
 
 
+const novoPrecoPromocional =
+  document.getElementById(
+    'novo-produto-preco-promocional'
+  );
+
+
 const novaCategoria =
   document.getElementById(
     'novo-produto-categoria'
@@ -221,6 +227,12 @@ novoForm.addEventListener(
       );
 
 
+    const precoPromocional =
+      novoPrecoPromocional.value === ''
+        ? null
+        : Number(novoPrecoPromocional.value);
+
+
     const categoriaId =
       Number(
         novaCategoria.value
@@ -251,6 +263,23 @@ novoForm.addEventListener(
 
 
     if (
+      precoPromocional !== null &&
+      (
+        !Number.isFinite(precoPromocional) ||
+        precoPromocional <= 0 ||
+        precoPromocional >= preco
+      )
+    ) {
+
+      novaMensagem.textContent =
+        'O preço promocional deve ser menor que o preço normal.';
+
+      return;
+
+    }
+
+
+    if (
       !Number.isInteger(categoriaId) ||
       categoriaId <= 0
     ) {
@@ -271,6 +300,9 @@ novoForm.addEventListener(
         novaDescricao.value.trim(),
 
       preco: preco,
+
+      preco_promocional:
+        precoPromocional,
 
       categoria_id:
         categoriaId,

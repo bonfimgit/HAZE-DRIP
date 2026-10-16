@@ -99,6 +99,57 @@ test('filtro de preço usa o preço promocional', async () => {
   await db.query('DELETE FROM campanhas WHERE id = ?', [campanha.insertId]);
 });
 
+test('preço promocional do produto: de/por, % OFF e última peça', async () => {
+
+  const edicao = (precoPromocional) => ({
+    nome: 'Camiseta Haze',
+    descricao: 'Algodão',
+    preco: 100,
+    preco_promocional: precoPromocional,
+    categoria_id: ids.categoriaId,
+    ativo: true,
+    destaque_home: true
+  });
+
+  // Promocional precisa ser menor que o preço normal
+  assert.equal((await api.put(`/produtos/${ids.produtoId}`, edicao(100), { token })).status, 400);
+
+  assert.equal((await api.put(`/produtos/${ids.produtoId}`, edicao(76), { token })).status, 200);
+
+  const produto = await api.get(`/produtos/${ids.produtoId}`);
+  assert.equal(produto.dados.preco, 76);
+  assert.equal(produto.dados.preco_original, 100);
+  assert.equal(produto.dados.promocao.desconto_percentual, 24);
+
+  const promo = await api.get('/catalogo?promocao=1');
+  assert.deepEqual(promo.dados.produtos.map(p => p.nome), ['Camiseta Haze']);
+
+  // Sacola e pedido cobram o preço promocional
+  const sacola = await api.post('/carrinho/validar', {
+    itens: [{ variacao_id: ids.variacaoPId, quantidade: 1 }]
+  });
+  assert.equal(sacola.dados.itens[0].preco, 76);
+  assert.equal(sacola.dados.itens[0].preco_original, 100);
+
+  // Campanha com desconto maior vence o preço promocional
+  const [campanha] = await db.query(
+    "INSERT INTO campanhas (titulo, imagem_url, ativo, desconto_percentual) VALUES ('Promo', 'x', TRUE, 50)"
+  );
+  await db.query('INSERT INTO campanha_produtos VALUES (?, ?)', [campanha.insertId, ids.produtoId]);
+  assert.equal((await api.get(`/produtos/${ids.produtoId}`)).dados.preco, 50);
+  await db.query('DELETE FROM campanhas WHERE id = ?', [campanha.insertId]);
+
+  // Vazio tira a promoção
+  assert.equal((await api.put(`/produtos/${ids.produtoId}`, edicao(null), { token })).status, 200);
+  const semPromo = await api.get(`/produtos/${ids.produtoId}`);
+  assert.equal(semPromo.dados.preco, 100);
+  assert.equal(semPromo.dados.preco_original, null);
+
+  // Destaques trazem o estoque total (aviso de última peça)
+  const destaques = await api.get('/produtos/destaques');
+  assert.equal(destaques.dados[0].estoque_total, 7);
+});
+
 test('facetas para a barra de filtros', async () => {
 
   const r = await api.get('/catalogo/filtros');

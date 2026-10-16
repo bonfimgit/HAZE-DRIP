@@ -1,10 +1,13 @@
 /*
-  Promoções por campanha.
+  Promoções por campanha e preço promocional do produto.
 
   Uma campanha com "desconto_percentual" e produtos participantes
   aplica o desconto enquanto estiver ativa e dentro do período
   (inicio_em/fim_em). Fora do período, o preço volta ao normal
   sozinho — ativação e desativação automáticas.
+
+  O produto também pode ter um "preco_promocional" próprio (de/por).
+  Vale o menor preço entre a campanha e o preço promocional.
 */
 
 const db = require('../config/db');
@@ -64,6 +67,49 @@ function precoComDesconto(preco, percentual) {
 
 
 /*
+  Preço que o cliente paga, considerando a campanha vigente
+  ("promocao", vinda de descontosVigentes) e o preço promocional
+  do produto. Devolve:
+    preco                preço efetivo
+    preco_original       preço cheio, apenas quando há desconto
+    desconto_percentual  desconto arredondado (ex.: 24 para "24% OFF")
+    campanha             linha da campanha, se foi ela que valeu
+*/
+function calcularPreco(precoCheio, precoPromocional, promocao) {
+
+  const cheio = Number(precoCheio);
+
+  let preco = cheio;
+  let campanha = null;
+
+  const promocional = Number(precoPromocional);
+
+  if (precoPromocional != null && promocional > 0 && promocional < cheio) {
+    preco = promocional;
+  }
+
+  if (promocao) {
+    const precoCampanha = precoComDesconto(cheio, promocao.desconto_percentual);
+    if (precoCampanha < preco) {
+      preco = precoCampanha;
+      campanha = promocao;
+    }
+  }
+
+  if (preco >= cheio) {
+    return { preco: cheio, preco_original: null, desconto_percentual: 0, campanha: null };
+  }
+
+  return {
+    preco,
+    preco_original: cheio,
+    desconto_percentual: Math.round((1 - preco / cheio) * 100),
+    campanha
+  };
+}
+
+
+/*
   Acrescenta preço promocional a produtos (listagens da loja):
     preco           preço efetivo (com desconto, se houver)
     preco_original  preço cheio, apenas quando há promoção
@@ -75,20 +121,24 @@ async function aplicarEmProdutos(produtos) {
 
   return produtos.map(produto => {
 
-    const promocao = descontos.get(produto.id);
+    const calculado = calcularPreco(
+      produto.preco,
+      produto.preco_promocional,
+      descontos.get(produto.id)
+    );
 
-    if (!promocao) {
+    if (!calculado.preco_original) {
       return { ...produto, preco_original: null, promocao: null };
     }
 
     return {
       ...produto,
-      preco: precoComDesconto(produto.preco, promocao.desconto_percentual),
-      preco_original: Number(produto.preco),
+      preco: calculado.preco,
+      preco_original: calculado.preco_original,
       promocao: {
-        campanha_id: promocao.campanha_id,
-        campanha: promocao.campanha_titulo,
-        desconto_percentual: Number(promocao.desconto_percentual)
+        campanha_id: calculado.campanha ? calculado.campanha.campanha_id : null,
+        campanha: calculado.campanha ? calculado.campanha.campanha_titulo : null,
+        desconto_percentual: calculado.desconto_percentual
       }
     };
   });
@@ -99,5 +149,6 @@ module.exports = {
   CAMPANHA_VIGENTE,
   descontosVigentes,
   precoComDesconto,
+  calcularPreco,
   aplicarEmProdutos
 };

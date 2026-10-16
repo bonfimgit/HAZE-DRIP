@@ -3,7 +3,8 @@
   facetas (para a barra de filtros) e produtos relacionados.
 
   Filtros e ordenação de preço usam o preço efetivo (com a
-  promoção vigente), o mesmo que o cliente vê e paga.
+  promoção vigente ou o preço promocional do produto), o mesmo
+  que o cliente vê e paga.
 */
 
 const db = require('../config/db');
@@ -34,14 +35,17 @@ const BASE = `
       AND pi.principal = TRUE
       LIMIT 1
     ) AS imagem_principal,
-    ROUND(p.preco * (1 - COALESCE((
-      SELECT MAX(c2.desconto_percentual)
-      FROM campanha_produtos cp
-      INNER JOIN campanhas c2 ON c2.id = cp.campanha_id
-      WHERE cp.produto_id = p.id
-      AND c2.desconto_percentual > 0
-      AND ${CAMPANHA_VIGENTE.replace(/\bc\./g, 'c2.')}
-    ), 0) / 100), 2) AS preco_efetivo,
+    LEAST(
+      ROUND(p.preco * (1 - COALESCE((
+        SELECT MAX(c2.desconto_percentual)
+        FROM campanha_produtos cp
+        INNER JOIN campanhas c2 ON c2.id = cp.campanha_id
+        WHERE cp.produto_id = p.id
+        AND c2.desconto_percentual > 0
+        AND ${CAMPANHA_VIGENTE.replace(/\bc\./g, 'c2.')}
+      ), 0) / 100), 2),
+      COALESCE(NULLIF(p.preco_promocional, 0), p.preco)
+    ) AS preco_efetivo,
     (
       SELECT COALESCE(SUM(i.quantidade), 0)
       FROM pedidos_itens i
