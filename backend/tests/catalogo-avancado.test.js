@@ -13,6 +13,7 @@ let api;
 let ids;
 let token;
 let moletomId;
+let moletonsId;
 
 before(async () => {
 
@@ -20,6 +21,7 @@ before(async () => {
 
   // Segundo produto: Moletom R$ 250, categoria Moletons, tamanho G Cinza
   const [categoria] = await db.query("INSERT INTO categorias (nome) VALUES ('Moletons')");
+  moletonsId = categoria.insertId;
   const [moletom] = await db.query(
     `INSERT INTO produtos (nome, descricao, preco, categoria_id, ativo, criado_em)
      VALUES ('Moletom Fog', 'Felpado', 250, ?, TRUE, DATE_SUB(NOW(), INTERVAL 1 DAY))`,
@@ -160,6 +162,20 @@ test('facetas para a barra de filtros', async () => {
   assert.deepEqual(r.dados.cores.map(c => c.valor), ['Cinza', 'Preto']);
   assert.equal(r.dados.preco.minimo, 80);
   assert.equal(r.dados.preco.maximo, 250);
+});
+
+test('facetas: tamanhos e cores contam só a categoria escolhida', async () => {
+
+  const r = await api.get(`/catalogo/filtros?categoria=${moletonsId}`);
+
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.dados.tamanhos.map(t => [t.valor, t.total]), [['P', 0], ['M', 0], ['G', 1]]);
+  assert.deepEqual(r.dados.cores.map(c => [c.valor, c.total]), [['Cinza', 1], ['Preto', 0]]);
+
+  // Categorias seguem com o total da loja inteira
+  assert.deepEqual(r.dados.categorias.map(c => [c.nome, c.total]), [['Camisetas', 2], ['Moletons', 1]]);
+
+  assert.equal((await api.get('/catalogo/filtros?categoria=abc')).status, 400);
 });
 
 test('produtos relacionados: mesma categoria primeiro e só com estoque', async () => {
