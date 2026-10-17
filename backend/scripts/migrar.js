@@ -6,9 +6,15 @@
 
   Cada arquivo é executado uma única vez e registrado na tabela
   schema_migrations. FAÇA BACKUP do banco de produção antes de rodar.
+
+  Primeiro administrador (banco novo): com ADMIN_EMAIL e ADMIN_SENHA
+  definidos e nenhum administrador cadastrado, cria um gerente.
+  Útil no Render, que não tem terminal no plano gratuito. Depois do
+  primeiro login, apague essas variáveis.
 */
 
 const path = require('path');
+const bcrypt = require('bcryptjs');
 const fs = require('fs');
 
 const db = require('../db');
@@ -145,12 +151,56 @@ async function migrar({ silencioso = false } = {}) {
 }
 
 
-module.exports = { migrar };
+/* =============================================================
+   PRIMEIRO ADMINISTRADOR (só em banco sem nenhum admin)
+============================================================= */
+
+async function criarAdminInicial({ log = console.log } = {}) {
+
+  const email = (process.env.ADMIN_EMAIL || '').trim().toLowerCase();
+  const senha = process.env.ADMIN_SENHA || '';
+  const nome = (process.env.ADMIN_NOME || 'Gerente').trim();
+
+  if (!email && !senha) {
+    return;
+  }
+
+  if (!email || !senha) {
+    log('Admin inicial: defina ADMIN_EMAIL e ADMIN_SENHA juntos. Nada foi criado.');
+    return;
+  }
+
+  if (senha.length < 8) {
+    log('Admin inicial: ADMIN_SENHA precisa ter pelo menos 8 caracteres. Nada foi criado.');
+    return;
+  }
+
+  const [[{ total }]] = await db.query('SELECT COUNT(*) AS total FROM usuarios_admin');
+
+  if (Number(total) > 0) {
+    log('Admin inicial: já existe administrador; ADMIN_EMAIL/ADMIN_SENHA ignorados (pode apagá-los).');
+    return;
+  }
+
+  const senhaHash = await bcrypt.hash(senha, 12);
+
+  await db.execute(
+    `INSERT INTO usuarios_admin (nome, email, senha_hash, perfil)
+     VALUES (?, ?, ?, 'gerente')`,
+    [nome, email, senhaHash]
+  );
+
+  log(`Admin inicial criado: ${email} (gerente).`);
+}
+
+
+module.exports = { migrar, criarAdminInicial };
 
 
 if (require.main === module) {
 
   migrar()
+    .then(() => criarAdminInicial())
     .then(() => db.end())
     .catch(async erro => {
       console.error('Erro ao executar migrações:', erro.message);
