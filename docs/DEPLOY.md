@@ -54,7 +54,7 @@ npm run migrate
 
 - **Banco atual (produção):** a migração `001` usa `CREATE TABLE IF NOT EXISTS` e não altera as tabelas existentes. As seguintes só **adicionam** colunas, índices e tabelas que ainda não existem.
 - No Render as migrações rodam a cada início (`npm run migrate && npm start`); se nada estiver pendente, não fazem nada.
-- Banco novo: `npm run migrate` cria tudo. Depois crie o gerente: `node criar-admin.js "SenhaForte123"`.
+- Banco novo: `npm run migrate` cria tudo. Para o primeiro gerente, defina `ADMIN_EMAIL` e `ADMIN_SENHA` (8+ caracteres; `ADMIN_NOME` opcional) e rode o migrate (no Render, basta um deploy). Só cria se não houver nenhum admin; apague as variáveis depois do primeiro login. Localmente também funciona `node criar-admin.js "SenhaForte123"`.
 
 ## 4. Mercado Pago
 
