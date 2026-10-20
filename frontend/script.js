@@ -101,6 +101,27 @@ function criarCardProduto(produto) {
 }
 
 
+// Uma única busca dos destaques, usada pela grade e pelo carrossel da Home
+let promessaDestaques = null;
+
+function buscarDestaques() {
+  if (!promessaDestaques) {
+    promessaDestaques = fetch(`${API_URL}/produtos/destaques`)
+      .then(resposta => {
+        if (!resposta.ok) {
+          throw new Error('Erro ao buscar produtos em destaque');
+        }
+        return resposta.json();
+      })
+      .catch(erro => {
+        promessaDestaques = null; // permite "Tentar de novo"
+        throw erro;
+      });
+  }
+  return promessaDestaques;
+}
+
+
 async function carregarDestaques() {
 
   const grid = document.getElementById('destaques-grid');
@@ -112,13 +133,7 @@ async function carregarDestaques() {
 
   try {
 
-    const resposta = await fetch(`${API_URL}/produtos/destaques`);
-
-    if (!resposta.ok) {
-      throw new Error('Erro ao buscar produtos em destaque');
-    }
-
-    const produtos = await resposta.json();
+    const produtos = await buscarDestaques();
 
     grid.innerHTML = '';
 
@@ -178,10 +193,7 @@ async function carregarCampanhaHome() {
     );
 
 
-  const imagem =
-    document.getElementById(
-      'home-campanha-imagem'
-    );
+  let imagemCampanha = null;
 
 
   try {
@@ -254,13 +266,10 @@ async function carregarCampanhaHome() {
 
     if (campanha.imagem_url) {
 
-      imagem.src =
-        campanha.imagem_url;
-
-
-      imagem.classList.add(
-        'carregada'
-      );
+      imagemCampanha = {
+        src: campanha.imagem_url,
+        alt: campanha.titulo || 'Campanha Haze Drip'
+      };
 
     }
 
@@ -272,8 +281,141 @@ async function carregarCampanhaHome() {
       erro
     );
 
+  } finally {
+
+    montarCarrosselHome(imagemCampanha);
+
   }
 
+}
+
+
+/* =============================================================
+   CARROSSEL DA HOME
+   Slides: imagem da campanha ativa + fotos dos produtos em
+   destaque. Sem nenhuma, fica a imagem padrão do HTML.
+   Qualquer slide leva ao catálogo. Troca a cada 5 s e pausa
+   com o mouse em cima, com foco do teclado ou com a aba oculta.
+============================================================= */
+
+const CARROSSEL_INTERVALO_MS = 5000;
+const CARROSSEL_MAX_SLIDES = 6;
+
+async function montarCarrosselHome(imagemCampanha) {
+
+  const area = document.getElementById('hero-carrossel');
+  const link = document.getElementById('hero-slides');
+  const pontos = document.getElementById('hero-dots');
+
+  if (!area || !link || !pontos) {
+    return;
+  }
+
+  const imagens = [];
+
+  if (imagemCampanha) {
+    imagens.push(imagemCampanha);
+  }
+
+  try {
+    const produtos = await buscarDestaques();
+    produtos
+      .filter(produto => produto.imagem_principal)
+      .forEach(produto => imagens.push({ src: produto.imagem_principal, alt: produto.nome }));
+  } catch {
+    // Sem destaques: segue com o que tiver
+  }
+
+  const slidesDados = imagens.slice(0, CARROSSEL_MAX_SLIDES);
+
+  if (slidesDados.length === 0) {
+    return; // mantém a imagem padrão
+  }
+
+  link.innerHTML = slidesDados.map((imagem, indice) => `
+    <img
+      class="hero-slide${indice === 0 ? ' ativo' : ''}"
+      src="${escaparHtml(otimizarImagem(imagem.src, 1200))}"
+      alt="${escaparHtml(imagem.alt)}"
+      ${indice === 0 ? 'fetchpriority="high"' : 'loading="lazy"'}
+      decoding="async"
+      aria-hidden="${indice === 0 ? 'false' : 'true'}"
+    >`).join('');
+
+  const slides = [...link.querySelectorAll('.hero-slide')];
+
+  if (slides.length < 2) {
+    return;
+  }
+
+  pontos.innerHTML = slides.map((_, indice) => `
+    <button
+      type="button"
+      class="hero-dot${indice === 0 ? ' ativo' : ''}"
+      aria-label="Mostrar imagem ${indice + 1} de ${slides.length}"
+      aria-current="${indice === 0 ? 'true' : 'false'}"
+      data-slide="${indice}"
+    ></button>`).join('');
+  pontos.hidden = false;
+
+  const botoes = [...pontos.querySelectorAll('.hero-dot')];
+  let atual = 0;
+  let timer = null;
+  let pausado = false;
+
+  const semMovimento = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function mostrar(indice) {
+    atual = (indice + slides.length) % slides.length;
+    slides.forEach((slide, i) => {
+      slide.classList.toggle('ativo', i === atual);
+      slide.setAttribute('aria-hidden', i === atual ? 'false' : 'true');
+    });
+    botoes.forEach((botao, i) => {
+      botao.classList.toggle('ativo', i === atual);
+      botao.setAttribute('aria-current', i === atual ? 'true' : 'false');
+    });
+  }
+
+  function parar() {
+    clearInterval(timer);
+    timer = null;
+  }
+
+  function iniciar() {
+    parar();
+    if (!semMovimento && !pausado && !document.hidden) {
+      timer = setInterval(() => mostrar(atual + 1), CARROSSEL_INTERVALO_MS);
+    }
+  }
+
+  pontos.addEventListener('click', evento => {
+    const botao = evento.target.closest('[data-slide]');
+    if (!botao) return;
+    mostrar(Number(botao.dataset.slide));
+    iniciar(); // reinicia a contagem depois da escolha manual
+  });
+
+  area.addEventListener('mouseenter', () => { pausado = true; parar(); });
+  area.addEventListener('mouseleave', () => { pausado = false; iniciar(); });
+  area.addEventListener('focusin', () => { pausado = true; parar(); });
+  area.addEventListener('focusout', () => { pausado = false; iniciar(); });
+  document.addEventListener('visibilitychange', iniciar);
+
+  // Arrastar no celular
+  let toqueX = null;
+  area.addEventListener('touchstart', evento => { toqueX = evento.touches[0].clientX; }, { passive: true });
+  area.addEventListener('touchend', evento => {
+    if (toqueX === null) return;
+    const delta = evento.changedTouches[0].clientX - toqueX;
+    toqueX = null;
+    if (Math.abs(delta) > 40) {
+      mostrar(atual + (delta < 0 ? 1 : -1));
+      iniciar();
+    }
+  });
+
+  iniciar();
 }
 
 
