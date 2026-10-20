@@ -6,6 +6,7 @@ const compression = require('compression');
 const config = require('./config/ambiente');
 const { version: VERSAO } = require('../package.json');
 const db = require('./config/db');
+const logger = require('./utils/logger');
 const { auditoria } = require('./middlewares/auditoria');
 const { registroRequisicoes } = require('./middlewares/registroRequisicoes');
 const { criarLimitador } = require('./middlewares/limiteTentativas');
@@ -64,6 +65,11 @@ function criarApp() {
       if (!origem || config.origensPermitidas.includes(origem)) {
         return callback(null, true);
       }
+
+      logger.aviso('Origem bloqueada pelo CORS (inclua em FRONTEND_URLS)', {
+        origem,
+        permitidas: config.origensPermitidas
+      });
 
       const erro = new Error('Origem não permitida pelo CORS');
       erro.status = 403;
