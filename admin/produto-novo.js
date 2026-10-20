@@ -188,6 +188,12 @@ async function carregarCategoriasNovoProduto() {
       );
 
 
+    if (novaCategoria.options.length === 1) {
+      novaMensagem.innerHTML =
+        'Nenhuma categoria ativa. Cadastre em <a href="categorias.html">Categorias</a> antes de criar o produto.';
+    }
+
+
   } catch (erro) {
 
     console.error(
