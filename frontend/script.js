@@ -427,16 +427,212 @@ async function montarCarrosselHome(imagemCampanha) {
 carregarCampanhaHome();
 
 
-const burger = document.querySelector('.nav-burger');
-const navLinks = document.querySelector('.nav-links');
-if(burger){
+/* =============================================================
+   MENU MOBILE (botão ☰)
+   Painel lateral com seções que abrem e fecham: Catálogo (com as
+   categorias da API), Institucional e Conta. Montado aqui para
+   valer em todas as páginas que têm o botão .nav-burger.
+============================================================= */
+
+const MENU_INSTITUCIONAL = [
+  ['sobre.html', 'Sobre a Haze Drip'],
+  ['envio.html', 'Envio e prazos'],
+  ['trocas.html', 'Trocas e devoluções'],
+  ['privacidade.html', 'Política de privacidade'],
+  ['termos.html', 'Termos de uso'],
+  ['contato.html', 'Contato']
+];
+
+function montarMenuMobile() {
+
+  const burger = document.querySelector('.nav-burger');
+
+  if (!burger) {
+    return;
+  }
+
+  const fundo = document.createElement('div');
+  fundo.className = 'menu-mobile-fundo';
+  fundo.hidden = true;
+
+  const painel = document.createElement('aside');
+  painel.className = 'menu-mobile';
+  painel.id = 'menu-mobile';
+  painel.setAttribute('role', 'dialog');
+  painel.setAttribute('aria-modal', 'true');
+  painel.setAttribute('aria-label', 'Menu');
+  painel.hidden = true;
+
+  const secao = (id, titulo, itensHtml) => `
+    <li class="menu-mobile-grupo">
+      <button type="button" class="menu-mobile-secao" aria-expanded="false" aria-controls="${id}">
+        <span>${titulo}</span>
+        <span class="menu-mobile-seta" aria-hidden="true">▾</span>
+      </button>
+      <ul class="menu-mobile-sub" id="${id}" hidden>${itensHtml}</ul>
+    </li>`;
+
+  const item = (href, texto, extra = '') =>
+    `<li><a href="${href}"${extra}>${texto}</a></li>`;
+
+  painel.innerHTML = `
+    <div class="menu-mobile-topo">
+      <a href="index.html" class="menu-mobile-logo" aria-label="Haze Drip — início">
+        <img src="../assets/haze-logo.webp" alt="" width="120" height="40">
+      </a>
+      <button type="button" class="menu-mobile-fechar" aria-label="Fechar menu">✕</button>
+    </div>
+
+    <nav class="menu-mobile-nav" aria-label="Menu principal">
+      <ul>
+        ${secao('menu-mobile-catalogo', 'Catálogo',
+          item('catalogo.html', 'Ver tudo', ' class="menu-mobile-destaque"') +
+          item('catalogo.html?promocao=1', 'Promoções') +
+          item('catalogo.html?disponivel=1', 'Pronta entrega') +
+          '<li class="menu-mobile-carregando" aria-live="polite">Carregando categorias…</li>')}
+        ${item('catalogo.html', 'Drops')}
+        ${secao('menu-mobile-institucional', 'Institucional',
+          MENU_INSTITUCIONAL.map(([href, texto]) => item(href, texto)).join(''))}
+        ${secao('menu-mobile-conta', 'Minha conta',
+          item('conta.html', 'Entrar ou criar conta') +
+          item('minha-conta.html', 'Meus pedidos') +
+          item('sacola.html', 'Sacola'))}
+      </ul>
+    </nav>`;
+
+  document.body.append(fundo, painel);
+
+  burger.setAttribute('aria-controls', 'menu-mobile');
+  burger.setAttribute('aria-expanded', 'false');
+
+  const fechar = painel.querySelector('.menu-mobile-fechar');
+  let categoriasCarregadas = false;
+
+  function focaveis() {
+    return [...painel.querySelectorAll('a[href], button')]
+      .filter(el => !el.closest('[hidden]'));
+  }
+
+  function abrir() {
+    fundo.hidden = false;
+    painel.hidden = false;
+    // Força o layout antes da classe, para a transição acontecer
+    painel.getBoundingClientRect();
+    fundo.classList.add('aberto');
+    painel.classList.add('aberto');
+    burger.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('menu-mobile-ativo');
+    fechar.focus();
+  }
+
+  function fecharMenu({ devolverFoco = true } = {}) {
+    if (!painel.classList.contains('aberto')) {
+      return;
+    }
+    fundo.classList.remove('aberto');
+    painel.classList.remove('aberto');
+    burger.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('menu-mobile-ativo');
+    setTimeout(() => {
+      if (!painel.classList.contains('aberto')) {
+        fundo.hidden = true;
+        painel.hidden = true;
+      }
+    }, 300);
+    if (devolverFoco) {
+      burger.focus();
+    }
+  }
+
+  async function carregarCategorias() {
+
+    if (categoriasCarregadas) {
+      return;
+    }
+    categoriasCarregadas = true;
+
+    const aviso = painel.querySelector('.menu-mobile-carregando');
+
+    try {
+      const resposta = await fetch(`${API_URL}/categorias`);
+      if (!resposta.ok) throw new Error();
+      const categorias = await resposta.json();
+      aviso.outerHTML = categorias.map(categoria =>
+        item(`catalogo.html?categoria=${Number(categoria.id)}`, escaparHtml(categoria.nome))
+      ).join('');
+    } catch {
+      categoriasCarregadas = false; // tenta de novo na próxima abertura
+      aviso.textContent = 'Não foi possível carregar as categorias.';
+    }
+  }
+
   burger.addEventListener('click', () => {
-    navLinks.classList.toggle('open');
+    if (painel.classList.contains('aberto')) {
+      fecharMenu();
+    } else {
+      abrir();
+    }
   });
-  navLinks.querySelectorAll('a').forEach(a =>
-    a.addEventListener('click', () => navLinks.classList.remove('open'))
-  );
+
+  fechar.addEventListener('click', () => fecharMenu());
+  fundo.addEventListener('click', () => fecharMenu());
+
+  painel.addEventListener('click', evento => {
+
+    const botao = evento.target.closest('.menu-mobile-secao');
+
+    if (botao) {
+      const sub = document.getElementById(botao.getAttribute('aria-controls'));
+      const abrirSecao = botao.getAttribute('aria-expanded') !== 'true';
+      botao.setAttribute('aria-expanded', String(abrirSecao));
+      sub.hidden = !abrirSecao;
+      if (abrirSecao && sub.id === 'menu-mobile-catalogo') {
+        carregarCategorias();
+      }
+      return;
+    }
+
+    // Link escolhido: fecha o painel (a página troca em seguida)
+    if (evento.target.closest('a[href]')) {
+      fecharMenu({ devolverFoco: false });
+    }
+  });
+
+  document.addEventListener('keydown', evento => {
+
+    if (!painel.classList.contains('aberto')) {
+      return;
+    }
+
+    if (evento.key === 'Escape') {
+      fecharMenu();
+      return;
+    }
+
+    // Mantém o foco dentro do painel enquanto ele está aberto
+    if (evento.key === 'Tab') {
+      const lista = focaveis();
+      const primeiro = lista[0];
+      const ultimo = lista[lista.length - 1];
+      if (evento.shiftKey && document.activeElement === primeiro) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && document.activeElement === ultimo) {
+        evento.preventDefault();
+        primeiro.focus();
+      }
+    }
+  });
+
+  // Voltou para tela larga com o menu aberto: fecha
+  window.matchMedia('(min-width: 861px)').addEventListener('change', evento => {
+    if (evento.matches) {
+      fecharMenu({ devolverFoco: false });
+    }
+  });
 }
+
+montarMenuMobile();
 
 
 /* =============================================================
