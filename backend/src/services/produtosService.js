@@ -53,6 +53,28 @@ async function listarDestaques() {
 }
 
 
+// Produtos marcados para o carrossel (banner) da Home; só com foto principal
+async function listarCarrossel() {
+
+  const [produtos] = await db.query(`
+    ${SELECT_LISTAGEM}
+    WHERE p.ativo = TRUE
+    AND p.carrossel_home = TRUE
+    AND EXISTS (
+      SELECT 1 FROM produto_imagens pi
+      WHERE pi.produto_id = p.id AND pi.principal = TRUE
+    )
+    ORDER BY p.criado_em DESC, p.id DESC
+  `);
+
+  return produtos.map(produto => ({
+    id: produto.id,
+    nome: produto.nome,
+    imagem_principal: produto.imagem_principal
+  }));
+}
+
+
 async function buscarAtivo(produtoId) {
 
   const [produtos] = await db.execute(
@@ -220,7 +242,7 @@ async function motivoParaNaoPublicar(produtoId) {
 }
 
 
-async function criar({ nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome }) {
+async function criar({ nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome, carrosselHome = false }) {
 
   await validarCategoriaAtiva(categoriaId);
 
@@ -234,9 +256,9 @@ async function criar({ nome, descricao, preco, precoPromocional = null, categori
 
   const [resultado] = await db.execute(
     `INSERT INTO produtos
-      (nome, descricao, preco, preco_promocional, categoria_id, ativo, destaque_home)
-     VALUES (?, ?, ?, ?, ?, FALSE, ?)`,
-    [nome, descricao, preco, precoPromocional, categoriaId, destaqueHome]
+      (nome, descricao, preco, preco_promocional, categoria_id, ativo, destaque_home, carrossel_home)
+     VALUES (?, ?, ?, ?, ?, FALSE, ?, ?)`,
+    [nome, descricao, preco, precoPromocional, categoriaId, destaqueHome, Boolean(carrosselHome)]
   );
 
   const [produtos] = await db.execute(
@@ -258,7 +280,7 @@ const AVISOS_ATIVACAO = {
 };
 
 
-async function atualizar(produtoId, { nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome }) {
+async function atualizar(produtoId, { nome, descricao, preco, precoPromocional = null, categoriaId, ativo, destaqueHome, carrosselHome = null }) {
 
   await validarCategoriaAtiva(categoriaId);
 
@@ -284,9 +306,10 @@ async function atualizar(produtoId, { nome, descricao, preco, precoPromocional =
         preco_promocional = ?,
         categoria_id = ?,
         ativo = ?,
-        destaque_home = ?
+        destaque_home = ?,
+        carrossel_home = COALESCE(?, carrossel_home)
      WHERE id = ?`,
-    [nome, descricao, preco, precoPromocional, categoriaId, ativoFinal, destaqueHome, produtoId]
+    [nome, descricao, preco, precoPromocional, categoriaId, ativoFinal, destaqueHome, carrosselHome, produtoId]
   );
 
   if (resultado.affectedRows === 0) {
@@ -384,6 +407,7 @@ async function alterarDestaque(produtoId, destaque) {
 module.exports = {
   listarAtivos,
   listarDestaques,
+  listarCarrossel,
   buscarAtivo,
   listarTodos,
   buscarAdmin,

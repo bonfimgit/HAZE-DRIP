@@ -60,6 +60,12 @@ const editarDestaque =
   );
 
 
+const editarCarrossel =
+  document.getElementById(
+    'editar-carrossel'
+  );
+
+
 const editarMensagem =
   document.getElementById(
     'editar-produto-mensagem'
@@ -302,6 +308,10 @@ const produto =
 
     editarDestaque.checked =
       Number(produto.destaque_home) !== 0;
+
+
+    editarCarrossel.checked =
+      Number(produto.carrossel_home) === 1;
 
 
 
@@ -559,6 +569,11 @@ const categoriaNome =
 
   destaque_home:
     editarDestaque.checked
+      ? 1
+      : 0,
+
+  carrossel_home:
+    editarCarrossel.checked
       ? 1
       : 0
 

@@ -50,6 +50,12 @@ const novoDestaque =
   );
 
 
+const novoCarrossel =
+  document.getElementById(
+    'novo-produto-carrossel'
+  );
+
+
 const novaMensagem =
   document.getElementById(
     'novo-produto-mensagem'
@@ -320,6 +326,11 @@ novoForm.addEventListener(
 
       destaque_home:
         novoDestaque.checked
+          ? 1
+          : 0,
+
+      carrossel_home:
+        novoCarrossel.checked
           ? 1
           : 0
 

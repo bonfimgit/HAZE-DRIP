@@ -101,7 +101,7 @@ function criarCardProduto(produto) {
 }
 
 
-// Uma única busca dos destaques, usada pela grade e pelo carrossel da Home
+// Busca dos destaques da grade da Home (reaproveitada em "Tentar de novo")
 let promessaDestaques = null;
 
 function buscarDestaques() {
@@ -292,8 +292,9 @@ async function carregarCampanhaHome() {
 
 /* =============================================================
    CARROSSEL DA HOME
-   Slides: imagem da campanha ativa + fotos dos produtos em
-   destaque. Sem nenhuma, fica a imagem padrão do HTML.
+   Slides: imagem da campanha ativa + fotos dos produtos marcados
+   como "Carrossel da Home" no painel (independente do destaque).
+   Sem nenhuma, fica a imagem padrão do HTML.
    Qualquer slide leva ao catálogo. Troca a cada 5 s e pausa
    com o mouse em cima, com foco do teclado ou com a aba oculta.
 ============================================================= */
@@ -318,12 +319,15 @@ async function montarCarrosselHome(imagemCampanha) {
   }
 
   try {
-    const produtos = await buscarDestaques();
-    produtos
-      .filter(produto => produto.imagem_principal)
-      .forEach(produto => imagens.push({ src: produto.imagem_principal, alt: produto.nome }));
+    const resposta = await fetch(`${API_URL}/produtos/carrossel`);
+    if (resposta.ok) {
+      const produtos = await resposta.json();
+      produtos
+        .filter(produto => produto.imagem_principal)
+        .forEach(produto => imagens.push({ src: produto.imagem_principal, alt: produto.nome }));
+    }
   } catch {
-    // Sem destaques: segue com o que tiver
+    // Sem produtos do carrossel: segue com o que tiver
   }
 
   const slidesDados = imagens.slice(0, CARROSSEL_MAX_SLIDES);

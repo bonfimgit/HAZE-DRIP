@@ -25,7 +25,8 @@ function lerProduto(corpo, { edicao = false } = {}) {
     preco_promocional: precoPromocional,
     categoria_id: categoriaId,
     ativo,
-    destaque_home: destaqueHome
+    destaque_home: destaqueHome,
+    carrossel_home: carrosselHome
   } = corpo || {};
 
   const dados = {
@@ -58,6 +59,11 @@ function lerProduto(corpo, { edicao = false } = {}) {
   dados.categoriaId = valida.id(categoriaId, 'Categoria inválida ou inativa');
   dados.ativo = valida.paraBoolean(ativo);
   dados.destaqueHome = valida.paraBoolean(destaqueHome);
+
+  // Opcional: na edição, ausente mantém o valor atual
+  dados.carrosselHome = carrosselHome == null
+    ? (edicao ? null : false)
+    : valida.paraBoolean(carrosselHome);
 
   return dados;
 }
