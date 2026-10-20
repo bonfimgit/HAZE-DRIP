@@ -235,12 +235,31 @@
 
 
 
-    <div class="hero-media">
+    <div
+      class="hero-media hero-carrossel"
+      id="hero-carrossel"
+      role="region"
+      aria-roledescription="carrossel"
+      aria-label="Destaques da Haze Drip"
+    >
 
-      <img
-        id="home-campanha-imagem"
-        alt="Campanha Haze Drip"
+      <a
+        href="catalogo.html"
+        class="hero-slides"
+        id="hero-slides"
+        aria-label="Ver o catálogo de produtos"
       >
+        <img
+          class="hero-slide ativo"
+          src="../assets/hero-campaign.webp"
+          alt="Campanha Haze Drip"
+          width="1200"
+          height="960"
+          fetchpriority="high"
+        >
+      </a>
+
+      <div class="hero-dots" id="hero-dots" hidden></div>
 
     </div>
 

@@ -405,24 +405,149 @@ h1,h2,h3,h4{
 }
 
 
-.hero-media img {
+/* Carrossel da Home: slides sobrepostos com troca suave */
+.hero-carrossel {
+
+  position: relative;
+
+}
+
+
+.hero-slides {
+
+  position: absolute;
+
+  inset: 0;
+
+  display: block;
+
+  cursor: pointer;
+
+}
+
+
+.hero-slide {
+
+  position: absolute;
+
+  inset: 0;
 
   width: 100%;
 
   height: 100%;
 
-  min-height: 520px;
-
-  display: none;
-
   object-fit: cover;
+
+  opacity: 0;
+
+  transition: opacity .8s ease;
 
 }
 
 
-.hero-media img.carregada {
+.hero-slide.ativo {
+
+  opacity: 1;
+
+}
+
+
+.hero-slides:focus-visible {
+
+  outline: 2px solid #fff;
+
+  outline-offset: -4px;
+
+}
+
+
+.hero-dots {
+
+  position: absolute;
+
+  left: 0;
+
+  right: 0;
+
+  bottom: 16px;
+
+  display: flex;
+
+  justify-content: center;
+
+  gap: 10px;
+
+  z-index: 2;
+
+}
+
+
+.hero-dots[hidden] {
+
+  display: none;
+
+}
+
+
+.hero-dot {
+
+  width: 28px;
+
+  height: 4px;
+
+  padding: 0;
+
+  border: 0;
+
+  background: rgba(255, 255, 255, .4);
+
+  cursor: pointer;
+
+  transition: background .3s ease, width .3s ease;
+
+}
+
+
+/* Área de toque maior que o traço visível */
+.hero-dot::before {
+
+  content: "";
 
   display: block;
+
+  margin: -12px 0;
+
+  height: 28px;
+
+}
+
+
+.hero-dot.ativo {
+
+  width: 44px;
+
+  background: #fff;
+
+}
+
+
+.hero-dot:focus-visible {
+
+  outline: 2px solid #fff;
+
+  outline-offset: 4px;
+
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+
+  .hero-slide,
+  .hero-dot {
+
+    transition: none;
+
+  }
 
 }
 
