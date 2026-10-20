@@ -216,9 +216,6 @@ h1,h2,h3,h4{
   .nav .nav-logo{ display:block; }
   .nav-icon-btn.currency, .nav-icon-btn.account{ display:none; }
   .mobile-search{ display:flex; }
-  /* Espaço reservado embaixo da página pra a barra de navegação
-     inferior fixa (.bottom-nav) não tampar o conteúdo/rodapé. */
-  body{ padding-bottom: 70px; }
   .nav .wrap {
     padding-left: 16px;
     padding-right: 16px;
@@ -228,19 +225,15 @@ h1,h2,h3,h4{
   }
 }
 
-/* ---- Barra de navegação inferior (só mobile) -----------------------
-   Padrão de app: Home / Shop / Drops / Carrinho / Perfil, sempre fixa
-   embaixo da tela. Só aparece em telas pequenas (media query no final). */
+/* ---- Barra de navegação rápida (só mobile) -------------------------
+   Início / Catálogo / Drops / Carrinho / Perfil. Fica dentro do
+   cabeçalho (.nav), logo abaixo do logo, e acompanha a rolagem junto
+   com ele. Só aparece em telas pequenas (media query abaixo). */
 .bottom-nav{
   display:none; /* por padrão escondida; a media query abaixo reativa no mobile */
-  position: fixed;
-  bottom:0; left:0; right:0;
-  z-index: 100;
-  background: rgba(6,5,6,.95);
-  backdrop-filter: blur(10px);
-  border-top: 1px solid var(--line);
   justify-content: space-around;
-  padding: 8px 6px calc(8px + env(safe-area-inset-bottom)); /* env() evita ficar sob a barra de gestos do iPhone */
+  border-top: 1px solid var(--line);
+  padding: 7px 6px 8px;
 }
 .bottom-nav a{
   display:flex; flex-direction:column; align-items:center; gap:3px;
@@ -256,7 +249,8 @@ h1,h2,h3,h4{
   font-family: var(--mono);
 }
 @media (max-width: 860px){
-  .bottom-nav{ display:flex; } /* só liga a barra inferior no mobile */
+  .bottom-nav{ display:flex; } /* só liga a barra no mobile */
+  .nav .wrap{ height: 60px; } /* cabeçalho mais baixo para sobrar tela */
   .hero .wrap{
     grid-template-columns: 1fr;
     gap:40px;
@@ -2834,4 +2828,99 @@ body.menu-mobile-ativo{ overflow: hidden; }
 
 @media (prefers-reduced-motion: reduce){
   .menu-mobile, .menu-mobile-fundo, .menu-mobile-seta{ transition: none; }
+}
+
+
+/* =============================================================
+   HOME NO CELULAR: BANNER DE TELA CHEIA
+   Foto do carrossel ocupando a largura e quase toda a altura
+   visível, com slogan e logo no alto e o botão embaixo, por cima
+   da foto (referência: banners de marcas de streetwear no mobile).
+   Desktop continua com texto ao lado da imagem.
+============================================================= */
+@media (max-width: 860px){
+
+  .hero{
+    padding: 0;
+    border-bottom: 0;
+  }
+
+  .hero .wrap.hero-grid{
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 0;
+    padding: 0;
+    max-width: none;
+  }
+
+  /* Texto e foto ocupam a mesma célula: o texto fica por cima */
+  .hero-grid > .hero-copy,
+  .hero-grid > .hero-media{
+    grid-area: 1 / 1;
+  }
+
+  .hero-media,
+  .hero-media.hero-carrossel{
+    /* Altura da tela menos o cabeçalho (60px + barra ~56px) */
+    height: calc(100svh - 116px);
+    min-height: 480px;
+    max-height: 860px;
+    border: 0;
+  }
+
+  .hero-copy{
+    position: relative;
+    z-index: 2;
+    align-self: stretch;
+    align-items: center;
+    justify-content: space-between;
+    text-align: center;
+    padding: 28px 20px 64px;
+    /* Sombra em cima e embaixo para o texto aparecer em qualquer foto */
+    background: linear-gradient(to bottom,
+      rgba(0,0,0,.62) 0%, rgba(0,0,0,0) 34%,
+      rgba(0,0,0,0) 66%, rgba(0,0,0,.55) 100%);
+    pointer-events: none; /* o toque na foto continua levando ao catálogo */
+  }
+
+  /* Slogan pequeno acima do logo */
+  .hero-copy .hero-tagline{
+    order: -1;
+    margin: 0 0 10px;
+    max-width: 300px;
+    font-size: 10px;
+    letter-spacing: .2em;
+    color: var(--white);
+  }
+
+  .hero-copy .hero-logo{
+    width: min(78%, 340px);
+    filter: drop-shadow(0 4px 18px rgba(0,0,0,.45));
+  }
+
+  .hero-copy .hero-campaign-title{
+    display: none;
+  }
+
+  .hero-copy .hero-cta{
+    margin-top: auto;
+    pointer-events: auto;
+  }
+
+  /* Botão claro e arredondado, centralizado embaixo */
+  .hero-copy .hero-cta .btn{
+    background: var(--white);
+    color: #000;
+    border-color: var(--white);
+    border-radius: 999px;
+    padding: 14px 40px;
+    font-size: 13px;
+    box-shadow: 0 6px 20px rgba(0,0,0,.35);
+  }
+
+  /* Pontos do carrossel acima da borda, abaixo do botão */
+  .hero-dots{
+    bottom: 22px;
+    z-index: 3;
+  }
 }
