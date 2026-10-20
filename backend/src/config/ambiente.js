@@ -32,6 +32,14 @@ function lista(valor) {
     .filter(Boolean);
 }
 
+function normalizarOrigem(valor) {
+  try {
+    return new URL(valor).origin;
+  } catch {
+    return valor.replace(/\/+$/, '');
+  }
+}
+
 // Preenchida por sslBanco(); exibida no início das migrações
 let descricaoSsl = 'sem SSL (DB_SSL_CA, DB_SSL_CA_FILE e DB_SSL vazios)';
 
@@ -43,7 +51,8 @@ const config = {
 
   jwtSecret: process.env.JWT_SECRET,
 
-  origensPermitidas: lista(process.env.FRONTEND_URLS),
+  // Só a origem (protocolo + domínio + porta): tolera barra final e caminho
+  origensPermitidas: lista(process.env.FRONTEND_URLS).map(normalizarOrigem),
 
   // URL pública da loja, usada em links de e-mail e retorno do pagamento
   urlLoja: (process.env.STORE_URL || '').replace(/\/+$/, ''),
