@@ -293,3 +293,62 @@ test('campanhas: criar, só uma ativa, atualizar imagem e link seguro', async ()
   assert.equal((await api.delete(`/admin/campanhas/${primeira.dados.campanha.id}`, { token })).status, 200);
   assert.equal((await api.get('/campanha')).status, 404);
 });
+
+
+test('carrossel da Home é independente do destaque e só mostra produto ativo com foto', async () => {
+
+  // Produto base: ativo, com foto, em destaque, fora do carrossel
+  let carrossel = await api.get('/produtos/carrossel');
+  assert.equal(carrossel.status, 200);
+  assert.equal(carrossel.dados.length, 0);
+
+  const base = {
+    nome: 'Camiseta Haze',
+    descricao: 'Algodão',
+    preco: 100,
+    categoria_id: ids.categoriaId,
+    ativo: true,
+    destaque_home: false,
+    carrossel_home: true
+  };
+
+  // Entra no carrossel e sai dos destaques
+  let resposta = await api.put(`/produtos/${ids.produtoId}`, base, { token });
+  assert.equal(resposta.status, 200);
+  assert.equal(Number(resposta.dados.carrossel_home), 1);
+
+  carrossel = await api.get('/produtos/carrossel');
+  assert.equal(carrossel.dados.length, 1);
+  assert.deepEqual(Object.keys(carrossel.dados[0]).sort(), ['id', 'imagem_principal', 'nome']);
+  assert.equal(carrossel.dados[0].id, ids.produtoId);
+  assert.match(carrossel.dados[0].imagem_principal, /^https:\/\/cdn\.teste\//);
+  assert.equal(
+    (await api.get('/produtos/destaques')).dados.some(p => p.id === ids.produtoId),
+    false
+  );
+
+  // Edição sem o campo (painel antigo) mantém o valor atual
+  const { carrossel_home: _ignorado, ...semCampo } = base;
+  resposta = await api.put(`/produtos/${ids.produtoId}`, semCampo, { token });
+  assert.equal(Number(resposta.dados.carrossel_home), 1);
+
+  // Produto do carrossel sem foto principal não aparece
+  const semFoto = await api.post('/produtos', {
+    nome: 'Sem foto', preco: 50, categoria_id: ids.categoriaId, ativo: 0, destaque_home: 0, carrossel_home: 1
+  }, { token });
+  assert.equal(semFoto.status, 201);
+  assert.equal(Number(semFoto.dados.carrossel_home), 1);
+  await db.query('UPDATE produtos SET ativo = TRUE WHERE id = ?', [semFoto.dados.id]);
+  assert.equal((await api.get('/produtos/carrossel')).dados.length, 1);
+
+  // Criado sem o campo: fora do carrossel
+  const padrao = await api.post('/produtos', {
+    nome: 'Padrão', preco: 50, categoria_id: ids.categoriaId, ativo: 0, destaque_home: 0
+  }, { token });
+  assert.equal(Number(padrao.dados.carrossel_home), 0);
+
+  // Inativo sai do carrossel
+  await db.query('UPDATE produtos SET ativo = FALSE WHERE id = ?', [ids.produtoId]);
+  assert.equal((await api.get('/produtos/carrossel')).dados.length, 0);
+  await db.query('UPDATE produtos SET ativo = TRUE, carrossel_home = FALSE, destaque_home = TRUE WHERE id = ?', [ids.produtoId]);
+});

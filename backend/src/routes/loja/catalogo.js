@@ -64,6 +64,11 @@ router.get('/produtos/destaques', cachePublico(60), async (req, res) => {
   res.json(await produtosService.listarDestaques());
 });
 
+// Fotos do carrossel da Home (também antes de /produtos/:id)
+router.get('/produtos/carrossel', cachePublico(60), async (req, res) => {
+  res.json(await produtosService.listarCarrossel());
+});
+
 router.get('/produtos/:id', cachePublico(30), async (req, res) => {
   const produtoId = valida.id(req.params.id, ID_PRODUTO);
   res.json(await produtosService.buscarAtivo(produtoId));
