@@ -180,8 +180,9 @@ async function carregarCampanhaAdmin() {
       campanhas.length === 0
     ) {
 
+      // Banco sem campanha: o formulário cria a primeira
       campanhaMensagem.textContent =
-        'Nenhuma campanha cadastrada.';
+        'Nenhuma campanha cadastrada. Preencha os campos, escolha uma imagem e salve para criar a primeira.';
 
       return;
 
@@ -469,14 +470,8 @@ campanhaForm.addEventListener(
     evento.preventDefault();
 
 
-    if (!campanhaAtual) {
-
-      campanhaMensagem.textContent =
-        'Nenhuma campanha disponível para edição.';
-
-      return;
-
-    }
+    // Sem campanha cadastrada, salvar cria uma nova (POST)
+    const criando = !campanhaAtual;
 
 
     if (
@@ -493,6 +488,16 @@ campanhaForm.addEventListener(
 
     const arquivo =
       campanhaImagem.files[0];
+
+
+    if (criando && !arquivo) {
+
+      campanhaMensagem.textContent =
+        'Escolha a imagem da campanha para criá-la.';
+
+      return;
+
+    }
 
 
     if (arquivo) {
@@ -628,10 +633,12 @@ campanhaForm.addEventListener(
 
       const resposta =
         await fetch(
-          `${CAMPANHA_API_URL}/admin/campanhas/${campanhaAtual.id}`,
+          criando
+            ? `${CAMPANHA_API_URL}/admin/campanhas`
+            : `${CAMPANHA_API_URL}/admin/campanhas/${campanhaAtual.id}`,
           {
 
-            method: 'PUT',
+            method: criando ? 'POST' : 'PUT',
 
             headers: {
 
@@ -693,7 +700,9 @@ campanhaForm.addEventListener(
 
 
       campanhaMensagem.textContent =
-        'Campanha atualizada com sucesso.';
+        criando
+          ? 'Campanha criada com sucesso.'
+          : 'Campanha atualizada com sucesso.';
 
 
     } catch (erro) {
