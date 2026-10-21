@@ -189,13 +189,14 @@ async function buscar(filtros) {
   Com categorias escolhidas, a contagem de tamanhos e cores
   considera só os produtos delas (a lista continua completa,
   com total 0 no que a categoria não tem).
+  Toda categoria ativa aparece, mesmo sem produtos (total 0).
 */
 async function facetas({ categorias: escolhidas } = {}) {
 
   const [categorias] = await db.query(
     `SELECT c.id, c.nome, COUNT(p.id) AS total
      FROM categorias c
-     INNER JOIN produtos p ON p.categoria_id = c.id AND p.ativo = TRUE
+     LEFT JOIN produtos p ON p.categoria_id = c.id AND p.ativo = TRUE
      WHERE c.ativo = TRUE
      GROUP BY c.id, c.nome
      ORDER BY c.nome`
