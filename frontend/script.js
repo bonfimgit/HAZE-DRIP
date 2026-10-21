@@ -302,6 +302,14 @@ async function carregarCampanhaHome() {
 const CARROSSEL_INTERVALO_MS = 5000;
 const CARROSSEL_MAX_SLIDES = 6;
 
+// No celular, o primeiro slide é sempre o banner vertical da marca
+// (logo e slogan já fazem parte da arte)
+const CARROSSEL_MOBILE = window.matchMedia('(max-width: 860px)');
+const BANNER_MOBILE = {
+  src: '../assets/hero-mobile.webp',
+  alt: 'Haze Drip. Streetwear de verdade. Feito para quem vive, não para quem assiste.'
+};
+
 async function montarCarrosselHome(imagemCampanha) {
 
   const area = document.getElementById('hero-carrossel');
@@ -330,11 +338,15 @@ async function montarCarrosselHome(imagemCampanha) {
     // Sem produtos do carrossel: segue com o que tiver
   }
 
-  const slidesDados = imagens.slice(0, CARROSSEL_MAX_SLIDES);
-
-  if (slidesDados.length === 0) {
-    return; // mantém a imagem padrão
+  if (imagens.length === 0) {
+    return; // mantém a imagem padrão do HTML (banner vertical no celular)
   }
+
+  if (CARROSSEL_MOBILE.matches) {
+    imagens.unshift(BANNER_MOBILE);
+  }
+
+  const slidesDados = imagens.slice(0, CARROSSEL_MAX_SLIDES);
 
   link.innerHTML = slidesDados.map((imagem, indice) => `
     <img
