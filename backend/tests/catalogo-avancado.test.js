@@ -154,10 +154,14 @@ test('preço promocional do produto: de/por, % OFF e última peça', async () =>
 
 test('facetas para a barra de filtros', async () => {
 
+  // Categoria ativa sem produtos aparece com total 0; inativa não aparece
+  await db.query("INSERT INTO categorias (nome) VALUES ('Shorts')");
+  await db.query("INSERT INTO categorias (nome, ativo) VALUES ('Antiga', FALSE)");
+
   const r = await api.get('/catalogo/filtros');
 
   assert.equal(r.status, 200);
-  assert.deepEqual(r.dados.categorias.map(c => [c.nome, c.total]), [['Camisetas', 2], ['Moletons', 1]]);
+  assert.deepEqual(r.dados.categorias.map(c => [c.nome, c.total]), [['Camisetas', 2], ['Moletons', 1], ['Shorts', 0]]);
   assert.deepEqual(r.dados.tamanhos.map(t => t.valor), ['P', 'M', 'G']);
   assert.deepEqual(r.dados.cores.map(c => c.valor), ['Cinza', 'Preto']);
   assert.equal(r.dados.preco.minimo, 80);
@@ -173,7 +177,7 @@ test('facetas: tamanhos e cores contam só a categoria escolhida', async () => {
   assert.deepEqual(r.dados.cores.map(c => [c.valor, c.total]), [['Cinza', 1], ['Preto', 0]]);
 
   // Categorias seguem com o total da loja inteira
-  assert.deepEqual(r.dados.categorias.map(c => [c.nome, c.total]), [['Camisetas', 2], ['Moletons', 1]]);
+  assert.deepEqual(r.dados.categorias.map(c => [c.nome, c.total]), [['Camisetas', 2], ['Moletons', 1], ['Shorts', 0]]);
 
   assert.equal((await api.get('/catalogo/filtros?categoria=abc')).status, 400);
 });
