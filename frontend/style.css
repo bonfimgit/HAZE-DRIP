@@ -2876,14 +2876,19 @@ body.menu-mobile-ativo{ overflow: hidden; }
     justify-content: space-between;
     text-align: center;
     padding: 28px 20px 64px;
-    /* Sombra em cima e embaixo para o texto aparecer em qualquer foto */
+    /* Sombra só embaixo, para o botão aparecer em qualquer foto */
     background: linear-gradient(to bottom,
-      rgba(0,0,0,.62) 0%, rgba(0,0,0,0) 34%,
-      rgba(0,0,0,0) 66%, rgba(0,0,0,.55) 100%);
+      rgba(0,0,0,0) 70%, rgba(0,0,0,.5) 100%);
     pointer-events: none; /* o toque na foto continua levando ao catálogo */
   }
 
-  /* Slogan pequeno acima do logo */
+  /* O banner do celular já traz logo e slogan na arte: aqui fica só o botão */
+  .hero-copy .hero-tagline,
+  .hero-copy .hero-logo{
+    display: none;
+  }
+
+  /* Slogan pequeno acima do logo (caso volte a ser exibido) */
   .hero-copy .hero-tagline{
     order: -1;
     margin: 0 0 10px;

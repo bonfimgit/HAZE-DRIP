@@ -352,14 +352,23 @@
         id="hero-slides"
         aria-label="Ver o catálogo de produtos"
       >
-        <img
-          class="hero-slide ativo"
-          src="../assets/hero-campaign.webp"
-          alt="Campanha Haze Drip"
-          width="1200"
-          height="960"
-          fetchpriority="high"
-        >
+        <picture>
+          <!-- Celular: banner vertical com logo e slogan na própria arte -->
+          <source
+            media="(max-width: 860px)"
+            srcset="../assets/hero-mobile.webp"
+            width="1125"
+            height="2000"
+          >
+          <img
+            class="hero-slide ativo"
+            src="../assets/hero-campaign.webp"
+            alt="Haze Drip. Streetwear de verdade. Feito para quem vive, não para quem assiste."
+            width="1200"
+            height="960"
+            fetchpriority="high"
+          >
+        </picture>
       </a>
 
       <div class="hero-dots" id="hero-dots" hidden></div>
