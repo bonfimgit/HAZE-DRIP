@@ -1,7 +1,8 @@
 const multer = require('multer');
 
 const cloudinary = require('../config/cloudinary');
-const { requisicaoInvalida } = require('../utils/erros');
+const { requisicaoInvalida, ErroApp } = require('../utils/erros');
+const logger = require('../utils/logger');
 
 const TIPOS_PERMITIDOS = [
   'image/jpeg',
@@ -39,7 +40,16 @@ function enviarImagemCloudinary(buffer, pasta) {
       },
       (erro, resultado) => {
         if (erro) {
-          return reject(erro);
+          // Sem isso a resposta seria só "Erro interno do servidor"
+          logger.erro('Falha ao enviar imagem ao Cloudinary', {
+            erro: erro.message,
+            status: erro.http_code
+          });
+          return reject(new ErroApp(
+            502,
+            `Não foi possível enviar a imagem ao Cloudinary (${erro.message || 'erro desconhecido'}). ` +
+            'Confira CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY e CLOUDINARY_API_SECRET no Render.'
+          ));
         }
         resolve(resultado);
       }
