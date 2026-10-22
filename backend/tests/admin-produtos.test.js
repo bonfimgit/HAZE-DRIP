@@ -352,3 +352,34 @@ test('carrossel da Home é independente do destaque e só mostra produto ativo c
   assert.equal((await api.get('/produtos/carrossel')).dados.length, 0);
   await db.query('UPDATE produtos SET ativo = TRUE, carrossel_home = FALSE, destaque_home = TRUE WHERE id = ?', [ids.produtoId]);
 });
+
+
+test('falha no Cloudinary devolve 502 com mensagem clara e não cria a campanha', async () => {
+
+  const cloudinary = require('../src/config/cloudinary');
+  const original = cloudinary.uploader.upload_stream;
+
+  cloudinary.uploader.upload_stream = (opcoes, callback) => ({
+    end() {
+      callback({ message: 'Must supply api_key', http_code: 401 });
+    }
+  });
+
+  try {
+    const [[{ antes }]] = await db.query('SELECT COUNT(*) AS antes FROM campanhas');
+
+    const f = formImagem();
+    f.append('titulo', 'Sem Cloudinary');
+    f.append('ativo', 'true');
+    const resposta = await api.enviar('POST', '/admin/campanhas', f, { token });
+
+    assert.equal(resposta.status, 502);
+    assert.match(resposta.dados.mensagem, /Cloudinary \(Must supply api_key\)/);
+    assert.match(resposta.dados.mensagem, /CLOUDINARY_API_KEY/);
+
+    const [[{ depois }]] = await db.query('SELECT COUNT(*) AS depois FROM campanhas');
+    assert.equal(Number(depois), Number(antes));
+  } finally {
+    cloudinary.uploader.upload_stream = original;
+  }
+});
