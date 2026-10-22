@@ -1,0 +1,22 @@
+{
+  "name": "mini-crm-inteligente",
+  "version": "1.0.0",
+  "description": "Mini-CRM local com análise de interessados por IA via webhook do n8n (Sirius Advisory).",
+  "private": true,
+  "license": "UNLICENSED",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "test": "node scripts/testar.js",
+    "gerar:n8n": "node scripts/gerar-workflows.js",
+    "testar:webhook": "node scripts/testar-webhook.js",
+    "entrega": "node scripts/montar-entrega.js",
+    "capturar": "node scripts/capturar-interface.js"
+  },
+  "devDependencies": {
+    "playwright-core": "^1.64.1"
+  }
+}

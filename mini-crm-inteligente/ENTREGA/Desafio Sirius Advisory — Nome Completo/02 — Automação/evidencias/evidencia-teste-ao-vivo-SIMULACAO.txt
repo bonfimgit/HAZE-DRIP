@@ -1,0 +1,30 @@
+Teste ao vivo em 2026-10-22T05:02:05.951Z contra http://localhost:3000/api/analisar
+
+## Teste 1 — Dúvidas
+Mensagem: Quero abrir uma empresa no Paraguai, mas não sei se é melhor EAS ou Unipersonal. Ainda não tenho cédula.
+Esperado: Consultoria ou pergunta complementar; sem orientação jurídica definitiva
+Resultado: HTTP 200
+  categoria: Consultoria
+  prioridade: Média
+  modo: simulacao
+  resposta: Olá, Bruno! Essa é uma decisão que depende de cada caso. Podemos agendar uma conversa com nossa equipe para comparar as opções? Antes, você já possui cédula paraguaia?
+
+## Teste 2 — Pronto para contratar
+Mensagem: Já tenho cédula paraguaia e quero contratar o serviço de abertura de EAS.
+Esperado: Prioridade Alta, categoria Abertura de empresa
+Resultado: HTTP 200
+  categoria: Abertura de empresa
+  prioridade: Alta
+  modo: simulacao
+  resposta: Olá, Bruno! Obrigado pelo contato. Podemos encaminhar seu interesse para a equipe comercial e apresentar os próximos passos?
+
+## Teste 3 — Pesquisando
+Mensagem: Ainda não quero abrir empresa. Gostaria de aprender mais sobre negócios no Paraguai.
+Esperado: Prioridade Baixa, categoria Produtos digitais
+Resultado: HTTP 200
+  categoria: Produtos digitais
+  prioridade: Baixa
+  modo: simulacao
+  resposta: Olá, Bruno! Que bom saber do seu interesse. Temos conteúdos educativos sobre negócios no Paraguai e podemos indicar o material mais adequado quando você quiser.
+
+Resumo: 3 de 3 chamadas responderam com sucesso.
