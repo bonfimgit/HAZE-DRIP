@@ -40,6 +40,7 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `MERCADOPAGO_ACCESS_TOKEN` | `APP_USR-...` (produção) |
 | `MERCADOPAGO_WEBHOOK_SECRET` | Assinatura secreta do webhook |
 | `RESEND_API_KEY` / `EMAIL_REMETENTE` | Chave e remetente com domínio verificado |
+| `CORREIOS_*` / `FRETE_*` | Frete pelos Correios (opcional, veja a seção 4.1) |
 
 A API não sobe sem `JWT_SECRET`.
 
@@ -62,6 +63,22 @@ npm run migrate
 2. Em **Webhooks**, configure a URL `https://<sua-api>/pagamentos/webhook/mercadopago`, marque o evento **Pagamentos** e copie a **assinatura secreta** para `MERCADOPAGO_WEBHOOK_SECRET`.
 3. Teste com as contas e cartões de teste do Mercado Pago: compra com PIX e com cartão, pedido mudando para "Pago" sozinho e reembolso pelo painel.
 4. Se um webhook se perder, use **Consultar Mercado Pago** no detalhe do pedido. A cada 5 minutos a API também confere os pedidos vencidos antes de cancelá-los.
+
+## 4.1 Frete pelos Correios
+
+Sem as variáveis `CORREIOS_*`, o frete vem só da tabela do painel (**Frete**). Com elas, o checkout cota PAC e SEDEX na API dos Correios assim que o cliente informa o CEP, e o cliente escolhe a opção.
+
+1. É preciso **contrato com os Correios** e os serviços **API Preços** e **API Prazo** liberados no cartão de postagem (fale com o seu consultor comercial).
+2. Em [cws.correios.com.br](https://cws.correios.com.br), entre com o usuário do contrato e gere o **código de acesso** às APIs.
+3. No Render, preencha `CORREIOS_USUARIO`, `CORREIOS_CODIGO_ACESSO`, `CORREIOS_CARTAO_POSTAGEM` e `CORREIOS_CEP_ORIGEM`. Se quiser o preço do contrato, preencha também `CORREIOS_CONTRATO` e `CORREIOS_DR`. Confira os códigos dos serviços do seu contrato em `CORREIOS_SERVICOS` (padrão `03298:PAC,03220:SEDEX`).
+4. Ajuste o pacote: `FRETE_PESO_ITEM_GRAMAS` (peso de cada peça embalada), `FRETE_EMBALAGEM_CM` (caixa) e, se quiser, `FRETE_ADICIONAL` (R$ somado à cotação) e `FRETE_DIAS_POSTAGEM` (dias somados ao prazo).
+5. Teste em **Frete → Simular** no painel: com os Correios ativos, aparecem os valores de cada serviço.
+
+A tabela do painel continua valendo:
+- o **frete grátis** ("grátis acima de") da regra do CEP vale para a opção mais barata dos Correios;
+- se os Correios não responderem, o frete cai na regra da tabela. Mantenha a regra padrão (Brasil) ativa.
+
+As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log como `Cotação dos Correios falhou`.
 
 ## 5. E-mails (Resend)
 

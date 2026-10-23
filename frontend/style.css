@@ -2095,6 +2095,14 @@ h1,h2,h3,h4{
   margin-bottom: 18px;
 }
 
+.checkout-fretes {
+  margin-top: 16px;
+}
+
+.checkout-fretes[hidden] {
+  display: none;
+}
+
 .checkout-frete-info {
   margin-top: 16px;
   color: var(--fog);

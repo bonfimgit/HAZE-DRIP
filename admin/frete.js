@@ -138,6 +138,16 @@ $frete('frete-simulador').addEventListener('submit', async evento => {
 
   try {
     const frete = await adminApi(`/admin/frete/simular?${parametros}`);
+    if (frete.origem === 'correios') {
+      // Uma linha por serviço dos Correios (PAC, SEDEX...)
+      saida.textContent = frete.opcoes
+        .map(opcao =>
+          `Correios ${opcao.nome}: ${opcao.gratis ? 'grátis' : moedaPainel(opcao.valor)}` +
+          (opcao.prazo_dias == null ? '' : `, ${opcao.prazo_dias} dias úteis`))
+        .join(' · ') + '.';
+      return;
+    }
+
     saida.textContent =
       `Regra "${frete.descricao}": ${frete.gratis ? 'grátis' : moedaPainel(frete.valor)}, ` +
       `${frete.prazo_min_dias} a ${frete.prazo_max_dias} dias úteis.`;

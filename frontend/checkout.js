@@ -18,6 +18,7 @@
   let enderecosSalvos = [];
   let cupomAplicado = '';
   let ultimaCotacao = null;
+  let servicoFrete = '';   // opção dos Correios escolhida (PAC, SEDEX...)
   let finalizando = false;
 
 
@@ -140,6 +141,7 @@
           cep: cepValido ? cep : undefined,
           estado: cepValido && estado.length === 2 ? estado : undefined,
           cupom: cupomAplicado || undefined,
+          servico_frete: servicoFrete || undefined,
           email: $('checkout-email').value.trim() || undefined
         }
       });
@@ -180,20 +182,23 @@
     // Frete
     const info = $('checkout-frete-info');
 
-    if (cotacao.frete) {
+    mostrarOpcoesFrete(cotacao.frete);
 
-      const prazo = cotacao.frete.prazo_min_dias === cotacao.frete.prazo_max_dias
-        ? `${cotacao.frete.prazo_max_dias} dias úteis`
-        : `${cotacao.frete.prazo_min_dias} a ${cotacao.frete.prazo_max_dias} dias úteis`;
+    if (cotacao.frete) {
 
       $('checkout-frete').textContent = cotacao.frete.gratis ? 'Grátis' : formatarMoeda(cotacao.frete.valor);
 
-      let texto = `${cotacao.frete.descricao}: entrega em ${prazo}.`;
+      const prazo = textoPrazo(cotacao.frete.prazo_min_dias, cotacao.frete.prazo_max_dias);
+
+      let texto = prazo
+        ? `${cotacao.frete.descricao}: entrega em ${prazo}.`
+        : `${cotacao.frete.descricao}.`;
 
       if (!cotacao.frete.gratis && cotacao.frete.gratis_acima) {
         const falta = cotacao.frete.gratis_acima - (cotacao.subtotal - cotacao.desconto);
         if (falta > 0) {
-          texto += ` Faltam ${formatarMoeda(falta)} para frete grátis.`;
+          const opcoes = cotacao.frete.opcoes || [];
+          texto += ` Faltam ${formatarMoeda(falta)} para frete grátis${opcoes.length ? ` no ${opcoes[0].nome}` : ''}.`;
         }
       }
 
@@ -209,6 +214,41 @@
 
     $('checkout-total').textContent = formatarMoeda(cotacao.total);
   }
+
+  function textoPrazo(minimo, maximo) {
+    if (maximo == null) return '';
+    if (minimo == null || minimo === maximo) return `${maximo} ${maximo === 1 ? 'dia útil' : 'dias úteis'}`;
+    return `${minimo} a ${maximo} dias úteis`;
+  }
+
+  // Opções dos Correios (PAC, SEDEX...) calculadas para o CEP
+  function mostrarOpcoesFrete(frete) {
+
+    const caixa = $('checkout-fretes');
+    const opcoes = frete && Array.isArray(frete.opcoes) ? frete.opcoes : [];
+
+    servicoFrete = frete && frete.servico ? frete.servico : '';
+    caixa.hidden = opcoes.length === 0;
+
+    caixa.innerHTML = opcoes.map(opcao => {
+      const prazo = textoPrazo(opcao.prazo_dias, opcao.prazo_dias);
+      return `
+        <label class="checkout-pagamento">
+          <input type="radio" name="servico_frete" value="${escaparHtml(opcao.codigo)}" ${opcao.codigo === servicoFrete ? 'checked' : ''}>
+          <span>
+            <strong>${escaparHtml(opcao.nome)} · ${opcao.gratis ? 'Grátis' : formatarMoeda(opcao.valor)}</strong>
+            <small>${prazo ? `Entrega em até ${prazo}` : 'Correios'}</small>
+          </span>
+        </label>`;
+    }).join('');
+  }
+
+  $('checkout-fretes').addEventListener('change', evento => {
+    if (evento.target.name === 'servico_frete') {
+      servicoFrete = evento.target.value;
+      cotar();
+    }
+  });
 
 
   /* ===========================================================
@@ -415,6 +455,7 @@
       },
       itens: itensApi(),
       cupom: cupomAplicado || undefined,
+      servico_frete: servicoFrete || undefined,
       metodo_pagamento: metodo,
       chave_idempotencia: chaveIdempotencia()
     };

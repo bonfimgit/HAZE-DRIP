@@ -18,19 +18,26 @@ function lerCupom(valor) {
 }
 
 
+// Código do serviço dos Correios escolhido (PAC, SEDEX...)
+function lerServicoFrete(valor) {
+  return valida.texto(valor, 'Opção de frete inválida', { max: 10, opcional: true });
+}
+
+
 /* =============================================================
    COTAÇÃO E FINALIZAÇÃO
 ============================================================= */
 
 router.post('/checkout/cotacao', identificarCliente, async (req, res) => {
 
-  const { itens, cep, estado, cupom, email } = req.body || {};
+  const { itens, cep, estado, cupom, email, servico_frete: servicoFrete } = req.body || {};
 
   res.json(await checkoutService.cotar({
     itens,
     cep: cep ? valida.cep(cep) : null,
     uf: estado ? valida.uf(estado) : null,
     cupom: lerCupom(cupom),
+    servicoFrete: lerServicoFrete(servicoFrete),
     clienteId: req.cliente ? req.cliente.id : null,
     email: req.cliente ? req.cliente.email : (email ? valida.email(email) : null)
   }));
@@ -53,6 +60,7 @@ router.post('/checkout', identificarCliente, async (req, res) => {
     itens: corpo.itens,
     clienteId: req.cliente ? req.cliente.id : null,
     cupom: lerCupom(corpo.cupom),
+    servicoFrete: lerServicoFrete(corpo.servico_frete),
     metodoPagamento: corpo.metodo_pagamento,
     chaveIdempotencia: chave
   });
