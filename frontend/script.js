@@ -968,7 +968,11 @@ if(newsForm){
   });
 }
 
-/*=========pagina galeria de imagens ========= */
+/*=========pagina galeria de imagens =========
+  Foto grande + miniaturas. No computador, passar o mouse amplia a
+  foto no ponto do cursor. Clicar/tocar abre a foto em tela cheia
+  (abrirZoomProduto) para ver os detalhes da peça.
+============================================== */
 function montarGaleriaProduto(imagens, nomeProduto) {
 
     const galeria = document.getElementById('produto-galeria');
@@ -1001,22 +1005,100 @@ function montarGaleriaProduto(imagens, nomeProduto) {
         return Number(a.ordem || 0) - Number(b.ordem || 0);
     });
 
+    let indiceAtual = 0;
 
-    function mostrarImagem(imagem) {
 
-        galeria.innerHTML = '';
+    function mostrarImagem(indice) {
+
+        indiceAtual = (indice + imagensOrdenadas.length) % imagensOrdenadas.length;
+
+        galeria.querySelector('img')?.remove();
 
         const foto = document.createElement('img');
 
-        foto.src = otimizarImagem(imagem.url, 1200);
+        foto.src = otimizarImagem(imagensOrdenadas[indiceAtual].url, 1200);
         foto.decoding = 'async';
-        foto.alt = nomeProduto;
+        foto.alt = `${nomeProduto} - imagem ${indiceAtual + 1}`;
+        foto.draggable = false;
 
-        galeria.appendChild(foto);
+        galeria.prepend(foto);
+
+        miniaturas.querySelectorAll('.product-thumb').forEach((botao, i) => {
+            botao.classList.toggle('active', i === indiceAtual);
+            botao.setAttribute('aria-current', i === indiceAtual ? 'true' : 'false');
+        });
     }
 
 
-    mostrarImagem(imagensOrdenadas[0]);
+    // Botão "ampliar" sobre a foto (atalho de teclado e dica visual)
+    const ampliar = document.createElement('button');
+
+    ampliar.type = 'button';
+    ampliar.className = 'product-zoom-btn';
+    ampliar.setAttribute('aria-label', 'Ampliar foto');
+    ampliar.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4.2-4.2M11 8v6M8 11h6"/></svg>';
+
+    galeria.appendChild(ampliar);
+    galeria.classList.add('zoomavel');
+
+    ampliar.addEventListener('click', evento => {
+        evento.stopPropagation();
+        abrirZoomProduto(imagensOrdenadas, indiceAtual, nomeProduto, mostrarImagem);
+    });
+
+
+    // Lupa ao passar o mouse (só em telas com mouse)
+    const comMouse = window.matchMedia('(hover: hover) and (pointer: fine)');
+
+    galeria.addEventListener('mousemove', evento => {
+
+        if (!comMouse.matches) return;
+
+        const foto = galeria.querySelector('img');
+        const area = galeria.getBoundingClientRect();
+
+        foto.style.transformOrigin =
+            `${((evento.clientX - area.left) / area.width) * 100}% ${((evento.clientY - area.top) / area.height) * 100}%`;
+
+        galeria.classList.add('lupa');
+    });
+
+    galeria.addEventListener('mouseleave', () => {
+        galeria.classList.remove('lupa');
+    });
+
+
+    // Toque: arrastar para o lado troca a foto; toque simples abre o zoom
+    let inicioToque = null;
+
+    galeria.addEventListener('pointerdown', evento => {
+        inicioToque = { x: evento.clientX, y: evento.clientY };
+    });
+
+    galeria.addEventListener('pointerup', evento => {
+
+        if (!inicioToque) return;
+
+        const dx = evento.clientX - inicioToque.x;
+        const dy = evento.clientY - inicioToque.y;
+
+        inicioToque = null;
+
+        if (evento.target.closest('.product-zoom-btn')) return;
+
+        if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) && imagensOrdenadas.length > 1) {
+            mostrarImagem(indiceAtual + (dx < 0 ? 1 : -1));
+            return;
+        }
+
+        if (Math.abs(dx) < 10 && Math.abs(dy) < 10) {
+            abrirZoomProduto(imagensOrdenadas, indiceAtual, nomeProduto, mostrarImagem);
+        }
+    });
+
+    galeria.addEventListener('pointercancel', () => {
+        inicioToque = null;
+    });
 
 
     imagensOrdenadas.forEach((imagem, index) => {
@@ -1025,38 +1107,366 @@ function montarGaleriaProduto(imagens, nomeProduto) {
 
         botao.type = 'button';
         botao.className = 'product-thumb';
-
-        if (index === 0) {
-            botao.classList.add('active');
-        }
-
+        botao.setAttribute('aria-label', `Ver imagem ${index + 1}`);
 
         const foto = document.createElement('img');
 
         foto.src = otimizarImagem(imagem.url, 200);
         foto.loading = 'lazy';
-        foto.alt = `${nomeProduto} - imagem ${index + 1}`;
-
+        foto.alt = '';
 
         botao.appendChild(foto);
 
-
-        botao.addEventListener('click', () => {
-
-            miniaturas
-                .querySelectorAll('.product-thumb')
-                .forEach(item => {
-                    item.classList.remove('active');
-                });
-
-            botao.classList.add('active');
-
-            mostrarImagem(imagem);
-        });
-
+        botao.addEventListener('click', () => mostrarImagem(index));
 
         miniaturas.appendChild(botao);
     });
+
+
+    mostrarImagem(0);
+}
+
+
+/*
+  Visualizador em tela cheia com zoom.
+  - Clique/toque duplo: amplia no ponto (2,5x) ou volta ao normal
+  - Mouse: com a foto ampliada, mover o mouse percorre a peça; rodinha amplia
+  - Celular: pinça para ampliar, arrastar para mover, deslizar para trocar
+  - Teclado: setas trocam a foto, + e - ampliam, Esc fecha
+  "aoTrocar" mantém a foto da página igual à última vista.
+*/
+function abrirZoomProduto(imagens, indiceInicial, nomeProduto, aoTrocar) {
+
+    const ESCALA_CLIQUE = 2.5;
+    const ESCALA_MAX = 5;
+
+    const focoAnterior = document.activeElement;
+
+    const modal = document.createElement('div');
+
+    modal.className = 'zoom-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('aria-label', `Fotos de ${nomeProduto}`);
+
+    modal.innerHTML = `
+      <div class="zoom-topo">
+        <span class="zoom-contador" aria-live="polite"></span>
+        <div class="zoom-acoes">
+          <button type="button" class="zoom-botao" data-acao="menos" aria-label="Diminuir zoom">−</button>
+          <button type="button" class="zoom-botao" data-acao="mais" aria-label="Aumentar zoom">+</button>
+          <button type="button" class="zoom-botao zoom-fechar" data-acao="fechar" aria-label="Fechar">✕</button>
+        </div>
+      </div>
+      <div class="zoom-palco">
+        <img class="zoom-img" alt="" draggable="false">
+      </div>
+      <button type="button" class="zoom-seta zoom-anterior" data-acao="anterior" aria-label="Foto anterior">‹</button>
+      <button type="button" class="zoom-seta zoom-proxima" data-acao="proxima" aria-label="Próxima foto">›</button>
+      <div class="zoom-miniaturas"></div>
+      <p class="zoom-dica">Clique ou toque duas vezes na foto para ampliar</p>`;
+
+    const palco = modal.querySelector('.zoom-palco');
+    const foto = modal.querySelector('.zoom-img');
+    const contador = modal.querySelector('.zoom-contador');
+    const tiraMiniaturas = modal.querySelector('.zoom-miniaturas');
+
+    let indice = indiceInicial;
+    let escala = 1;
+    let x = 0;
+    let y = 0;
+
+    if (imagens.length < 2) {
+        modal.classList.add('zoom-unica');
+    }
+
+    tiraMiniaturas.innerHTML = imagens.map((imagem, i) => `
+      <button type="button" class="zoom-miniatura" data-indice="${i}" aria-label="Ver imagem ${i + 1}">
+        <img src="${escaparHtml(otimizarImagem(imagem.url, 160))}" alt="" loading="lazy">
+      </button>`).join('');
+
+
+    function aplicar(animar = true) {
+
+        // Não deixa a foto sair da tela
+        const largura = palco.clientWidth;
+        const altura = palco.clientHeight;
+        const limiteX = (largura * (escala - 1)) / 2;
+        const limiteY = (altura * (escala - 1)) / 2;
+
+        x = Math.max(-limiteX, Math.min(limiteX, x));
+        y = Math.max(-limiteY, Math.min(limiteY, y));
+
+        foto.style.transition = animar ? 'transform .25s ease' : 'none';
+        foto.style.transform = `translate(${x}px, ${y}px) scale(${escala})`;
+        modal.classList.toggle('ampliado', escala > 1);
+    }
+
+
+    // Ponto da tela relativo ao centro do palco
+    function pontoNoPalco(clienteX, clienteY) {
+        const area = palco.getBoundingClientRect();
+        return {
+            dx: clienteX - (area.left + area.width / 2),
+            dy: clienteY - (area.top + area.height / 2)
+        };
+    }
+
+
+    // Amplia mantendo o ponto (dx, dy) parado sob o dedo/cursor
+    function ampliarEm(novaEscala, dx = 0, dy = 0, animar = true) {
+
+        novaEscala = Math.max(1, Math.min(ESCALA_MAX, novaEscala));
+
+        const px = (dx - x) / escala;
+        const py = (dy - y) / escala;
+
+        escala = novaEscala;
+        x = escala === 1 ? 0 : dx - escala * px;
+        y = escala === 1 ? 0 : dy - escala * py;
+
+        aplicar(animar);
+    }
+
+
+    function mostrar(novoIndice) {
+
+        indice = (novoIndice + imagens.length) % imagens.length;
+
+        escala = 1;
+        x = 0;
+        y = 0;
+        aplicar(false);
+
+        foto.src = otimizarImagem(imagens[indice].url, 2000);
+        foto.alt = `${nomeProduto} - imagem ${indice + 1}`;
+        contador.textContent = `${indice + 1} / ${imagens.length}`;
+
+        tiraMiniaturas.querySelectorAll('.zoom-miniatura').forEach((botao, i) => {
+            botao.classList.toggle('ativa', i === indice);
+        });
+
+        tiraMiniaturas.children[indice]?.scrollIntoView({ block: 'nearest', inline: 'center' });
+
+        if (aoTrocar) aoTrocar(indice);
+    }
+
+
+    function fechar() {
+        modal.remove();
+        document.body.classList.remove('zoom-aberto');
+        document.removeEventListener('keydown', teclado);
+        window.removeEventListener('resize', aoRedimensionar);
+        focoAnterior?.focus?.();
+    }
+
+
+    function teclado(evento) {
+
+        if (evento.key === 'Escape') fechar();
+        else if (evento.key === 'ArrowRight') mostrar(indice + 1);
+        else if (evento.key === 'ArrowLeft') mostrar(indice - 1);
+        else if (evento.key === '+' || evento.key === '=') ampliarEm(escala + 1);
+        else if (evento.key === '-') ampliarEm(escala - 1);
+        else if (evento.key === 'Tab') {
+
+            // Mantém o foco dentro do visualizador
+            const focaveis = [...modal.querySelectorAll('button')].filter(b => b.offsetParent !== null);
+            const primeiro = focaveis[0];
+            const ultimo = focaveis[focaveis.length - 1];
+
+            if (evento.shiftKey && document.activeElement === primeiro) {
+                evento.preventDefault();
+                ultimo.focus();
+            } else if (!evento.shiftKey && document.activeElement === ultimo) {
+                evento.preventDefault();
+                primeiro.focus();
+            }
+        }
+    }
+
+
+    modal.addEventListener('click', evento => {
+
+        const botao = evento.target.closest('button');
+
+        if (!botao) return;
+
+        const acao = botao.dataset.acao;
+
+        if (acao === 'fechar') fechar();
+        else if (acao === 'anterior') mostrar(indice - 1);
+        else if (acao === 'proxima') mostrar(indice + 1);
+        else if (acao === 'mais') ampliarEm(escala + 1);
+        else if (acao === 'menos') ampliarEm(escala - 1);
+        else if (botao.dataset.indice != null) mostrar(Number(botao.dataset.indice));
+    });
+
+
+    /* ---------- Mouse ---------- */
+
+    palco.addEventListener('wheel', evento => {
+        evento.preventDefault();
+        const { dx, dy } = pontoNoPalco(evento.clientX, evento.clientY);
+        ampliarEm(escala * (evento.deltaY < 0 ? 1.25 : 0.8), dx, dy, false);
+    }, { passive: false });
+
+
+    /* ---------- Ponteiros (mouse e toque) ---------- */
+
+    const ponteiros = new Map();
+    let gesto = null;
+    let ultimoToque = 0;
+
+    palco.addEventListener('pointerdown', evento => {
+
+        palco.setPointerCapture(evento.pointerId);
+        ponteiros.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+
+        if (ponteiros.size === 2) {
+
+            const [a, b] = [...ponteiros.values()];
+
+            gesto = {
+                tipo: 'pinca',
+                distancia: Math.hypot(a.x - b.x, a.y - b.y),
+                escala
+            };
+
+        } else if (ponteiros.size === 1) {
+
+            gesto = {
+                tipo: 'arrasto',
+                inicioX: evento.clientX,
+                inicioY: evento.clientY,
+                x,
+                y,
+                moveu: false
+            };
+        }
+    });
+
+    palco.addEventListener('pointermove', evento => {
+
+        // Mouse com a foto ampliada: a foto acompanha o cursor
+        if (evento.pointerType === 'mouse' && ponteiros.size === 0) {
+
+            if (escala > 1) {
+                const { dx, dy } = pontoNoPalco(evento.clientX, evento.clientY);
+                x = -dx * (escala - 1);
+                y = -dy * (escala - 1);
+                aplicar(false);
+            }
+
+            return;
+        }
+
+        if (!ponteiros.has(evento.pointerId)) return;
+
+        ponteiros.set(evento.pointerId, { x: evento.clientX, y: evento.clientY });
+
+        if (gesto?.tipo === 'pinca' && ponteiros.size === 2) {
+
+            const [a, b] = [...ponteiros.values()];
+            const { dx, dy } = pontoNoPalco((a.x + b.x) / 2, (a.y + b.y) / 2);
+
+            ampliarEm(gesto.escala * (Math.hypot(a.x - b.x, a.y - b.y) / gesto.distancia), dx, dy, false);
+
+        } else if (gesto?.tipo === 'arrasto') {
+
+            const deslocX = evento.clientX - gesto.inicioX;
+            const deslocY = evento.clientY - gesto.inicioY;
+
+            if (Math.abs(deslocX) > 6 || Math.abs(deslocY) > 6) gesto.moveu = true;
+
+            if (escala > 1) {
+                x = gesto.x + deslocX;
+                y = gesto.y + deslocY;
+                aplicar(false);
+            } else if (evento.pointerType !== 'mouse') {
+                // Prévia do deslizar para trocar de foto
+                foto.style.transition = 'none';
+                foto.style.transform = `translateX(${deslocX}px)`;
+            }
+        }
+    });
+
+    function soltar(evento) {
+
+        if (!ponteiros.has(evento.pointerId)) return;
+
+        ponteiros.delete(evento.pointerId);
+
+        if (gesto?.tipo === 'pinca') {
+            // Terminou a pinça: o dedo que sobrou não vira clique
+            gesto = ponteiros.size ? { tipo: 'fim' } : null;
+            if (escala < 1.05) ampliarEm(1);
+            return;
+        }
+
+        if (gesto?.tipo !== 'arrasto' || evento.type === 'pointercancel') {
+            gesto = null;
+            aplicar();
+            return;
+        }
+
+        const deslocX = evento.clientX - gesto.inicioX;
+        const { moveu } = gesto;
+
+        gesto = null;
+
+        // Deslizou com a foto no tamanho normal: troca a foto
+        if (escala === 1 && evento.pointerType !== 'mouse' && Math.abs(deslocX) > 60 && imagens.length > 1) {
+            mostrar(indice + (deslocX < 0 ? 1 : -1));
+            return;
+        }
+
+        if (moveu) {
+            aplicar();
+            return;
+        }
+
+        const { dx, dy } = pontoNoPalco(evento.clientX, evento.clientY);
+
+        if (evento.pointerType === 'mouse') {
+            // Clique: amplia no ponto ou volta ao normal
+            ampliarEm(escala > 1 ? 1 : ESCALA_CLIQUE, dx, dy);
+            if (escala > 1) {
+                x = -dx * (escala - 1);
+                y = -dy * (escala - 1);
+                aplicar();
+            }
+            return;
+        }
+
+        // Toque duplo: amplia no ponto ou volta ao normal
+        const agora = Date.now();
+
+        if (agora - ultimoToque < 300) {
+            ultimoToque = 0;
+            ampliarEm(escala > 1 ? 1 : ESCALA_CLIQUE, dx, dy);
+        } else {
+            ultimoToque = agora;
+            aplicar();
+        }
+    }
+
+    palco.addEventListener('pointerup', soltar);
+    palco.addEventListener('pointercancel', soltar);
+
+
+    const aoRedimensionar = () => aplicar(false);
+
+    window.addEventListener('resize', aoRedimensionar);
+
+
+    document.body.appendChild(modal);
+    document.body.classList.add('zoom-aberto');
+    document.addEventListener('keydown', teclado);
+
+    mostrar(indice);
+
+    modal.querySelector('.zoom-fechar').focus();
 }
 
 async function carregarVariacoesProduto(produtoId) {
