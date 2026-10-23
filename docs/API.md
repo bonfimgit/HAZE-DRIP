@@ -28,8 +28,8 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | GET | `/categorias` | 🔓 | Categorias ativas |
 | GET | `/campanha` | 🔓 | Campanha da Home vigente (404 se não houver) |
 | POST | `/carrinho/validar` | 🔓 | `{ itens: [{ variacao_id, quantidade }] }` → preços atuais, estoque e avisos |
-| POST | `/checkout/cotacao` | 🔓/👤 | `{ itens, cep, estado, cupom, email }` → subtotal, desconto, frete, total |
-| POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, metodo_pagamento: "pix" \| "mercadopago", chave_idempotencia }` |
+| POST | `/checkout/cotacao` | 🔓/👤 | `{ itens, cep, estado, cupom, email, servico_frete }` → subtotal, desconto, frete (com `opcoes` dos Correios quando ativos), total |
+| POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, servico_frete, metodo_pagamento: "pix" \| "mercadopago", chave_idempotencia }` |
 | GET | `/pedidos/:id/acompanhar?token=` | 🔓 | Pedido + pagamento pelo token do pedido (compra sem login) |
 | POST | `/pedidos/:id/pagamento` | 🔓 | Gera novo pagamento `{ token, metodo_pagamento }` |
 | POST | `/pedidos` | 🔓/👤 | Criação de pedido sem pagamento (compatibilidade) |

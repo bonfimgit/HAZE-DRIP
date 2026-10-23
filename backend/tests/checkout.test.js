@@ -14,6 +14,8 @@ const {
 } = require('./ajuda');
 
 const mercadoPago = require('../src/integracoes/mercadoPago');
+const correios = require('../src/integracoes/correios');
+const freteService = require('../src/services/freteService');
 const pagamentosService = require('../src/services/pagamentosService');
 
 let api;
@@ -158,6 +160,161 @@ test('frete: regra padrão, frete grátis e regra mais específica', async () =>
 
   const invalida = await api.post('/admin/frete', { nome: 'X', cep_inicio: '37900000', valor: 1, prazo_min_dias: 1, prazo_max_dias: 1 }, { token });
   assert.equal(invalida.status, 400);
+});
+
+
+/* =============================================================
+   FRETE PELOS CORREIOS
+============================================================= */
+
+const VARIAVEIS_CORREIOS = {
+  CORREIOS_USUARIO: 'loja',
+  CORREIOS_CODIGO_ACESSO: 'codigo',
+  CORREIOS_CARTAO_POSTAGEM: '0071234567',
+  CORREIOS_CEP_ORIGEM: '37900-000'
+};
+
+async function comCorreios(cotarSimulado, executar) {
+
+  const cotarOriginal = correios.cotar;
+  Object.assign(process.env, VARIAVEIS_CORREIOS);
+  correios.cotar = cotarSimulado;
+  freteService.limparCacheCorreios();
+
+  try {
+    await executar();
+  } finally {
+    for (const nome of Object.keys(VARIAVEIS_CORREIOS)) delete process.env[nome];
+    correios.cotar = cotarOriginal;
+    freteService.limparCacheCorreios();
+  }
+}
+
+test('frete pelos Correios: opções, escolha do serviço, frete grátis e pedido', async () => {
+
+  const consultas = [];
+
+  await comCorreios(async consulta => {
+    consultas.push(consulta);
+    return [
+      { codigo: '03220', nome: 'SEDEX', valor: 41.9, prazo_dias: 2 },
+      { codigo: '03298', nome: 'PAC', valor: 22.5, prazo_dias: 6 }
+    ];
+  }, async () => {
+
+    const itens = [{ variacao_id: ids.variacaoPId, quantidade: 2 }];
+
+    // Sem escolha: a mais barata, com o dia de postagem somado ao prazo
+    let cotacao = await api.post('/checkout/cotacao', { itens, cep: '01000-000', estado: 'SP' });
+    assert.equal(cotacao.status, 200);
+    assert.equal(cotacao.dados.frete.origem, 'correios');
+    assert.equal(cotacao.dados.frete.descricao, 'Correios PAC');
+    assert.equal(cotacao.dados.frete.valor, 22.5);
+    assert.equal(cotacao.dados.frete.prazo_max_dias, 7);
+    assert.deepEqual(cotacao.dados.frete.opcoes.map(o => o.nome), ['PAC', 'SEDEX']);
+    assert.equal(cotacao.dados.total, 222.5);
+
+    // Pacote: 2 peças x 300 g, CEP só com números
+    assert.equal(consultas[0].cepDestino, '01000000');
+    assert.equal(consultas[0].pesoGramas, 600);
+
+    // Mesma consulta de novo: vem do cache
+    await api.post('/checkout/cotacao', { itens, cep: '01000000', estado: 'SP' });
+    assert.equal(consultas.length, 1);
+
+    cotacao = await api.post('/checkout/cotacao', { itens, cep: '01000000', estado: 'SP', servico_frete: '03220' });
+    assert.equal(cotacao.dados.frete.descricao, 'Correios SEDEX');
+    assert.equal(cotacao.dados.frete.valor, 41.9);
+
+    // Acima de R$ 399 (regra da tabela): PAC grátis, SEDEX continua pago
+    const grandes = [{ variacao_id: ids.variacaoPId, quantidade: 4 }, { variacao_id: ids.variacaoMId, quantidade: 1 }];
+    cotacao = await api.post('/checkout/cotacao', { itens: grandes, cep: '01000000', estado: 'SP' });
+    assert.equal(cotacao.dados.frete.gratis, true);
+    assert.equal(cotacao.dados.frete.valor, 0);
+    assert.equal(cotacao.dados.frete.opcoes.find(o => o.nome === 'SEDEX').valor, 41.9);
+
+    // O pedido grava o serviço escolhido
+    const resposta = await api.post('/checkout', checkout({ servico_frete: '03220' }));
+    assert.equal(resposta.status, 201);
+    assert.equal(resposta.dados.pedido.total, 141.9);
+
+    const [[pedido]] = await db.query(
+      'SELECT frete, frete_descricao, frete_prazo_min, frete_prazo_max FROM pedidos WHERE id = ?',
+      [resposta.dados.pedido.id]
+    );
+    assert.equal(Number(pedido.frete), 41.9);
+    assert.equal(pedido.frete_descricao, 'Correios SEDEX');
+    assert.equal(pedido.frete_prazo_max, 3);
+  });
+});
+
+test('Correios fora do ar: o frete cai na tabela', async () => {
+
+  await comCorreios(async () => {
+    throw new Error('Correios (preço PAC) respondeu 503');
+  }, async () => {
+
+    const cotacao = await api.post('/checkout/cotacao', {
+      itens: [{ variacao_id: ids.variacaoPId, quantidade: 1 }], cep: '01000000', estado: 'SP'
+    });
+
+    assert.equal(cotacao.dados.frete.origem, 'tabela');
+    assert.equal(cotacao.dados.frete.descricao, 'Entrega padrão');
+    assert.equal(cotacao.dados.frete.valor, 25);
+  });
+});
+
+test('cliente dos Correios: token reaproveitado e valores no formato brasileiro', async () => {
+
+  const chamadas = [];
+  const fetchAnterior = global.fetch;
+
+  global.fetch = async (url, opcoes = {}) => {
+
+    const endereco = new URL(String(url));
+    chamadas.push({ caminho: endereco.pathname, parametros: endereco.searchParams, opcoes });
+
+    const json = dados => new Response(JSON.stringify(dados), { status: 200 });
+
+    if (endereco.pathname === '/token/v1/autentica/cartaopostagem') {
+      return json({ token: 'tk-1', expiraEm: new Date(Date.now() + 3600 * 1000).toISOString() });
+    }
+    if (endereco.pathname === '/preco/v1/nacional/03298') return json({ pcFinal: '1.234,56' });
+    if (endereco.pathname === '/prazo/v1/nacional/03298') return json({ prazoEntrega: 5 });
+    if (endereco.pathname === '/preco/v1/nacional/03220') {
+      return new Response(JSON.stringify({ msgs: ['Serviço não disponível no contrato'] }), { status: 400 });
+    }
+    return json({ prazoEntrega: 1 });
+  };
+
+  Object.assign(process.env, VARIAVEIS_CORREIOS);
+  correios.limparToken();
+
+  try {
+
+    const consulta = { cepDestino: '01000000', pesoGramas: 600, comprimentoCm: 30, larguraCm: 20, alturaCm: 10 };
+
+    // SEDEX recusado não derruba a cotação: só o PAC volta
+    const opcoes = await correios.cotar(consulta);
+    assert.deepEqual(opcoes, [{ codigo: '03298', nome: 'PAC', valor: 1234.56, prazo_dias: 5 }]);
+
+    await correios.cotar(consulta);
+
+    const tokens = chamadas.filter(c => c.caminho.startsWith('/token'));
+    assert.equal(tokens.length, 1);
+    assert.equal(tokens[0].opcoes.headers.Authorization, `Basic ${Buffer.from('loja:codigo').toString('base64')}`);
+    assert.equal(JSON.parse(tokens[0].opcoes.body).numero, '0071234567');
+
+    const preco = chamadas.find(c => c.caminho === '/preco/v1/nacional/03298');
+    assert.equal(preco.opcoes.headers.Authorization, 'Bearer tk-1');
+    assert.equal(preco.parametros.get('cepOrigem'), '37900000');
+    assert.equal(preco.parametros.get('psObjeto'), '600');
+
+  } finally {
+    global.fetch = fetchAnterior;
+    for (const nome of Object.keys(VARIAVEIS_CORREIOS)) delete process.env[nome];
+    correios.limparToken();
+  }
 });
 
 

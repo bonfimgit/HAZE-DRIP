@@ -21,7 +21,14 @@ const pagamentosService = require('./pagamentosService');
   Cotação para o resumo do checkout. Não reserva estoque nem cupom.
   Erros de cupom/frete voltam como aviso, para a tela continuar útil.
 */
-async function cotar({ itens, cep, uf, cupom, clienteId = null, email = null }) {
+// Total de peças, para estimar o peso do pacote
+function contarPecas(itens) {
+  return (Array.isArray(itens) ? itens : [])
+    .reduce((total, item) => total + (Number(item?.quantidade) > 0 ? Number(item.quantidade) : 0), 0);
+}
+
+
+async function cotar({ itens, cep, uf, cupom, servicoFrete = null, clienteId = null, email = null }) {
 
   const carrinho = await carrinhoService.validar(itens);
   const subtotal = carrinho.subtotal;
@@ -61,7 +68,9 @@ async function cotar({ itens, cep, uf, cupom, clienteId = null, email = null }) 
         cep,
         uf,
         valorProdutos: subtotal - resultado.desconto,
-        freteGratisCupom: Boolean(cupomAplicado?.frete_gratis)
+        freteGratisCupom: Boolean(cupomAplicado?.frete_gratis),
+        quantidadeItens: contarPecas(carrinho.itens),
+        servico: servicoFrete
       });
     } catch (erro) {
       resultado.erro_frete = erro.message;
@@ -105,7 +114,7 @@ async function buscarPorChave(chave, email) {
   clicar duas vezes ou a conexão cair e ele tentar de novo, o mesmo
   pedido é devolvido em vez de criar outro.
 */
-async function finalizar({ cliente, endereco, itens, clienteId, cupom, metodoPagamento, chaveIdempotencia }) {
+async function finalizar({ cliente, endereco, itens, clienteId, cupom, servicoFrete = null, metodoPagamento, chaveIdempotencia }) {
 
   if (!pagamentosService.METODOS.includes(metodoPagamento)) {
     throw requisicaoInvalida('Escolha a forma de pagamento');
@@ -125,6 +134,12 @@ async function finalizar({ cliente, endereco, itens, clienteId, cupom, metodoPag
   }
 
   const tokenAcesso = crypto.randomBytes(32).toString('hex');
+
+  // Cotação dos Correios fora da transação: não trava estoque esperando a API
+  const opcoesCorreios = await freteService.cotarCorreios({
+    cep: endereco.cep,
+    quantidadeItens: contarPecas(itens)
+  });
 
   let pedido;
 
@@ -161,6 +176,8 @@ async function finalizar({ cliente, endereco, itens, clienteId, cupom, metodoPag
             uf: endereco.estado,
             valorProdutos: subtotal - desconto,
             freteGratisCupom: Boolean(cupomAplicado?.frete_gratis),
+            servico: servicoFrete,
+            opcoesCorreios,
             conexao
           });
 

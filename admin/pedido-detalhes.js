@@ -1017,7 +1017,12 @@ async function carregarPagamentos(pedido) {
   }
 
   if (pedido.frete_descricao) {
-    linhas.push(`<strong>Frete:</strong> ${escaparHtml(pedido.frete_descricao)} — ${Number(pedido.frete_prazo_min)} a ${Number(pedido.frete_prazo_max)} dias úteis`);
+    const minimo = Number(pedido.frete_prazo_min);
+    const maximo = Number(pedido.frete_prazo_max);
+    const prazo = !pedido.frete_prazo_max
+      ? ''
+      : (!pedido.frete_prazo_min || minimo === maximo ? ` — ${maximo} dias úteis` : ` — ${minimo} a ${maximo} dias úteis`);
+    linhas.push(`<strong>Frete:</strong> ${escaparHtml(pedido.frete_descricao)}${prazo}`);
   }
 
   if (Number(pedido.valor_reembolsado) > 0) {

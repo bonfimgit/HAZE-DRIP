@@ -104,7 +104,7 @@
       : (cancelado ? 'Pedido cancelado' : 'Obrigado pela compra.');
 
     const prazo = pedido.frete_prazo_max
-      ? ` Prazo de entrega: ${pedido.frete_prazo_min} a ${pedido.frete_prazo_max} dias úteis após o pagamento.`
+      ? ` Prazo de entrega: ${!pedido.frete_prazo_min || pedido.frete_prazo_min === pedido.frete_prazo_max ? '' : `${pedido.frete_prazo_min} a `}${pedido.frete_prazo_max} dias úteis após o pagamento.`
       : '';
 
     $('confirmacao-texto').textContent = aguardando
