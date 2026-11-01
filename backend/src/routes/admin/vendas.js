@@ -169,20 +169,14 @@ router.get('/admin/pedidos/:id/pagamentos', autenticarAdmin, async (req, res) =>
   res.json(pagamentos);
 });
 
-// Consulta o Mercado Pago de novo (caso um webhook tenha se perdido)
+/*
+  Consulta o Mercado Pago de novo (caso um webhook tenha se perdido).
+  Busca também pela referência do pedido, para achar pagamentos do
+  Checkout Pro que nunca chegaram por webhook.
+*/
 router.post('/admin/pedidos/:id/pagamentos/sincronizar', autenticarAdmin, async (req, res) => {
 
-  const [pagamentos] = await db.execute(
-    `SELECT provedor_id FROM pagamentos
-     WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
-    [valida.id(req.params.id)]
-  );
-
-  const resultados = [];
-
-  for (const pagamento of pagamentos) {
-    resultados.push(await pagamentosService.sincronizar(pagamento.provedor_id));
-  }
+  const resultados = await pagamentosService.sincronizarPedido(valida.id(req.params.id));
 
   res.json({ resultados });
 });

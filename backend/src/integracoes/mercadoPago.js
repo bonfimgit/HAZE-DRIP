@@ -165,6 +165,27 @@ const mercadoPago = {
     };
   },
 
+  /*
+    IDs dos pagamentos ligados a um pedido (external_reference).
+    No Checkout Pro o pagamento nasce no Mercado Pago: sem webhook,
+    esta busca é a única forma de descobrir que o cliente pagou.
+  */
+  async buscarPagamentosDoPedido(pedidoId) {
+
+    const parametros = new URLSearchParams({
+      external_reference: String(pedidoId),
+      sort: 'date_created',
+      criteria: 'desc',
+      limit: '50'
+    });
+
+    const resposta = await requisitar('GET', `/v1/payments/search?${parametros}`);
+
+    return (resposta.results || [])
+      .filter(pagamento => String(pagamento.external_reference) === String(pedidoId))
+      .map(pagamento => String(pagamento.id));
+  },
+
   async reembolsar(id, valor, chaveIdempotencia) {
 
     const reembolso = await requisitar('POST', `/v1/payments/${encodeURIComponent(id)}/refunds`, {

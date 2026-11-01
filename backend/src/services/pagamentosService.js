@@ -331,6 +331,44 @@ async function sincronizar(pagamentoId) {
 
 
 /*
+  Sincroniza todos os pagamentos de um pedido.
+
+  Junta os pagamentos já registrados no banco com os encontrados no
+  Mercado Pago pela referência do pedido. Assim um pagamento do
+  Checkout Pro (cartão/boleto) é encontrado mesmo que o webhook
+  tenha se perdido. Usado pela expiração e pelo painel.
+
+  Se a busca no Mercado Pago falhar, o erro sobe: quem chamou não
+  deve concluir que o pedido não foi pago.
+*/
+async function sincronizarPedido(pedidoId) {
+
+  const [registrados] = await db.execute(
+    `SELECT provedor_id FROM pagamentos
+     WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
+    [pedidoId]
+  );
+
+  const ids = new Set(registrados.map(pagamento => String(pagamento.provedor_id)));
+
+  // Sem token (desenvolvimento) não há onde buscar
+  if (mercadoPago.configurado()) {
+    for (const id of await mercadoPago.buscarPagamentosDoPedido(pedidoId)) {
+      ids.add(id);
+    }
+  }
+
+  const resultados = [];
+
+  for (const id of ids) {
+    resultados.push({ pagamento: id, ...(await sincronizar(id)) });
+  }
+
+  return resultados;
+}
+
+
+/*
   Webhook do Mercado Pago.
   Responde rápido e registra o evento; erros não derrubam a resposta,
   para o MP não ficar reenviando indefinidamente notificações inválidas.
@@ -476,15 +514,8 @@ async function expirarPendentes() {
 
     try {
 
-      const [pagamentos] = await db.execute(
-        `SELECT provedor_id FROM pagamentos
-         WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
-        [id]
-      );
-
-      for (const pagamento of pagamentos) {
-        await sincronizar(pagamento.provedor_id);
-      }
+      // Inclui pagamentos do Checkout Pro que ainda não chegaram por webhook
+      await sincronizarPedido(id);
 
       const atual = await buscarPedido(id);
 
@@ -527,6 +558,7 @@ module.exports = {
   iniciar,
   resumo,
   sincronizar,
+  sincronizarPedido,
   processarWebhook,
   reembolsar,
   expirarPendentes
