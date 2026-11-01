@@ -500,7 +500,9 @@ async function avancarStatus(pedidoId, statusNovo, {
   adminId = null,
   origem = 'admin',
   observacao = null,
-  rastreio = null
+  rastreio = null,
+  // Gravado na mesma transação da mudança de status (ex.: 'aprovado')
+  pagamentoStatus = null
 } = {}) {
 
   const resultado = await emTransacao(async conexao => {
@@ -542,6 +544,11 @@ async function avancarStatus(pedidoId, statusNovo, {
     if (rastreio) {
       sets.push('codigo_rastreio = ?', 'transportadora = ?', 'url_rastreio = ?');
       valores.push(rastreio.codigo, rastreio.transportadora, rastreio.url);
+    }
+
+    if (pagamentoStatus) {
+      sets.push('pagamento_status = ?');
+      valores.push(pagamentoStatus);
     }
 
     await conexao.execute(
@@ -590,11 +597,18 @@ async function atualizarRastreio(pedidoId, { codigo, transportadora, url }) {
   Cancela o pedido e devolve o estoque.
   Usado pelo admin, pela expiração de pagamento e pelo webhook.
 */
+/*
+  "somenteSe": lista de status em que o cancelamento é aceito.
+  A expiração automática usa ['aguardando_pagamento']: a conferência
+  acontece com o pedido travado (FOR UPDATE), então um webhook que
+  marcou o pedido como pago um instante antes impede o cancelamento.
+*/
 async function cancelar(pedidoId, {
   adminId = null,
   origem = 'admin',
   motivo = null,
-  conexaoExterna = null
+  conexaoExterna = null,
+  somenteSe = null
 } = {}) {
 
   const executar = async conexao => {
@@ -616,6 +630,11 @@ async function cancelar(pedidoId, {
 
     if (!STATUS_CANCELAVEIS.includes(statusAtual)) {
       throw conflito('Este pedido não pode mais ser cancelado');
+    }
+
+    // O status mudou desde a última leitura (ex.: pagamento aprovado)
+    if (somenteSe && !somenteSe.includes(statusAtual)) {
+      throw conflito(`O pedido mudou para "${statusAtual}" e não foi cancelado`);
     }
 
     const [itens] = await conexao.execute(

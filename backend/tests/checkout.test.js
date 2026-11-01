@@ -17,6 +17,7 @@ const mercadoPago = require('../src/integracoes/mercadoPago');
 const correios = require('../src/integracoes/correios');
 const freteService = require('../src/services/freteService');
 const pagamentosService = require('../src/services/pagamentosService');
+const pedidosService = require('../src/services/pedidosService');
 
 let api;
 let ids;
@@ -579,6 +580,71 @@ test('pedido não pago no prazo é cancelado e devolve o estoque', async () => {
   assert.equal(pago.dados.status, 'pago');
 
   assert.equal(await estoqueDe(ids.variacaoPId), antes - 1);
+});
+
+test('expiração não cancela pedido que foi pago no meio do caminho', async () => {
+
+  const { pedidoId, mpId } = await pedidoComPix();
+  const antes = await estoqueDe(ids.variacaoPId);
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  /*
+    Simula a corrida: a expiração já conferiu que o pedido estava
+    aguardando, e o webhook aprova o pagamento logo antes do cancelamento.
+  */
+  const cancelarOriginal = pedidosService.cancelar;
+
+  pedidosService.cancelar = async (id, opcoes) => {
+    pagamentosMp.get(mpId).status = 'approved';
+    await api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
+    return cancelarOriginal(id, opcoes);
+  };
+
+  try {
+    assert.equal(await pagamentosService.expirarPendentes(), 0);
+  } finally {
+    pedidosService.cancelar = cancelarOriginal;
+  }
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'pago');
+  assert.equal(pedido.dados.pagamento_status, 'aprovado');
+  assert.equal(await estoqueDe(ids.variacaoPId), antes);
+});
+
+test('pagamento aprovado logo depois da expiração fica marcado para reembolso', async () => {
+
+  const { pedidoId, mpId } = await pedidoComPix();
+  pagamentosMp.get(mpId).status = 'approved';
+
+  /*
+    Simula a corrida inversa: o webhook leu o pedido como "aguardando"
+    e a expiração o cancela antes de o webhook marcar como pago.
+  */
+  const avancarOriginal = pedidosService.avancarStatus;
+
+  pedidosService.avancarStatus = async (id, status, opcoes) => {
+    await pedidosService.cancelar(id, { origem: 'sistema', motivo: 'Pagamento não confirmado no prazo' });
+    return avancarOriginal(id, status, opcoes);
+  };
+
+  let resultado;
+
+  try {
+    resultado = await pagamentosService.sincronizar(mpId);
+  } finally {
+    pedidosService.avancarStatus = avancarOriginal;
+  }
+
+  assert.equal(resultado.resultado, 'aprovado após cancelamento');
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'cancelado');
+  assert.equal(pedido.dados.pagamento_status, 'aprovado_apos_cancelamento');
 });
 
 test('reembolso: somente gerente; total cancela e devolve estoque', async () => {
