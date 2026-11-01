@@ -47,6 +47,15 @@ const COLUNA_DATA_STATUS = {
 const MAX_ITENS = 50;
 const MAX_QUANTIDADE_ITEM = 99;
 
+/*
+  Prazo padrão para pagar (minutos).
+  Todo pedido nasce com prazo: se a cobrança não puder ser gerada
+  (Mercado Pago fora do ar, por exemplo), o pedido ainda expira e o
+  estoque volta. Ao gerar a cobrança, pagamentosService.iniciar()
+  substitui este prazo pelo do método escolhido.
+*/
+const PRAZO_PAGAMENTO_PADRAO_MINUTOS = 30;
+
 
 async function registrarHistorico(conexao, {
   pedidoId,
@@ -248,6 +257,8 @@ async function criar({ cliente, endereco, itens, clienteId = null, ajustes = nul
       subtotal,
       frete,
       total,
+      // Garante que nenhum pedido segure estoque para sempre
+      pagamento_expira_em: new Date(Date.now() + PRAZO_PAGAMENTO_PADRAO_MINUTOS * 60 * 1000),
       ...(clienteId ? { cliente_id: clienteId } : {}),
       ...(extras.colunas || {})
     };

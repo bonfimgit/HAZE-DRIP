@@ -465,6 +465,33 @@ test('falha ao gerar pagamento mantém o pedido e permite tentar de novo', async
   assert.equal((await api.post(`/pedidos/${id}/pagamento`, { token: 'x', metodo_pagamento: 'pix' })).status, 404);
 });
 
+test('pedido sem cobrança gerada também expira e devolve o estoque', async () => {
+
+  const antes = await estoqueDe(ids.variacaoPId);
+
+  falharCriacao = true;
+  const resposta = await api.post('/checkout', checkout());
+  falharCriacao = false;
+
+  const pedidoId = resposta.dados.pedido.id;
+  assert.equal(await estoqueDe(ids.variacaoPId), antes - 1);
+
+  // Antes da correção o prazo ficava NULL e o pedido nunca expirava
+  const [[pedido]] = await db.query('SELECT pagamento_expira_em FROM pedidos WHERE id = ?', [pedidoId]);
+  assert.ok(pedido.pagamento_expira_em);
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  const expirado = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(expirado.dados.status, 'cancelado');
+  assert.equal(await estoqueDe(ids.variacaoPId), antes);
+});
+
 
 /* =============================================================
    WEBHOOK

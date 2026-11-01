@@ -9,16 +9,73 @@ const {
   db
 } = require('./ajuda');
 
+const express = require('express');
+const { lerDadosEntrega } = require('../src/routes/loja/pedidos');
+const pedidosService = require('../src/services/pedidosService');
+const { tratarErros } = require('../src/middlewares/tratarErros');
+
 let api;
 let ids;
 let token;
 
+
+/*
+  A rota pública "POST /pedidos" não existe mais (todo pedido passa
+  pelo checkout). Estes testes cobrem as regras do pedidosService
+  (preço do banco, transação, concorrência), então usam um servidor
+  só de teste que chama o serviço direto, sem frete nem pagamento.
+*/
+let servidorPedidos;
+let basePedidos;
+
+async function iniciarServidorPedidos() {
+
+  const app = express();
+  app.use(express.json());
+
+  app.post('/pedidos', async (req, res) => {
+    const { cliente, endereco } = await lerDadosEntrega(req.body, null);
+    const pedido = await pedidosService.criar({ cliente, endereco, itens: req.body.itens });
+    res.status(201).json({ pedido });
+  });
+
+  app.use(tratarErros);
+
+  servidorPedidos = await new Promise(resolve => {
+    const s = app.listen(0, () => resolve(s));
+  });
+
+  basePedidos = `http://127.0.0.1:${servidorPedidos.address().port}`;
+}
+
+// Mesmo formato de resposta do helper "api" ({ status, dados })
+async function criarPedido(corpo) {
+
+  const resposta = await fetch(`${basePedidos}/pedidos`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(corpo)
+  });
+
+  return { status: resposta.status, dados: await resposta.json() };
+}
+
+
 before(async () => {
   ({ api, ids, tokenAdmin: token } = await prepararAmbiente());
+  await iniciarServidorPedidos();
 });
 
 after(async () => {
+  await new Promise(resolve => servidorPedidos.close(resolve));
   await finalizarAmbiente(api);
+});
+
+
+test('rota pública antiga POST /pedidos não existe mais', async () => {
+  const resposta = await api.post('/pedidos', pedidoValido([item(ids.variacaoPId, 1)]));
+  assert.equal(resposta.status, 404);
+  assert.equal(await estoqueDe(ids.variacaoPId), 5);
 });
 
 
@@ -32,7 +89,7 @@ test('cria pedido com preço do banco, baixa estoque e registra histórico', asy
   const corpo = pedidoValido([item(ids.variacaoPId, 2)]);
   corpo.subtotal = 1; // valor enviado pelo cliente é ignorado
 
-  const resposta = await api.post('/pedidos', corpo);
+  const resposta = await criarPedido(corpo);
 
   assert.equal(resposta.status, 201);
   assert.equal(resposta.dados.pedido.status, 'aguardando_pagamento');
@@ -61,7 +118,7 @@ test('cria pedido com preço do banco, baixa estoque e registra histórico', asy
 test('itens repetidos da mesma variação são somados (não deixa estoque negativo)', async () => {
 
   // Variação M tem 2 unidades: 2 + 2 = 4 deve ser recusado
-  const resposta = await api.post('/pedidos', pedidoValido([
+  const resposta = await criarPedido(pedidoValido([
     item(ids.variacaoMId, 2),
     item(ids.variacaoMId, 2)
   ]));
@@ -76,7 +133,7 @@ test('pedido falho não deixa nada gravado (transação)', async () => {
   const [antes] = await db.query('SELECT COUNT(*) AS total FROM pedidos');
 
   // Primeiro item válido, segundo sem estoque
-  const resposta = await api.post('/pedidos', pedidoValido([
+  const resposta = await criarPedido(pedidoValido([
     item(ids.variacaoPId, 1),
     item(ids.variacaoMId, 50)
   ]));
@@ -102,7 +159,7 @@ test('validações do pedido', async () => {
   ];
 
   for (const [corpo, mensagem] of casos) {
-    const resposta = await api.post('/pedidos', corpo);
+    const resposta = await criarPedido(corpo);
     assert.equal(resposta.status, 400, JSON.stringify(corpo));
     if (mensagem) {
       assert.equal(resposta.dados.erro, mensagem);
@@ -111,23 +168,23 @@ test('validações do pedido', async () => {
 
   const cepInvalido = pedidoValido([item(ids.variacaoPId, 1)]);
   cepInvalido.endereco.cep = '123';
-  assert.equal((await api.post('/pedidos', cepInvalido)).status, 400);
+  assert.equal((await criarPedido(cepInvalido)).status, 400);
 
   const ufInvalida = pedidoValido([item(ids.variacaoPId, 1)]);
   ufInvalida.endereco.estado = 'M1';
-  assert.equal((await api.post('/pedidos', ufInvalida)).status, 400);
+  assert.equal((await criarPedido(ufInvalida)).status, 400);
 });
 
 test('produto inativo ou variação de outro produto não podem ser vendidos', async () => {
 
   await db.query('UPDATE produto_variacoes SET ativo = FALSE WHERE id = ?', [ids.variacaoMId]);
 
-  const inativa = await api.post('/pedidos', pedidoValido([item(ids.variacaoMId, 1)]));
+  const inativa = await criarPedido(pedidoValido([item(ids.variacaoMId, 1)]));
   assert.equal(inativa.status, 400);
 
   await db.query('UPDATE produto_variacoes SET ativo = TRUE WHERE id = ?', [ids.variacaoMId]);
 
-  const outroProduto = await api.post('/pedidos', pedidoValido([
+  const outroProduto = await criarPedido(pedidoValido([
     { produto_id: 999, variacao_id: ids.variacaoPId, quantidade: 1 }
   ]));
   assert.equal(outroProduto.status, 404);
@@ -138,7 +195,7 @@ test('pedidos simultâneos não vendem além do estoque', async () => {
   // Variação M: 2 unidades. 5 pedidos de 1 unidade ao mesmo tempo.
   const respostas = await Promise.all(
     Array.from({ length: 5 }, () =>
-      api.post('/pedidos', pedidoValido([item(ids.variacaoMId, 1)]))
+      criarPedido(pedidoValido([item(ids.variacaoMId, 1)]))
     )
   );
 
@@ -154,7 +211,7 @@ test('fluxo de status segue a ordem e grava datas e histórico', async () => {
 
   await db.query('UPDATE produto_variacoes SET estoque = 10 WHERE id = ?', [ids.variacaoPId]);
 
-  const criado = await api.post('/pedidos', pedidoValido([item(ids.variacaoPId, 1)]));
+  const criado = await criarPedido(pedidoValido([item(ids.variacaoPId, 1)]));
   const pedidoId = criado.dados.pedido.id;
 
   const pulando = await api.patch(`/admin/pedidos/${pedidoId}/status`, { status: 'enviado' }, { token });
@@ -201,7 +258,7 @@ test('cancelamento devolve estoque uma única vez', async () => {
 
   const antes = await estoqueDe(ids.variacaoPId);
 
-  const criado = await api.post('/pedidos', pedidoValido([item(ids.variacaoPId, 3)]));
+  const criado = await criarPedido(pedidoValido([item(ids.variacaoPId, 3)]));
   const pedidoId = criado.dados.pedido.id;
 
   assert.equal(await estoqueDe(ids.variacaoPId), antes - 3);
