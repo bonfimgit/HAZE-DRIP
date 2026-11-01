@@ -108,7 +108,7 @@ Testes: `npm test` (veja as variáveis `TEST_DB_*` em [docs/DEPLOY.md](docs/DEPL
 
 ## 📚 Documentação
 
-- [Referência da API](docs/API.md): 104 rotas
+- [Referência da API](docs/API.md): 103 rotas
 - [Deploy e operação](docs/DEPLOY.md): variáveis, migrações, Mercado Pago, e-mails, backup e monitoramento
 - [Checklist de produção](docs/PRODUCAO.md)
 

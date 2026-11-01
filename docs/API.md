@@ -32,7 +32,6 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, servico_frete, metodo_pagamento: "pix" \| "mercadopago", chave_idempotencia }` |
 | GET | `/pedidos/:id/acompanhar?token=` | 🔓 | Pedido + pagamento pelo token do pedido (compra sem login) |
 | POST | `/pedidos/:id/pagamento` | 🔓 | Gera novo pagamento `{ token, metodo_pagamento }` |
-| POST | `/pedidos` | 🔓/👤 | Criação de pedido sem pagamento (compatibilidade) |
 | POST | `/pagamentos/webhook/mercadopago` | Mercado Pago | Notificações; assinatura conferida com `MERCADOPAGO_WEBHOOK_SECRET` |
 
 ## Conta do cliente
@@ -77,9 +76,9 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | DELETE | `/produtos/:produtoId/imagens/:imagemId` | 🛠️ | Remove imagem |
 | PATCH | `/produtos/:produtoId/imagens/:imagemId/principal` | 🛠️ | Define principal |
 | GET | `/admin/produtos/:id/variacoes` | 🛠️ | Variações (inclui inativas) |
-| POST / PUT / DELETE | `/produtos/:id/variacoes`, `/produtos/:produtoId/variacoes/:variacaoId` | 🛠️ | Variações |
+| POST / PUT / DELETE | `/produtos/:id/variacoes`, `/produtos/:produtoId/variacoes/:variacaoId` | 🛠️ | Variações. No PUT, `estoque` é opcional (sem ele mantém o atual) e `estoque_anterior?` evita sobrescrever uma venda (409) |
 | PATCH | `.../variacoes/:variacaoId/reativar` | 🛠️ | Reativa variação |
-| PATCH | `.../variacoes/:variacaoId/estoque` | 🛠️ | `{ estoque }` (ajuste) ou `{ entrada }` (soma), `estoque_minimo?`, `motivo?` |
+| PATCH | `.../variacoes/:variacaoId/estoque` | 🛠️ | `{ estoque }` (ajuste) ou `{ entrada }` (soma), `estoque_minimo?`, `motivo?`, `estoque_anterior?` (409 se o estoque mudou) |
 | GET | `/admin/estoque/baixo`, `/inventario`, `/movimentacoes` | 🛠️ | Estoque |
 | GET/POST/PUT/DELETE/PATCH | `/admin/categorias`, `/categorias/:id`, `/categorias/:id/reativar` | 🛠️ | Categorias |
 | GET/POST/PUT/DELETE/PATCH | `/admin/campanhas...` | 🛠️ | Campanha da Home e promoções (`inicio_em`, `fim_em`, `desconto_percentual`, `produto_ids`) |
@@ -90,7 +89,7 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | PATCH | `/admin/pedidos/:id/rastreio` | 🛠️ | `{ codigo_rastreio, transportadora, url_rastreio }` |
 | PATCH | `/admin/pedidos/:id/cancelar` | 🛠️ | `{ motivo?, reembolsar? }` (reembolsar: 👑) |
 | GET | `/admin/pedidos/:id/pagamentos` | 🛠️ | Pagamentos do pedido |
-| POST | `/admin/pedidos/:id/pagamentos/sincronizar` | 🛠️ | Consulta o Mercado Pago de novo |
+| POST | `/admin/pedidos/:id/pagamentos/sincronizar` | 🛠️ | Consulta o Mercado Pago de novo (inclui busca pela referência do pedido, para o Checkout Pro) |
 | POST | `/admin/pedidos/:id/reembolso` | 👑 | `{ valor?, motivo? }` (vazio = total) |
 | GET | `/admin/clientes`, `/admin/clientes/:id` | 🛠️ | Clientes |
 | PATCH | `/admin/clientes/:id/bloqueio` | 🛠️ | `{ bloqueado, motivo? }` |
