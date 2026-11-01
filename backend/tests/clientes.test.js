@@ -5,6 +5,7 @@ const {
   prepararAmbiente,
   finalizarAmbiente,
   pedidoValido,
+  criarPedido,
   cadastrarCliente,
   tokenDoUltimoEmail,
   enviadosEmTeste,
@@ -190,7 +191,7 @@ test('pedido logado vincula ao cliente, usa endereço salvo e aparece em Meus pe
   delete corpo.endereco;
   corpo.endereco_id = enderecos.dados[0].id;
 
-  const criado = await api.post('/pedidos', corpo, { token });
+  const criado = await criarPedido(api, corpo, { token });
   assert.equal(criado.status, 201);
 
   const carrinho = await api.get('/clientes/me/carrinho', { token });
@@ -211,7 +212,7 @@ test('pedido logado vincula ao cliente, usa endereço salvo e aparece em Meus pe
   assert.equal((await api.get(`/clientes/me/pedidos/${criado.dados.pedido.id}`, { token: outro.token })).status, 404);
 
   // Endereço de outro cliente não pode ser usado
-  const invasor = await api.post('/pedidos', corpo, { token: outro.token });
+  const invasor = await criarPedido(api, corpo, { token: outro.token });
   assert.equal(invasor.status, 404);
 
   // E-mail de pedido criado
@@ -221,7 +222,7 @@ test('pedido logado vincula ao cliente, usa endereço salvo e aparece em Meus pe
 
 test('pedidos antigos sem login só são vinculados após confirmar o e-mail', async () => {
 
-  const anonimo = await api.post('/pedidos', {
+  const anonimo = await criarPedido(api, {
     ...pedidoValido([item(ids.variacaoPId, 1)]),
     cliente: { nome: 'Pedro', email: 'pedro@teste.com', telefone: '35999999999' }
   });

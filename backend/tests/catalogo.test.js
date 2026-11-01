@@ -88,7 +88,7 @@ test('rota inexistente e JSON inválido', async () => {
 
   assert.equal((await api.get('/nao-existe')).status, 404);
 
-  const json = await api.post('/pedidos', '{x');
+  const json = await api.post('/checkout', '{x');
   assert.equal(json.status, 400);
   assert.equal(json.dados.mensagem, 'JSON inválido na requisição');
 });

@@ -17,6 +17,7 @@ const mercadoPago = require('../src/integracoes/mercadoPago');
 const correios = require('../src/integracoes/correios');
 const freteService = require('../src/services/freteService');
 const pagamentosService = require('../src/services/pagamentosService');
+const pedidosService = require('../src/services/pedidosService');
 
 let api;
 let ids;
@@ -51,6 +52,19 @@ mercadoPago.criarPreferencia = async ({ pedidoId }) => ({
 const fetchOriginal = global.fetch;
 
 global.fetch = async (url, opcoes) => {
+
+  // Busca por referência do pedido (/v1/payments/search?external_reference=)
+  const busca = String(url).match(/^https:\/\/api\.mercadopago\.com\/v1\/payments\/search\?(.*)$/);
+
+  if (busca) {
+    const referencia = new URLSearchParams(busca[1]).get('external_reference');
+    const results = [...pagamentosMp]
+      .filter(([, p]) => String(p.pedido_id) === referencia)
+      .map(([id, p]) => ({ id: Number(id), external_reference: String(p.pedido_id) }));
+    return new Response(JSON.stringify({ results }), {
+      status: 200, headers: { 'Content-Type': 'application/json' }
+    });
+  }
 
   const m = String(url).match(/^https:\/\/api\.mercadopago\.com\/v1\/payments\/(\d+)$/);
 
@@ -465,6 +479,33 @@ test('falha ao gerar pagamento mantém o pedido e permite tentar de novo', async
   assert.equal((await api.post(`/pedidos/${id}/pagamento`, { token: 'x', metodo_pagamento: 'pix' })).status, 404);
 });
 
+test('pedido sem cobrança gerada também expira e devolve o estoque', async () => {
+
+  const antes = await estoqueDe(ids.variacaoPId);
+
+  falharCriacao = true;
+  const resposta = await api.post('/checkout', checkout());
+  falharCriacao = false;
+
+  const pedidoId = resposta.dados.pedido.id;
+  assert.equal(await estoqueDe(ids.variacaoPId), antes - 1);
+
+  // Antes da correção o prazo ficava NULL e o pedido nunca expirava
+  const [[pedido]] = await db.query('SELECT pagamento_expira_em FROM pedidos WHERE id = ?', [pedidoId]);
+  assert.ok(pedido.pagamento_expira_em);
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  const expirado = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(expirado.dados.status, 'cancelado');
+  assert.equal(await estoqueDe(ids.variacaoPId), antes);
+});
+
 
 /* =============================================================
    WEBHOOK
@@ -552,6 +593,140 @@ test('pedido não pago no prazo é cancelado e devolve o estoque', async () => {
   assert.equal(pago.dados.status, 'pago');
 
   assert.equal(await estoqueDe(ids.variacaoPId), antes - 1);
+});
+
+test('expiração não cancela pedido que foi pago no meio do caminho', async () => {
+
+  const { pedidoId, mpId } = await pedidoComPix();
+  const antes = await estoqueDe(ids.variacaoPId);
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  /*
+    Simula a corrida: a expiração já conferiu que o pedido estava
+    aguardando, e o webhook aprova o pagamento logo antes do cancelamento.
+  */
+  const cancelarOriginal = pedidosService.cancelar;
+
+  pedidosService.cancelar = async (id, opcoes) => {
+    pagamentosMp.get(mpId).status = 'approved';
+    await api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
+    return cancelarOriginal(id, opcoes);
+  };
+
+  try {
+    assert.equal(await pagamentosService.expirarPendentes(), 0);
+  } finally {
+    pedidosService.cancelar = cancelarOriginal;
+  }
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'pago');
+  assert.equal(pedido.dados.pagamento_status, 'aprovado');
+  assert.equal(await estoqueDe(ids.variacaoPId), antes);
+});
+
+test('pagamento aprovado logo depois da expiração fica marcado para reembolso', async () => {
+
+  const { pedidoId, mpId } = await pedidoComPix();
+  pagamentosMp.get(mpId).status = 'approved';
+
+  /*
+    Simula a corrida inversa: o webhook leu o pedido como "aguardando"
+    e a expiração o cancela antes de o webhook marcar como pago.
+  */
+  const avancarOriginal = pedidosService.avancarStatus;
+
+  pedidosService.avancarStatus = async (id, status, opcoes) => {
+    await pedidosService.cancelar(id, { origem: 'sistema', motivo: 'Pagamento não confirmado no prazo' });
+    return avancarOriginal(id, status, opcoes);
+  };
+
+  let resultado;
+
+  try {
+    resultado = await pagamentosService.sincronizar(mpId);
+  } finally {
+    pedidosService.avancarStatus = avancarOriginal;
+  }
+
+  assert.equal(resultado.resultado, 'aprovado após cancelamento');
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'cancelado');
+  assert.equal(pedido.dados.pagamento_status, 'aprovado_apos_cancelamento');
+});
+
+/*
+  Checkout Pro: o pagamento nasce no Mercado Pago e o banco só tem a
+  preferência. Simula um cartão aprovado cujo webhook se perdeu.
+*/
+async function pedidoCheckoutProPagoSemWebhook() {
+  const resposta = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const pedidoId = resposta.dados.pedido.id;
+  const mpId = String(proximoPagamento++);
+  pagamentosMp.set(mpId, { status: 'approved', valor: resposta.dados.pedido.total, pedido_id: pedidoId });
+  return { pedidoId, mpId };
+}
+
+test('Checkout Pro sem webhook: painel encontra o pagamento ao sincronizar', async () => {
+
+  const { pedidoId, mpId } = await pedidoCheckoutProPagoSemWebhook();
+
+  const sincronizacao = await api.post(`/admin/pedidos/${pedidoId}/pagamentos/sincronizar`, {}, { token });
+  assert.equal(sincronizacao.status, 200);
+  assert.deepEqual(sincronizacao.dados.resultados.map(r => r.pagamento), [mpId]);
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'pago');
+});
+
+test('Checkout Pro sem webhook: expiração confere no Mercado Pago e não cancela pedido pago', async () => {
+
+  const { pedidoId: pagoId } = await pedidoCheckoutProPagoSemWebhook();
+
+  // Outro pedido do Checkout Pro que realmente não foi pago
+  const naoPago = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const naoPagoId = naoPago.dados.pedido.id;
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id IN (?, ?)',
+    [pagoId, naoPagoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  assert.equal((await api.get(`/admin/pedidos/${pagoId}`, { token })).dados.status, 'pago');
+  assert.equal((await api.get(`/admin/pedidos/${naoPagoId}`, { token })).dados.status, 'cancelado');
+});
+
+test('expiração não cancela se a consulta ao Mercado Pago falhar', async () => {
+
+  const resposta = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const pedidoId = resposta.dados.pedido.id;
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  const buscarOriginal = mercadoPago.buscarPagamentosDoPedido;
+  mercadoPago.buscarPagamentosDoPedido = async () => { throw new Error('MP fora do ar'); };
+
+  try {
+    await pagamentosService.expirarPendentes();
+  } finally {
+    mercadoPago.buscarPagamentosDoPedido = buscarOriginal;
+  }
+
+  // Sem saber se foi pago, o pedido continua aguardando (tenta de novo depois)
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'aguardando_pagamento');
+
+  await pagamentosService.expirarPendentes();
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'cancelado');
 });
 
 test('reembolso: somente gerente; total cancela e devolve estoque', async () => {

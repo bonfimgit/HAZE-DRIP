@@ -158,6 +158,26 @@ async function resumo(pedidoId) {
 }
 
 
+/*
+  Pagou depois que o pedido foi cancelado (expirou): o valor precisa
+  ser reembolsado manualmente. A marcação aparece no pedido do painel.
+*/
+async function marcarAprovadoAposCancelamento(pedidoId, pagamentoId) {
+
+  await db.execute(
+    "UPDATE pedidos SET pagamento_status = 'aprovado_apos_cancelamento' WHERE id = ?",
+    [pedidoId]
+  );
+
+  logger.erro('Pagamento aprovado para pedido cancelado — reembolsar', {
+    pedidoId,
+    pagamentoId
+  });
+
+  return { resultado: 'aprovado após cancelamento' };
+}
+
+
 const STATUS_PAGAMENTO = {
   approved: 'aprovado',
   authorized: 'pendente',
@@ -235,33 +255,40 @@ async function sincronizar(pagamentoId) {
 
     if (pedido.status === 'aguardando_pagamento') {
 
-      await db.execute(
-        "UPDATE pedidos SET pagamento_status = 'aprovado' WHERE id = ?",
-        [pedido.id]
-      );
+      try {
 
-      await pedidosService.avancarStatus(pedido.id, 'pago', {
-        origem: 'pagamento',
-        observacao: `Mercado Pago #${pagamento.id} (${pagamento.metodo || 'pagamento'})`
-      });
+        /*
+          Status e pagamento_status mudam juntos, na mesma transação
+          e com o pedido travado. Se a expiração cancelou o pedido
+          entre a leitura acima e este ponto, avancarStatus recusa.
+        */
+        await pedidosService.avancarStatus(pedido.id, 'pago', {
+          origem: 'pagamento',
+          observacao: `Mercado Pago #${pagamento.id} (${pagamento.metodo || 'pagamento'})`,
+          pagamentoStatus: 'aprovado'
+        });
 
-      return { resultado: 'pedido pago' };
+        return { resultado: 'pedido pago' };
+
+      } catch (erro) {
+
+        if (erro.status !== 409) {
+          throw erro;
+        }
+
+        // Relê o status atual para decidir o que aconteceu
+        const atual = await buscarPedido(pedido.id);
+
+        if (atual.status !== 'cancelado') {
+          return { resultado: 'já processado' };
+        }
+
+        return marcarAprovadoAposCancelamento(atual.id, pagamento.id);
+      }
     }
 
     if (pedido.status === 'cancelado') {
-
-      // Pagou depois que o pedido expirou: precisa de ação manual
-      await db.execute(
-        "UPDATE pedidos SET pagamento_status = 'aprovado_apos_cancelamento' WHERE id = ?",
-        [pedido.id]
-      );
-
-      logger.erro('Pagamento aprovado para pedido cancelado — reembolsar', {
-        pedidoId: pedido.id,
-        pagamentoId: pagamento.id
-      });
-
-      return { resultado: 'aprovado após cancelamento' };
+      return marcarAprovadoAposCancelamento(pedido.id, pagamento.id);
     }
 
     return { resultado: 'já processado' };
@@ -300,6 +327,44 @@ async function sincronizar(pagamentoId) {
   }
 
   return { resultado: statusLocal };
+}
+
+
+/*
+  Sincroniza todos os pagamentos de um pedido.
+
+  Junta os pagamentos já registrados no banco com os encontrados no
+  Mercado Pago pela referência do pedido. Assim um pagamento do
+  Checkout Pro (cartão/boleto) é encontrado mesmo que o webhook
+  tenha se perdido. Usado pela expiração e pelo painel.
+
+  Se a busca no Mercado Pago falhar, o erro sobe: quem chamou não
+  deve concluir que o pedido não foi pago.
+*/
+async function sincronizarPedido(pedidoId) {
+
+  const [registrados] = await db.execute(
+    `SELECT provedor_id FROM pagamentos
+     WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
+    [pedidoId]
+  );
+
+  const ids = new Set(registrados.map(pagamento => String(pagamento.provedor_id)));
+
+  // Sem token (desenvolvimento) não há onde buscar
+  if (mercadoPago.configurado()) {
+    for (const id of await mercadoPago.buscarPagamentosDoPedido(pedidoId)) {
+      ids.add(id);
+    }
+  }
+
+  const resultados = [];
+
+  for (const id of ids) {
+    resultados.push({ pagamento: id, ...(await sincronizar(id)) });
+  }
+
+  return resultados;
 }
 
 
@@ -449,27 +514,33 @@ async function expirarPendentes() {
 
     try {
 
-      const [pagamentos] = await db.execute(
-        `SELECT provedor_id FROM pagamentos
-         WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
-        [id]
-      );
-
-      for (const pagamento of pagamentos) {
-        await sincronizar(pagamento.provedor_id);
-      }
+      // Inclui pagamentos do Checkout Pro que ainda não chegaram por webhook
+      await sincronizarPedido(id);
 
       const atual = await buscarPedido(id);
 
       if (atual.status === 'aguardando_pagamento') {
+        /*
+          "somenteSe": a conferência final é feita com o pedido travado.
+          Se um webhook aprovou o pagamento depois da leitura acima,
+          o cancelamento é recusado e o pedido continua pago.
+        */
         await pedidosService.cancelar(id, {
           origem: 'sistema',
-          motivo: 'Pagamento não confirmado no prazo'
+          motivo: 'Pagamento não confirmado no prazo',
+          somenteSe: ['aguardando_pagamento']
         });
         cancelados++;
       }
 
     } catch (erro) {
+
+      // Pedido mudou de status no meio do caminho: nada a cancelar
+      if (erro.status === 409) {
+        logger.info('Expiração ignorada: pedido mudou de status', { pedidoId: id, motivo: erro.message });
+        continue;
+      }
+
       logger.erro('Erro ao expirar pedido', { pedidoId: id, erro: erro.message });
     }
   }
@@ -487,6 +558,7 @@ module.exports = {
   iniciar,
   resumo,
   sincronizar,
+  sincronizarPedido,
   processarWebhook,
   reembolsar,
   expirarPendentes

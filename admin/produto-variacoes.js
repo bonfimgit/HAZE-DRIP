@@ -653,9 +653,14 @@ function configurarBotoesVariacoes() {
               );
 
 
+            /*
+              defaultValue = estoque que a tela carregou.
+              O servidor recusa se uma venda mudou o valor nesse meio-tempo.
+            */
             await atualizarEstoque(
               variacaoId,
-              Number(input.value)
+              Number(input.value),
+              Number(input.defaultValue)
             );
 
           }
@@ -731,7 +736,8 @@ function configurarBotoesVariacoes() {
 
 async function atualizarEstoque(
   variacaoId,
-  estoque
+  estoque,
+  estoqueAnterior
 ) {
 
   if (
@@ -768,7 +774,10 @@ async function atualizarEstoque(
 
           body:
             JSON.stringify({
-              estoque
+              estoque,
+              // Valor que a tela mostrava (proteção contra sobrescrita)
+              estoque_anterior:
+                estoqueAnterior
             })
 
         }
@@ -780,6 +789,11 @@ async function atualizarEstoque(
 
 
     if (!resposta.ok) {
+
+      // Estoque mudou (venda no meio-tempo): recarrega os valores reais
+      if (resposta.status === 409) {
+        await carregarVariacoes();
+      }
 
       throw new Error(
         resultado.mensagem
@@ -937,9 +951,16 @@ function abrirEdicaoVariacao(
     botao.dataset.sku;
 
 
-  document.getElementById(
-    'editar-variacao-estoque'
-  ).value =
+  const campoEstoque =
+    document.getElementById(
+      'editar-variacao-estoque'
+    );
+
+  campoEstoque.value =
+    botao.dataset.estoque;
+
+  // Guarda o estoque mostrado ao abrir o modal (enviado ao salvar)
+  campoEstoque.dataset.estoqueAnterior =
     botao.dataset.estoque;
 
 
@@ -1001,11 +1022,19 @@ const ativo =
         ).value.trim();
 
 
+      const campoEstoque =
+        document.getElementById(
+          'editar-variacao-estoque'
+        );
+
       const estoque =
         Number(
-          document.getElementById(
-            'editar-variacao-estoque'
-          ).value
+          campoEstoque.value
+        );
+
+      const estoqueAnterior =
+        Number(
+          campoEstoque.dataset.estoqueAnterior
         );
 
 
@@ -1061,6 +1090,9 @@ const ativo =
                   tamanho,
                   cor,
                   estoque,
+                  // Valor que o modal mostrava ao abrir
+                  estoque_anterior:
+                    estoqueAnterior,
                   sku,
                   ativo
 
@@ -1084,6 +1116,11 @@ const ativo =
 
 
         if (!resposta.ok) {
+
+          // Estoque mudou (venda no meio-tempo): recarrega a lista
+          if (resposta.status === 409) {
+            await carregarVariacoes();
+          }
 
           throw new Error(
             resultado.mensagem ||

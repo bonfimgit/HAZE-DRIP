@@ -2,8 +2,6 @@ const { Router } = require('express');
 
 const valida = require('../../utils/validacao');
 const { requisicaoInvalida } = require('../../utils/erros');
-const { identificarCliente } = require('../../middlewares/autenticacao');
-const pedidosService = require('../../services/pedidosService');
 const enderecosService = require('../../services/enderecosService');
 
 const router = Router();
@@ -81,23 +79,15 @@ async function lerDadosEntrega(corpo, clienteLogado) {
 }
 
 
-router.post('/pedidos', identificarCliente, async (req, res) => {
+/*
+  A antiga rota pública "POST /pedidos" foi removida.
+  Ela criava pedidos sem pagamento, sem frete e sem prazo, o que
+  permitia prender o estoque da loja indefinidamente. Todo pedido
+  agora passa por "POST /checkout" (routes/loja/checkout.js).
 
-  const { cliente, endereco } = await lerDadosEntrega(req.body, req.cliente);
-
-  const pedido = await pedidosService.criar({
-    cliente,
-    endereco,
-    itens: req.body.itens,
-    clienteId: req.cliente ? req.cliente.id : null
-  });
-
-  res.status(201).json({
-    mensagem: 'Pedido criado com sucesso',
-    pedido
-  });
-});
-
+  Este arquivo continua exportando os leitores de cliente/endereço,
+  usados pelo checkout e pela área do cliente.
+*/
 
 module.exports = router;
 module.exports.lerDadosEntrega = lerDadosEntrega;

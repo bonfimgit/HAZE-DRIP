@@ -192,6 +192,49 @@ test('estoque baixo e inventário', async () => {
   assert.ok(inventario.dados.length >= 2);
 });
 
+test('tela desatualizada não sobrescreve o estoque depois de uma venda', async () => {
+
+  const criada = await api.post(`/produtos/${ids.produtoId}/variacoes`, {
+    tamanho: 'GG', cor: 'Branco', sku: 'CAM-BRA-GG', estoque: 5
+  }, { token });
+  const variacaoId = criada.dados.id;
+  const rota = `/produtos/${ids.produtoId}/variacoes/${variacaoId}`;
+
+  // O painel abriu com 5; uma venda baixa para 4 nesse meio-tempo
+  await db.query('UPDATE produto_variacoes SET estoque = 4 WHERE id = ?', [variacaoId]);
+
+  // Edição pelo modal: recusada, estoque continua 4
+  const edicao = await api.put(rota, {
+    tamanho: 'GG', cor: 'Branco', sku: 'CAM-BRA-GG-2', ativo: 1, estoque: 5, estoque_anterior: 5
+  }, { token });
+  assert.equal(edicao.status, 409);
+  assert.match(edicao.dados.mensagem, /agora: 4/);
+  assert.equal(await estoqueDe(variacaoId), 4);
+
+  // Ajuste para valor exato: também recusado
+  const ajuste = await api.patch(`${rota}/estoque`, { estoque: 5, estoque_anterior: 5 }, { token });
+  assert.equal(ajuste.status, 409);
+  assert.equal(await estoqueDe(variacaoId), 4);
+
+  // Com o valor certo, passa
+  const ok = await api.patch(`${rota}/estoque`, { estoque: 7, estoque_anterior: 4 }, { token });
+  assert.equal(ok.status, 200);
+  assert.equal(await estoqueDe(variacaoId), 7);
+
+  // Entrada é uma soma: não depende do valor da tela
+  const entrada = await api.patch(`${rota}/estoque`, { entrada: 2, estoque_anterior: 1 }, { token });
+  assert.equal(entrada.status, 200);
+  assert.equal(await estoqueDe(variacaoId), 9);
+
+  // Editar sem mandar estoque mantém o valor atual
+  const soSku = await api.put(rota, {
+    tamanho: 'GG', cor: 'Branco', sku: 'CAM-BRA-GG-3', ativo: 1
+  }, { token });
+  assert.equal(soSku.status, 200);
+  assert.equal(soSku.dados.sku, 'CAM-BRA-GG-3');
+  assert.equal(await estoqueDe(variacaoId), 9);
+});
+
 test('remover foto principal promove outra e apaga do Cloudinary', async () => {
 
   await api.enviar('POST', `/produtos/${ids.produtoId}/imagens`, formImagem(), { token });

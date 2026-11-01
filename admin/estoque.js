@@ -212,6 +212,12 @@ $estoque('estoque-form').addEventListener('submit', async evento => {
 
   if (quantidade !== '') {
     corpo[entrada ? 'entrada' : 'estoque'] = Number(quantidade);
+
+    // Ajuste para valor exato: envia o estoque que a tela mostrava,
+    // para o servidor recusar se uma venda mudou o valor nesse meio-tempo
+    if (!entrada) {
+      corpo.estoque_anterior = variacaoEditando.estoque;
+    }
   }
 
   try {

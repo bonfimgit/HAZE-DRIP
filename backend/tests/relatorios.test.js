@@ -1,7 +1,7 @@
 const { test, before, after } = require('node:test');
 const assert = require('node:assert/strict');
 
-const { prepararAmbiente, finalizarAmbiente, pedidoValido, db } = require('./ajuda');
+const { prepararAmbiente, finalizarAmbiente, pedidoValido, criarPedido, db } = require('./ajuda');
 
 let api;
 let ids;
@@ -10,10 +10,13 @@ let token;
 before(async () => {
   ({ api, ids, tokenAdmin: token } = await prepararAmbiente());
 
+  // Pedidos passam pelo checkout: frete zerado para os totais conferirem com os produtos
+  await db.query('UPDATE frete_regras SET valor = 0');
+
   const criar = async (variacaoId, quantidade, email) => {
     const corpo = pedidoValido([{ produto_id: ids.produtoId, variacao_id: variacaoId, quantidade }]);
     corpo.cliente.email = email;
-    return (await api.post('/pedidos', corpo)).dados.pedido.id;
+    return (await criarPedido(api, corpo)).dados.pedido.id;
   };
 
   // 3 pedidos: 2 pagos (mesmo cliente = recorrente), 1 cancelado

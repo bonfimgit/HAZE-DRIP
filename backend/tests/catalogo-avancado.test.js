@@ -5,6 +5,7 @@ const {
   prepararAmbiente,
   finalizarAmbiente,
   pedidoValido,
+  criarPedido,
   cadastrarCliente,
   db
 } = require('./ajuda');
@@ -201,7 +202,7 @@ test('avaliações só depois de receber o produto; admin oculta', async () => {
 
   const corpo = pedidoValido([{ produto_id: ids.produtoId, variacao_id: ids.variacaoPId, quantidade: 1 }]);
   corpo.cliente.email = 'avaliadora@teste.com';
-  const pedido = await api.post('/pedidos', corpo, { token: tokenCliente });
+  const pedido = await criarPedido(api, corpo, { token: tokenCliente });
   const pedidoId = pedido.dados.pedido.id;
 
   // Pago mas não entregue
