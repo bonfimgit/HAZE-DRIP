@@ -1,4 +1,5 @@
 const db = require('../config/db');
+const { emTransacao } = require('../utils/transacao');
 const { naoEncontrado, conflito } = require('../utils/erros');
 const produtosService = require('./produtosService');
 const estoqueService = require('./estoqueService');
@@ -112,38 +113,69 @@ async function criar(produtoId, { tamanho, cor, estoque, sku }, adminId = null) 
 }
 
 
-async function atualizar(produtoId, variacaoId, { tamanho, cor, estoque, sku, ativo }, adminId = null) {
+/*
+  Edita a variação.
+  - estoque null: mantém o estoque atual (salvar só SKU/cor/tamanho)
+  - estoqueAnterior: valor que o painel mostrava; se uma venda mudou
+    o estoque nesse meio-tempo, a edição é recusada (409)
+  Tudo numa transação, com a variação travada: uma venda simultânea
+  espera a edição terminar em vez de ter a baixa sobrescrita.
+*/
+async function atualizar(produtoId, variacaoId, { tamanho, cor, estoque, sku, ativo, estoqueAnterior = null }, adminId = null) {
 
-  const anterior = await buscar(produtoId, variacaoId);
+  await emTransacao(async conexao => {
 
-  try {
-    await db.execute(
-      `UPDATE produto_variacoes
-       SET
-          tamanho = ?,
-          cor = ?,
-          estoque = ?,
-          sku = ?,
-          ativo = ?
+    const [variacoes] = await conexao.execute(
+      `SELECT estoque
+       FROM produto_variacoes
        WHERE id = ?
-       AND produto_id = ?`,
-      [tamanho, cor, estoque, sku, ativo, variacaoId, produtoId]
+       AND produto_id = ?
+       FOR UPDATE`,
+      [variacaoId, produtoId]
     );
-  } catch (erro) {
-    throw tratarDuplicidade(erro, tamanho, cor);
-  }
 
-  if (Number(anterior.estoque) !== estoque) {
-    await estoqueService.registrarMovimentacao(db, {
-      variacaoId,
-      tipo: 'ajuste',
-      quantidade: estoque - Number(anterior.estoque),
-      estoqueAnterior: Number(anterior.estoque),
-      estoqueNovo: estoque,
-      motivo: 'Edição da variação',
-      adminId
-    });
-  }
+    if (variacoes.length === 0) {
+      throw naoEncontrado('Variação não encontrada');
+    }
+
+    const atual = Number(variacoes[0].estoque);
+
+    // Só confere quando o estoque está sendo alterado
+    if (estoque != null) {
+      estoqueService.conferirEstoqueAnterior(atual, estoqueAnterior);
+    }
+
+    const novo = estoque == null ? atual : estoque;
+
+    try {
+      await conexao.execute(
+        `UPDATE produto_variacoes
+         SET
+            tamanho = ?,
+            cor = ?,
+            estoque = ?,
+            sku = ?,
+            ativo = ?
+         WHERE id = ?
+         AND produto_id = ?`,
+        [tamanho, cor, novo, sku, ativo, variacaoId, produtoId]
+      );
+    } catch (erro) {
+      throw tratarDuplicidade(erro, tamanho, cor);
+    }
+
+    if (atual !== novo) {
+      await estoqueService.registrarMovimentacao(conexao, {
+        variacaoId,
+        tipo: 'ajuste',
+        quantidade: novo - atual,
+        estoqueAnterior: atual,
+        estoqueNovo: novo,
+        motivo: 'Edição da variação',
+        adminId
+      });
+    }
+  });
 
   return buscar(produtoId, variacaoId);
 }

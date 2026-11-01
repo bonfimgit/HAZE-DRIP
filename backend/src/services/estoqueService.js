@@ -1,6 +1,6 @@
 const db = require('../config/db');
 const { emTransacao } = require('../utils/transacao');
-const { naoEncontrado, requisicaoInvalida } = require('../utils/erros');
+const { naoEncontrado, requisicaoInvalida, conflito } = require('../utils/erros');
 
 /*
   Tipos de movimentação:
@@ -43,11 +43,30 @@ async function registrarMovimentacao(conexao, {
 
 
 /*
+  Confere se o estoque continua igual ao que o painel mostrava.
+  Chamar com a variação travada (FOR UPDATE), dentro da transação.
+
+  Sem isso: o painel abre com 5, um cliente compra 1 (fica 4), o
+  admin salva 5 e a loja passa a vender uma peça que não existe.
+*/
+function conferirEstoqueAnterior(atual, esperado) {
+
+  if (esperado != null && Number(atual) !== Number(esperado)) {
+    throw conflito(
+      `O estoque mudou desde que a tela foi aberta (agora: ${atual}). ` +
+      'Atualize a página e confira antes de salvar.'
+    );
+  }
+}
+
+
+/*
   Altera o estoque de uma variação e registra a movimentação.
   modo 'definir' = ajuste para um valor exato (inventário)
   modo 'somar'   = entrada de mercadoria
+  estoqueAnterior (opcional) = valor que o painel mostrava
 */
-async function alterar({ produtoId, variacaoId, modo, valor, motivo, adminId }) {
+async function alterar({ produtoId, variacaoId, modo, valor, motivo, adminId, estoqueAnterior = null }) {
 
   return emTransacao(async conexao => {
 
@@ -65,6 +84,8 @@ async function alterar({ produtoId, variacaoId, modo, valor, motivo, adminId }) 
     }
 
     const anterior = Number(variacoes[0].estoque);
+
+    conferirEstoqueAnterior(anterior, estoqueAnterior);
 
     const novo = modo === 'somar'
       ? anterior + valor
@@ -215,6 +236,7 @@ async function inventario() {
 module.exports = {
   TIPOS,
   registrarMovimentacao,
+  conferirEstoqueAnterior,
   alterar,
   definirMinimo,
   listarMovimentacoes,

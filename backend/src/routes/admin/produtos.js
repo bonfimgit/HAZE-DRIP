@@ -83,16 +83,39 @@ function lerVariacao(corpo, { edicao = false } = {}) {
     sku: valida.texto(sku, obrigatorios, { max: 80 })
   };
 
-  valida.obrigatorio(estoque, obrigatorios);
-
-  dados.estoque = valida.inteiro(estoque, ESTOQUE_INVALIDO, { min: 0, max: 1000000 });
+  /*
+    Na edição o estoque é opcional: sem ele, o valor atual é mantido.
+    Assim salvar só o SKU ou a cor nunca mexe no estoque.
+  */
+  if (edicao && estoque == null) {
+    dados.estoque = null;
+  } else {
+    valida.obrigatorio(estoque, obrigatorios);
+    dados.estoque = valida.inteiro(estoque, ESTOQUE_INVALIDO, { min: 0, max: 1000000 });
+  }
 
   if (edicao) {
     valida.obrigatorio(ativo, obrigatorios);
     dados.ativo = valida.paraBoolean(ativo);
+    dados.estoqueAnterior = lerEstoqueAnterior(corpo);
   }
 
   return dados;
+}
+
+
+/*
+  "estoque_anterior": o estoque que o painel mostrava quando a tela
+  foi aberta. Se uma venda mudou o estoque nesse meio-tempo, o
+  servidor recusa a alteração em vez de sobrescrever o valor.
+*/
+function lerEstoqueAnterior(corpo) {
+
+  const valor = corpo?.estoque_anterior;
+
+  return valor == null || valor === ''
+    ? null
+    : valida.inteiro(valor, 'Estoque anterior inválido', { min: 0, max: 1000000 });
 }
 
 
@@ -295,7 +318,9 @@ router.patch('/produtos/:produtoId/variacoes/:variacaoId/estoque', autenticarAdm
         ? valida.inteiro(entrada, 'Entrada deve ser um número inteiro maior que zero', { min: 1, max: 1000000 })
         : valida.inteiro(estoque, ESTOQUE_INVALIDO, { min: 0, max: 1000000 }),
       motivo: motivoTexto || (somar ? 'Entrada de estoque' : 'Ajuste manual'),
-      adminId: req.admin.id
+      adminId: req.admin.id,
+      // Só faz sentido ao definir o valor exato (a entrada é uma soma)
+      estoqueAnterior: somar ? null : lerEstoqueAnterior(req.body)
     });
   }
 
