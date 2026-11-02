@@ -30,6 +30,21 @@ setInterval(() => {
   );
 }, 5 * 60 * 1000).unref();
 
+/*
+  A cada minuto reenvia e-mails que falharam ou ficaram pela metade
+  (ex.: servidor reiniciou durante o envio). Roda também ao iniciar.
+*/
+const emailService = require('./src/services/emailService');
+
+function processarEmails() {
+  emailService.processarFila().catch(erro =>
+    logger.erro('Erro na fila de e-mails', { erro: erro.message })
+  );
+}
+
+setInterval(processarEmails, 60 * 1000).unref();
+setTimeout(processarEmails, 10 * 1000).unref();
+
 db.query('SELECT 1')
   .then(() => logger.info('MySQL conectado'))
   .catch(erro => logger.erro('Erro ao conectar ao MySQL', { erro: erro.message }));

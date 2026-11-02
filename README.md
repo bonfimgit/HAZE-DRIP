@@ -39,7 +39,9 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 - Relatórios em CSV, usuários com perfis (gerente/operador) e auditoria das ações
 
 ### Qualidade e segurança
-- **96 testes automatizados** de API (pedidos e pagamentos simultâneos, estoque, reembolsos, permissões), rodando contra MySQL 8 no GitHub Actions
+- **103 testes automatizados** de API (pedidos e pagamentos simultâneos, estoque, reembolsos, permissões), rodando contra MySQL 8 no GitHub Actions
+- Fila de e-mails com novas tentativas (nada se perde se o servidor reiniciar)
+- ESLint e `npm audit` no CI
 - Senhas com bcrypt, JWT com sessões revogáveis, limite de tentativas, Helmet, CORS restrito
 - Proteção contra XSS e SQL Injection, validação centralizada, logs estruturados
 

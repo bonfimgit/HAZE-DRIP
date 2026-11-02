@@ -88,7 +88,7 @@ test('exportação CSV: formato Excel, proteção contra fórmula e permissão',
   assert.match(resposta.headers.get('content-type'), /text\/csv/);
   assert.match(resposta.headers.get('content-disposition'), /haze-drip-pedidos-/);
 
-  const linhas = resposta.dados.replace(/^﻿/, '').split('\r\n');
+  const linhas = resposta.dados.replace(/^\uFEFF/, '').split('\r\n');
   assert.equal(linhas.length, 4);
   assert.ok(linhas[0].startsWith('Pedido;Data;Status'));
 

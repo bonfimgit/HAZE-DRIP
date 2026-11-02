@@ -99,7 +99,10 @@ function sslBanco() {
     try {
       ca = fs.readFileSync(process.env.DB_SSL_CA_FILE, 'utf8');
     } catch (erro) {
-      throw new Error(`DB_SSL_CA_FILE: não foi possível ler ${process.env.DB_SSL_CA_FILE} (${erro.code || erro.message})`);
+      throw new Error(
+        `DB_SSL_CA_FILE: não foi possível ler ${process.env.DB_SSL_CA_FILE} (${erro.code || erro.message})`,
+        { cause: erro }
+      );
     }
   } else if (process.env.DB_SSL_CA) {
     ca = process.env.DB_SSL_CA;
