@@ -85,9 +85,9 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | GET/PATCH | `/admin/avaliacoes`, `/admin/avaliacoes/:id` | 🛠️ | Moderação `{ visivel }` |
 | GET | `/admin/pedidos?status=&busca=` | 🛠️ | Pedidos |
 | GET | `/admin/pedidos/:id` | 🛠️ | Detalhe com itens e histórico |
-| PATCH | `/admin/pedidos/:id/status` | 🛠️ | Próximo status (+ rastreio ao enviar) |
+| PATCH | `/admin/pedidos/:id/status` | 🛠️ | Próximo status (+ rastreio ao enviar). Marcar como `pago` à mão: 👑 |
 | PATCH | `/admin/pedidos/:id/rastreio` | 🛠️ | `{ codigo_rastreio, transportadora, url_rastreio }` |
-| PATCH | `/admin/pedidos/:id/cancelar` | 🛠️ | `{ motivo?, reembolsar? }` (reembolsar: 👑) |
+| PATCH | `/admin/pedidos/:id/cancelar` | 🛠️ | `{ motivo?, reembolsar? }`. Pedido já pago e `reembolsar`: 👑. Com `reembolsar`, pedido enviado responde 409 sem reembolsar |
 | GET | `/admin/pedidos/:id/pagamentos` | 🛠️ | Pagamentos do pedido |
 | POST | `/admin/pedidos/:id/pagamentos/sincronizar` | 🛠️ | Consulta o Mercado Pago de novo (inclui busca pela referência do pedido, para o Checkout Pro) |
 | POST | `/admin/pedidos/:id/reembolso` | 👑 | `{ valor?, motivo? }` (vazio = total) |

@@ -413,60 +413,91 @@ async function processarWebhook({ tipo, recursoId, assinatura, requestId }) {
   Reembolso total ou parcial de um pedido pago.
   Reembolso total de pedido ainda não enviado também cancela o
   pedido e devolve o estoque.
+
+  "cancelarPedido": usado por "cancelar e reembolsar". Recusa antes de
+  devolver o dinheiro se o pedido não puder ser cancelado (já enviado),
+  em vez de reembolsar e responder "cancelado" sem cancelar.
+
+  O pagamento fica travado (FOR UPDATE) do cálculo até a gravação:
+  dois cliques simultâneos não leem o mesmo saldo. O segundo espera
+  o primeiro terminar e vê o valor já reembolsado.
 */
-async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = null } = {}) {
+async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = null, cancelarPedido = false } = {}) {
 
   const pedido = await buscarPedido(pedidoId);
 
-  const [pagamentos] = await db.execute(
-    `SELECT *
-     FROM pagamentos
-     WHERE pedido_id = ?
-     AND provedor = 'mercadopago'
-     AND tipo = 'pagamento'
-     AND status IN ('aprovado', 'reembolsado_parcial')
-     ORDER BY id DESC
-     LIMIT 1`,
-    [pedidoId]
-  );
-
-  const pagamento = pagamentos[0];
-
-  if (!pagamento) {
-    throw conflito('Não há pagamento aprovado para reembolsar neste pedido');
+  if (cancelarPedido && pedido.status === 'cancelado') {
+    throw conflito('Pedido já está cancelado');
   }
 
-  const disponivel = arredondar(Number(pagamento.valor) - Number(pagamento.valor_reembolsado));
-  const valorReembolso = valor == null ? disponivel : arredondar(valor);
-
-  if (valorReembolso <= 0 || valorReembolso > disponivel) {
-    throw requisicaoInvalida(`O valor máximo para reembolso é ${disponivel.toFixed(2)}`);
+  if (cancelarPedido && !pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
+    throw conflito(
+      'Pedido já enviado ou entregue não pode ser cancelado. ' +
+      'Use "Reembolsar" para devolver o valor sem cancelar.'
+    );
   }
 
-  const total = valorReembolso === disponivel;
+  const resultado = await emTransacao(async conexao => {
 
-  await mercadoPago.reembolsar(
-    pagamento.provedor_id,
-    total && Number(pagamento.valor_reembolsado) === 0 ? null : valorReembolso,
-    `reembolso-${pedido.id}-${Number(pagamento.valor_reembolsado)}`
-  );
+    const [pagamentos] = await conexao.execute(
+      `SELECT *
+       FROM pagamentos
+       WHERE pedido_id = ?
+       AND provedor = 'mercadopago'
+       AND tipo = 'pagamento'
+       AND status IN ('aprovado', 'reembolsado_parcial')
+       ORDER BY id DESC
+       LIMIT 1
+       FOR UPDATE`,
+      [pedidoId]
+    );
 
-  const novoReembolsado = arredondar(Number(pagamento.valor_reembolsado) + valorReembolso);
-  const statusPagamento = total ? 'reembolsado' : 'reembolsado_parcial';
+    const pagamento = pagamentos[0];
 
-  await db.execute(
-    'UPDATE pagamentos SET valor_reembolsado = ?, status = ? WHERE id = ?',
-    [novoReembolsado, statusPagamento, pagamento.id]
-  );
+    if (!pagamento) {
+      throw conflito('Não há pagamento aprovado para reembolsar neste pedido');
+    }
 
-  await db.execute(
-    `UPDATE pedidos
-     SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
-     WHERE id = ?`,
-    [novoReembolsado, statusPagamento, pedido.id]
-  );
+    const jaReembolsado = Number(pagamento.valor_reembolsado);
+    const disponivel = arredondar(Number(pagamento.valor) - jaReembolsado);
+    const valorReembolso = valor == null ? disponivel : arredondar(valor);
 
-  if (total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
+    if (valorReembolso <= 0 || valorReembolso > disponivel) {
+      throw requisicaoInvalida(`O valor máximo para reembolso é ${disponivel.toFixed(2)}`);
+    }
+
+    const total = valorReembolso === disponivel;
+
+    /*
+      Chamada externa com o pagamento travado: é uma ação rara do
+      gerente, e a trava é o que impede o reembolso em dobro.
+      Se o Mercado Pago recusar, nada é gravado (rollback).
+    */
+    await mercadoPago.reembolsar(
+      pagamento.provedor_id,
+      total && jaReembolsado === 0 ? null : valorReembolso,
+      `reembolso-${pedido.id}-${jaReembolsado}`
+    );
+
+    const novoReembolsado = arredondar(jaReembolsado + valorReembolso);
+    const statusPagamento = total ? 'reembolsado' : 'reembolsado_parcial';
+
+    await conexao.execute(
+      'UPDATE pagamentos SET valor_reembolsado = ?, status = ? WHERE id = ?',
+      [novoReembolsado, statusPagamento, pagamento.id]
+    );
+
+    await conexao.execute(
+      `UPDATE pedidos
+       SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
+       WHERE id = ?`,
+      [novoReembolsado, statusPagamento, pedido.id]
+    );
+
+    return { valorReembolso, novoReembolsado, statusPagamento, total };
+  });
+
+  if (resultado.total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
     await pedidosService.cancelar(pedido.id, {
       adminId,
       origem: 'admin',
@@ -478,7 +509,7 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
         pedidoId: pedido.id,
         statusAnterior: pedido.status,
         statusNovo: pedido.status,
-        observacao: `Reembolso de R$ ${valorReembolso.toFixed(2)}${motivo ? ` — ${motivo}` : ''}`,
+        observacao: `Reembolso de R$ ${resultado.valorReembolso.toFixed(2)}${motivo ? ` — ${motivo}` : ''}`,
         adminId,
         origem: 'admin'
       })
@@ -486,9 +517,9 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
   }
 
   return {
-    valor_reembolsado: valorReembolso,
-    total_reembolsado: novoReembolsado,
-    status: statusPagamento
+    valor_reembolsado: resultado.valorReembolso,
+    total_reembolsado: resultado.novoReembolsado,
+    status: resultado.statusPagamento
   };
 }
 

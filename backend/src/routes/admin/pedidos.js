@@ -50,10 +50,28 @@ router.get('/admin/pedidos/:id', autenticarAdmin, async (req, res) => {
   res.json(await pedidosService.buscarCompleto(pedidoId));
 });
 
+/*
+  Ações sensíveis que só o gerente pode fazer:
+  - confirmar pagamento manualmente (o normal é o Mercado Pago
+    confirmar sozinho; marcar à mão libera a entrega sem dinheiro)
+  - cancelar pedido já pago sem reembolsar (o cliente fica sem o
+    produto e sem o dinheiro)
+*/
+function exigirGerente(req, mensagem) {
+  if (req.admin.perfil !== 'gerente') {
+    throw proibido(mensagem);
+  }
+}
+
+
 router.patch('/admin/pedidos/:id/status', autenticarAdmin, async (req, res) => {
 
   const pedidoId = valida.id(req.params.id, ID_PEDIDO);
   const { status, observacao } = req.body || {};
+
+  if (status === 'pago') {
+    exigirGerente(req, 'Somente o gerente pode confirmar o pagamento manualmente');
+  }
 
   const pedido = await pedidosService.avancarStatus(pedidoId, status, {
     adminId: req.admin.id,
@@ -102,9 +120,11 @@ router.patch('/admin/pedidos/:id/cancelar', autenticarAdmin, async (req, res) =>
 
     const pagamentosService = require('../../services/pagamentosService');
 
+    // cancelarPedido: recusa antes de reembolsar se o pedido já foi enviado
     const reembolso = await pagamentosService.reembolsar(pedidoId, {
       adminId: req.admin.id,
-      motivo: motivo || 'Pedido cancelado com reembolso'
+      motivo: motivo || 'Pedido cancelado com reembolso',
+      cancelarPedido: true
     });
 
     return res.json({
@@ -114,10 +134,21 @@ router.patch('/admin/pedidos/:id/cancelar', autenticarAdmin, async (req, res) =>
     });
   }
 
+  const ehGerente = req.admin.perfil === 'gerente';
+
+  if (!ehGerente) {
+    const { status } = await pedidosService.buscarCompleto(pedidoId);
+    if (status !== 'aguardando_pagamento' && status !== 'cancelado') {
+      exigirGerente(req, 'Somente o gerente pode cancelar um pedido já pago');
+    }
+  }
+
   const pedido = await pedidosService.cancelar(pedidoId, {
     adminId: req.admin.id,
     origem: 'admin',
-    motivo
+    motivo,
+    // Operador: a conferência final é feita com o pedido travado
+    somenteSe: ehGerente ? null : ['aguardando_pagamento']
   });
 
   res.json({

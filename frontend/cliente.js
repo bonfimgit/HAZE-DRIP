@@ -51,9 +51,19 @@
 
   let renovacaoEmAndamento = null;
 
-  // Evita várias renovações simultâneas
+  /*
+    Renova a sessão com o refresh token. Resultados:
+      'ok'           sessão renovada (por esta aba ou por outra)
+      'invalida'     o servidor recusou (401): a sessão acabou de fato
+      'indisponivel' servidor fora do ar, acordando ou sem rede:
+                     a sessão é mantida para tentar de novo depois
+
+    Antes, qualquer falha (até um 502 do Render acordando) apagava
+    a sessão e o cliente era deslogado sem motivo.
+  */
   async function renovarSessao() {
 
+    // Evita várias renovações simultâneas na mesma aba
     if (!renovacaoEmAndamento) {
 
       renovacaoEmAndamento = (async () => {
@@ -61,22 +71,43 @@
         const sessao = obterSessao();
 
         if (!sessao?.refresh_token) {
-          return false;
+          return 'invalida';
         }
 
-        const resposta = await fetch(`${API_URL}/clientes/refresh`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ refresh_token: sessao.refresh_token })
-        });
+        let resposta;
 
-        if (!resposta.ok) {
-          limparSessao();
-          return false;
+        try {
+          resposta = await fetch(`${API_URL}/clientes/refresh`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ refresh_token: sessao.refresh_token })
+          });
+        } catch {
+          return 'indisponivel';
         }
 
-        salvarSessao(await resposta.json());
-        return true;
+        if (resposta.ok) {
+          salvarSessao(await resposta.json());
+          return 'ok';
+        }
+
+        if (resposta.status !== 401) {
+          return 'indisponivel';
+        }
+
+        /*
+          Outra aba pode ter renovado com o mesmo refresh token um
+          instante antes (o localStorage é compartilhado). Se o token
+          salvo mudou, a sessão continua válida: usa a nova.
+        */
+        const atual = obterSessao();
+
+        if (atual?.refresh_token && atual.refresh_token !== sessao.refresh_token) {
+          return 'ok';
+        }
+
+        limparSessao();
+        return 'invalida';
 
       })().finally(() => {
         renovacaoEmAndamento = null;
@@ -118,8 +149,16 @@
     let resposta = await enviar();
 
     if (resposta.status === 401 && autenticado && obterSessao()?.refresh_token) {
-      if (await renovarSessao()) {
+
+      const renovacao = await renovarSessao();
+
+      if (renovacao === 'ok') {
         resposta = await enviar();
+      } else if (renovacao === 'indisponivel') {
+        // Mantém a sessão: o cliente não é deslogado por instabilidade
+        const erro = new Error('Não foi possível conectar à loja agora. Tente novamente em instantes.');
+        erro.status = 503;
+        throw erro;
       }
     }
 

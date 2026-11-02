@@ -435,6 +435,11 @@ test('checkout PIX cria pedido com frete e pagamento; acompanhamento por token',
   assert.equal((await api.get(`/pedidos/${id}/acompanhar?token=${'0'.repeat(64)}`)).status, 404);
   assert.equal((await api.get(`/pedidos/${id}/acompanhar`)).status, 404);
 
+  // Mesmo número de caracteres, mas com acento (mais bytes): 404, não 500
+  const comAcento = encodeURIComponent('é' + '0'.repeat(63));
+  assert.equal((await api.get(`/pedidos/${id}/acompanhar?token=${comAcento}`)).status, 404);
+  assert.equal((await api.post(`/pedidos/${id}/pagamento`, { token: 'é' + '0'.repeat(63), metodo_pagamento: 'pix' })).status, 404);
+
   // Mesma chave: devolve o mesmo pedido
   const repetido = await api.post('/checkout', corpo);
   assert.equal(repetido.status, 200);
@@ -763,6 +768,70 @@ test('reembolso: somente gerente; total cancela e devolve estoque', async () => 
   assert.deepEqual(reembolsos.slice(-2).map(r => r.valor), [10, 115]);
 
   assert.equal((await api.post(`/admin/pedidos/${pedidoId}/reembolso`, {}, { token })).status, 409);
+});
+
+
+async function pedidoPago() {
+  const { pedidoId, mpId } = await pedidoComPix();
+  pagamentosMp.get(mpId).status = 'approved';
+  await api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
+  return pedidoId;
+}
+
+test('dois cliques simultâneos em reembolsar não devolvem o valor duas vezes', async () => {
+
+  const pedidoId = await pedidoPago();
+  const antes = reembolsos.length;
+
+  // Mercado Pago lento: as duas requisições ficam "no meio" ao mesmo tempo
+  const reembolsarOriginal = mercadoPago.reembolsar;
+  mercadoPago.reembolsar = async (...args) => {
+    await new Promise(resolve => setTimeout(resolve, 200));
+    return reembolsarOriginal(...args);
+  };
+
+  let respostas;
+
+  try {
+    respostas = await Promise.all([
+      api.post(`/admin/pedidos/${pedidoId}/reembolso`, { valor: 100 }, { token }),
+      api.post(`/admin/pedidos/${pedidoId}/reembolso`, { valor: 100 }, { token })
+    ]);
+  } finally {
+    mercadoPago.reembolsar = reembolsarOriginal;
+  }
+
+  // Total do pedido: 125. Só um reembolso de 100 cabe.
+  assert.deepEqual(respostas.map(r => r.status).sort(), [200, 400]);
+  assert.equal(reembolsos.length, antes + 1);
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.valor_reembolsado, 100);
+});
+
+test('cancelar e reembolsar pedido já enviado é recusado sem devolver o dinheiro', async () => {
+
+  const pedidoId = await pedidoPago();
+
+  for (const status of ['em_preparacao', 'enviado']) {
+    await api.patch(`/admin/pedidos/${pedidoId}/status`, { status }, { token });
+  }
+
+  const antes = reembolsos.length;
+
+  const resposta = await api.patch(`/admin/pedidos/${pedidoId}/cancelar`, { reembolsar: true }, { token });
+  assert.equal(resposta.status, 409);
+  assert.match(resposta.dados.mensagem, /Use "Reembolsar"/);
+  assert.equal(reembolsos.length, antes);
+
+  const pedido = await api.get(`/admin/pedidos/${pedidoId}`, { token });
+  assert.equal(pedido.dados.status, 'enviado');
+  assert.equal(pedido.dados.valor_reembolsado, 0);
+
+  // O reembolso avulso continua disponível para pedido enviado
+  const avulso = await api.post(`/admin/pedidos/${pedidoId}/reembolso`, {}, { token });
+  assert.equal(avulso.status, 200);
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'enviado');
 });
 
 

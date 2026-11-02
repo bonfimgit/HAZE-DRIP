@@ -85,11 +85,19 @@ async function pedidoPorToken(pedidoId, token) {
 
   const esperado = pedidos[0]?.token_acesso;
 
+  /*
+    Compara os bytes, não a quantidade de caracteres: um token com
+    acento tem o mesmo .length em caracteres mas mais bytes, e o
+    timingSafeEqual lançava exceção (erro 500 em vez de 404).
+  */
+  const recebido = typeof token === 'string' ? Buffer.from(token) : null;
+  const correto = esperado ? Buffer.from(esperado) : null;
+
   const valido =
-    typeof token === 'string' &&
-    esperado &&
-    token.length === esperado.length &&
-    crypto.timingSafeEqual(Buffer.from(token), Buffer.from(esperado));
+    recebido &&
+    correto &&
+    recebido.length === correto.length &&
+    crypto.timingSafeEqual(recebido, correto);
 
   if (!valido) {
     throw naoEncontrado('Pedido não encontrado');
