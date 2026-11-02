@@ -92,3 +92,47 @@ test('troca da própria senha invalida tokens antigos e devolve um novo', async 
   const [linhas] = await db.query('SELECT ultimo_login_em FROM usuarios_admin WHERE id = ?', [ids.adminId]);
   assert.ok(linhas[0].ultimo_login_em);
 });
+
+test('operador não confirma pagamento à mão nem cancela pedido pago', async () => {
+
+  const { criarPedido, pedidoValido } = require('./ajuda');
+
+  // O teste anterior trocou a senha do gerente: faz login de novo
+  const token = (await api.post('/admin/login', {
+    email: ADMIN.email, senha: 'NovaSenha123'
+  })).dados.token;
+
+  await api.post('/admin/usuarios', {
+    nome: 'Operadora', email: 'operadora@teste.com', senha: 'Operador123', perfil: 'operador'
+  }, { token });
+
+  const tokenOperador = (await api.post('/admin/login', {
+    email: 'operadora@teste.com', senha: 'Operador123'
+  })).dados.token;
+
+  const novoPedido = async () => (await criarPedido(api, pedidoValido([
+    { produto_id: ids.produtoId, variacao_id: ids.variacaoPId, quantidade: 1 }
+  ]))).dados.pedido.id;
+
+  // Confirmar pagamento manualmente: só gerente
+  const pedidoA = await novoPedido();
+  const marcarPago = await api.patch(`/admin/pedidos/${pedidoA}/status`, { status: 'pago' }, { token: tokenOperador });
+  assert.equal(marcarPago.status, 403);
+  assert.equal((await api.get(`/admin/pedidos/${pedidoA}`, { token })).dados.status, 'aguardando_pagamento');
+
+  // Operador pode cancelar pedido ainda não pago
+  assert.equal((await api.patch(`/admin/pedidos/${pedidoA}/cancelar`, {}, { token: tokenOperador })).status, 200);
+
+  // Pedido pago: operador não cancela, gerente cancela
+  const pedidoB = await novoPedido();
+  assert.equal((await api.patch(`/admin/pedidos/${pedidoB}/status`, { status: 'pago' }, { token })).status, 200);
+
+  const cancelarPago = await api.patch(`/admin/pedidos/${pedidoB}/cancelar`, {}, { token: tokenOperador });
+  assert.equal(cancelarPago.status, 403);
+  assert.equal((await api.get(`/admin/pedidos/${pedidoB}`, { token })).dados.status, 'pago');
+
+  // Operador continua avançando as etapas de envio normalmente
+  assert.equal((await api.patch(`/admin/pedidos/${pedidoB}/status`, { status: 'em_preparacao' }, { token: tokenOperador })).status, 200);
+
+  assert.equal((await api.patch(`/admin/pedidos/${pedidoB}/cancelar`, {}, { token })).status, 200);
+});

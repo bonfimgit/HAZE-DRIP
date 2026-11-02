@@ -559,6 +559,24 @@ function configurarCancelamento(
   }
 
 
+  // Operador só cancela pedido ainda não pago (regra também validada na API)
+  const admin = lerAdminSalvo();
+
+  if (
+    admin?.perfil === 'operador' &&
+    status !== 'aguardando_pagamento'
+  ) {
+
+    pedidoCancelar.disabled = true;
+
+    pedidoCancelarMensagem.textContent =
+      'Pedido já pago: somente o gerente pode cancelar.';
+
+    return;
+
+  }
+
+
   pedidoCancelar.disabled = false;
 
 }
@@ -821,12 +839,24 @@ function configurarFluxoStatus(
   );
 
 
+  // Confirmar pagamento à mão: só o gerente (regra também validada na API)
+  const somenteGerente =
+    proximo.valor === 'pago' &&
+    lerAdminSalvo()?.perfil === 'operador';
+
+
   pedidoStatusSelect.disabled =
-    false;
+    somenteGerente;
 
 
   pedidoStatusSalvar.disabled =
-    false;
+    somenteGerente;
+
+
+  pedidoStatusSalvar.title =
+    somenteGerente
+      ? 'O pagamento é confirmado pelo Mercado Pago. Somente o gerente pode confirmar manualmente.'
+      : '';
 
 }
 
