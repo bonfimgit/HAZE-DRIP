@@ -214,6 +214,10 @@ test('pedido logado vincula ao cliente, usa endereço salvo e aparece em Meus pe
   const detalhe = await api.get(`/clientes/me/pedidos/${criado.dados.pedido.id}`, { token });
   assert.equal(detalhe.status, 200);
   assert.equal(detalhe.dados.endereco_numero, '99');
+
+  // O formulário trazia outro e-mail (cliente@teste.com): vale o da conta
+  assert.equal(corpo.cliente.email, 'cliente@teste.com');
+  assert.equal(detalhe.dados.cliente_email, 'maria@teste.com');
   assert.ok(detalhe.dados.historico.length >= 1);
   assert.equal(detalhe.dados.historico[0].admin_nome, undefined);
 

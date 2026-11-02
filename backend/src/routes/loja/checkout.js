@@ -72,6 +72,16 @@ router.post('/checkout', identificarCliente, async (req, res) => {
 
   const { cliente, endereco } = await lerDadosEntrega(corpo, req.cliente);
 
+  /*
+    Cliente logado: o pedido usa sempre o e-mail da conta.
+    Antes valia o e-mail digitado no formulário: o pedido aparecia em
+    "Meus pedidos", mas os e-mails (pagamento, rastreio) iam para outro
+    endereço, e o limite de cupom por cliente podia ser contornado.
+  */
+  if (req.cliente) {
+    cliente.email = req.cliente.email;
+  }
+
   const chave = corpo.chave_idempotencia == null
     ? null
     : valida.texto(corpo.chave_idempotencia, 'Chave de idempotência inválida', { max: 64, min: 16 });
