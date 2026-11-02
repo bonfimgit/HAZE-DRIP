@@ -868,6 +868,93 @@ async function pedidoPago() {
   return pedidoId;
 }
 
+/*
+  Cliente gerou um segundo PIX (o primeiro "expirou" na tela) e pagou os dois.
+*/
+async function pedidoComDoisPix() {
+  const { pedidoId, mpId } = await pedidoComPix();
+  const tokenAcesso = (await db.query('SELECT token_acesso FROM pedidos WHERE id = ?', [pedidoId]))[0][0].token_acesso;
+  await api.post(`/pedidos/${pedidoId}/pagamento`, { token: tokenAcesso, metodo_pagamento: 'pix' });
+  const [[segundo]] = await db.query(
+    "SELECT provedor_id FROM pagamentos WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id <> ?",
+    [pedidoId, mpId]
+  );
+  return { pedidoId, mpId1: mpId, mpId2: segundo.provedor_id };
+}
+
+const webhook = mpId =>
+  api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
+
+async function resultadoEvento(mpId) {
+  const [eventos] = await db.query(
+    'SELECT resultado FROM pagamento_eventos WHERE recurso_id = ? ORDER BY id', [mpId]
+  );
+  return eventos.map(e => e.resultado);
+}
+
+test('pedido pago duas vezes: duplicidade marcada, reembolsada sem cancelar o pedido', async () => {
+
+  const { pedidoId, mpId1, mpId2 } = await pedidoComDoisPix();
+
+  pagamentosMp.get(mpId1).status = 'approved';
+  pagamentosMp.get(mpId2).status = 'approved';
+
+  await webhook(mpId1);
+  await webhook(mpId2);
+  await webhook(mpId2); // notificação repetida
+
+  assert.deepEqual(await resultadoEvento(mpId2), ['pagamento duplicado', 'já processado']);
+
+  let pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'pagamento_duplicado');
+
+  // "Cancelar e reembolsar" pede para resolver a duplicidade antes
+  const cancelar = await api.patch(`/admin/pedidos/${pedidoId}/cancelar`, { reembolsar: true }, { token });
+  assert.equal(cancelar.status, 409);
+  assert.match(cancelar.dados.mensagem, /pago duas vezes/);
+
+  // Reembolso devolve o pagamento duplicado, e o pedido segue pago
+  const antes = reembolsos.length;
+  const reembolso = await api.post(`/admin/pedidos/${pedidoId}/reembolso`, {}, { token });
+  assert.equal(reembolso.status, 200);
+  assert.equal(reembolso.dados.duplicidade, true);
+  assert.equal(reembolsos.at(-1).id, mpId2);
+  assert.equal(reembolsos.length, antes + 1);
+
+  pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'aprovado');
+  assert.equal(pedido.valor_reembolsado, 0);
+
+  // Notificação do Mercado Pago confirmando o reembolso da duplicidade não cancela o pedido
+  Object.assign(pagamentosMp.get(mpId2), { status: 'refunded', reembolsado: pedido.total });
+  await webhook(mpId2);
+
+  assert.equal((await resultadoEvento(mpId2)).at(-1), 'duplicidade reembolsada');
+  pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'aprovado');
+});
+
+test('dois pagamentos aprovados ao mesmo tempo: um paga o pedido, o outro vira duplicidade', async () => {
+
+  const { pedidoId, mpId1, mpId2 } = await pedidoComDoisPix();
+
+  pagamentosMp.get(mpId1).status = 'approved';
+  pagamentosMp.get(mpId2).status = 'approved';
+
+  await Promise.all([webhook(mpId1), webhook(mpId2)]);
+
+  const resultados = [...await resultadoEvento(mpId1), ...await resultadoEvento(mpId2)].sort();
+  assert.deepEqual(resultados, ['pagamento duplicado', 'pedido pago']);
+
+  const pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'pagamento_duplicado');
+});
+
+
 test('dois cliques simultâneos em reembolsar não devolvem o valor duas vezes', async () => {
 
   const pedidoId = await pedidoPago();

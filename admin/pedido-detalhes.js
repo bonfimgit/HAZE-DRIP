@@ -605,7 +605,7 @@ pedidoCancelar.addEventListener(
 
     // Pedido pago no Mercado Pago: oferece devolver o dinheiro junto
     const reembolsar =
-      ['aprovado', 'reembolsado_parcial'].includes(pedidoAtual?.pagamento_status) &&
+      ['aprovado', 'reembolsado_parcial', 'pagamento_duplicado'].includes(pedidoAtual?.pagamento_status) &&
       window.confirm(
         'Este pedido foi pago. Reembolsar o valor ao cliente pelo Mercado Pago?\n\nOK = cancelar e reembolsar\nCancelar = só cancelar (sem reembolso)'
       );
@@ -1023,7 +1023,8 @@ const NOMES_PAGAMENTO = {
   reembolsado_parcial: 'Reembolso parcial',
   estornado: 'Estornado (chargeback)',
   valor_divergente: 'Valor pago diferente do pedido',
-  aprovado_apos_cancelamento: 'Pago após cancelamento — reembolsar'
+  aprovado_apos_cancelamento: 'Pago após cancelamento — reembolsar',
+  pagamento_duplicado: 'Pago duas vezes — reembolsar a duplicidade'
 };
 
 
@@ -1063,7 +1064,7 @@ async function carregarPagamentos(pedido) {
 
   info.classList.toggle(
     'text-danger',
-    ['valor_divergente', 'aprovado_apos_cancelamento', 'estornado'].includes(pedido.pagamento_status)
+    ['valor_divergente', 'aprovado_apos_cancelamento', 'estornado', 'pagamento_duplicado'].includes(pedido.pagamento_status)
   );
 
   try {
@@ -1091,7 +1092,7 @@ async function carregarPagamentos(pedido) {
   const admin = lerAdminSalvo();
   const podeReembolsar =
     (!admin || admin.perfil === 'gerente') &&
-    ['aprovado', 'reembolsado_parcial', 'aprovado_apos_cancelamento'].includes(pedido.pagamento_status);
+    ['aprovado', 'reembolsado_parcial', 'aprovado_apos_cancelamento', 'pagamento_duplicado'].includes(pedido.pagamento_status);
 
   document.getElementById('pedido-reembolsar').hidden = !podeReembolsar;
   document.getElementById('pedido-reembolso-valor').hidden = !podeReembolsar;

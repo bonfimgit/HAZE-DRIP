@@ -190,6 +190,77 @@ async function marcarAprovadoAposCancelamento(pedidoId, pagamentoId) {
 }
 
 
+/*
+  Pagamento aprovado para um pedido que já está pago.
+  Se outro pagamento (não duplicado) já aprovou o pedido, este é uma
+  duplicidade: fica marcado para reembolso e o pedido mostra o alerta.
+  Notificação repetida do pagamento que pagou o pedido: nada a fazer.
+*/
+async function marcarSeDuplicado(pedidoId, pagamentoId) {
+
+  const [outros] = await db.execute(
+    `SELECT id FROM pagamentos
+     WHERE pedido_id = ?
+     AND provedor = 'mercadopago'
+     AND tipo = 'pagamento'
+     AND provedor_id <> ?
+     AND duplicado = FALSE
+     AND status IN ('aprovado', 'reembolsado_parcial', 'reembolsado')`,
+    [pedidoId, pagamentoId]
+  );
+
+  if (outros.length === 0) {
+    return { resultado: 'já processado' };
+  }
+
+  const [marcacao] = await db.execute(
+    `UPDATE pagamentos SET duplicado = TRUE
+     WHERE pedido_id = ? AND provedor = 'mercadopago' AND tipo = 'pagamento'
+     AND provedor_id = ? AND duplicado = FALSE`,
+    [pedidoId, pagamentoId]
+  );
+
+  // Já estava marcado (notificação repetida)
+  if (marcacao.affectedRows === 0) {
+    return { resultado: 'já processado' };
+  }
+
+  await db.execute(
+    "UPDATE pedidos SET pagamento_status = 'pagamento_duplicado' WHERE id = ?",
+    [pedidoId]
+  );
+
+  logger.erro('Pedido pago duas vezes — reembolsar o pagamento duplicado', {
+    pedidoId,
+    pagamentoId
+  });
+
+  return { resultado: 'pagamento duplicado' };
+}
+
+
+/*
+  Sem duplicidades com saldo a reembolsar, o pedido volta a "aprovado".
+*/
+async function atualizarAlertaDuplicado(conexao, pedidoId) {
+
+  const [[pendentes]] = await conexao.execute(
+    `SELECT COUNT(*) AS total FROM pagamentos
+     WHERE pedido_id = ? AND duplicado = TRUE
+     AND status IN ('aprovado', 'reembolsado_parcial')`,
+    [pedidoId]
+  );
+
+  if (Number(pendentes.total) === 0) {
+    await conexao.execute(
+      `UPDATE pedidos SET pagamento_status = 'aprovado'
+       WHERE id = ? AND pagamento_status = 'pagamento_duplicado'`,
+      [pedidoId]
+    );
+  }
+}
+
+
 const STATUS_PAGAMENTO = {
   approved: 'aprovado',
   authorized: 'pendente',
@@ -238,7 +309,7 @@ async function aplicarPagamento(pagamento) {
 
   // Registra/atualiza o pagamento (no Checkout Pro ele nasce no MP)
   const [existentes] = await db.execute(
-    `SELECT id FROM pagamentos
+    `SELECT id, duplicado FROM pagamentos
      WHERE provedor = 'mercadopago'
      AND provedor_id = ?
      AND tipo = 'pagamento'
@@ -310,7 +381,8 @@ async function aplicarPagamento(pagamento) {
         const atual = await buscarPedido(pedido.id);
 
         if (atual.status !== 'cancelado') {
-          return { resultado: 'já processado' };
+          // Outro pagamento aprovou o pedido no mesmo instante
+          return marcarSeDuplicado(atual.id, pagamento.id);
         }
 
         return marcarAprovadoAposCancelamento(atual.id, pagamento.id);
@@ -321,12 +393,22 @@ async function aplicarPagamento(pagamento) {
       return marcarAprovadoAposCancelamento(pedido.id, pagamento.id);
     }
 
-    return { resultado: 'já processado' };
+    // Pedido já pago: este pode ser um segundo pagamento (pagou duas vezes)
+    return marcarSeDuplicado(pedido.id, pagamento.id);
   }
 
   /* ---------- Reembolsado / estornado ---------- */
 
   if (['refunded', 'charged_back'].includes(pagamento.status)) {
+
+    /*
+      Reembolso do pagamento em duplicidade: o pedido continua pago
+      pelo outro pagamento. Não cancela nem altera o faturamento.
+    */
+    if (existentes.length && Number(existentes[0].duplicado)) {
+      await emTransacao(conexao => atualizarAlertaDuplicado(conexao, pedido.id));
+      return { resultado: 'duplicidade reembolsada' };
+    }
 
     await db.execute(
       `UPDATE pedidos
@@ -476,16 +558,26 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
        AND provedor = 'mercadopago'
        AND tipo = 'pagamento'
        AND status IN ('aprovado', 'reembolsado_parcial')
-       ORDER BY id DESC
+       ORDER BY duplicado DESC, id DESC
        LIMIT 1
        FOR UPDATE`,
       [pedidoId]
     );
 
+    // Pagamento em duplicidade é reembolsado antes do pagamento do pedido
     const pagamento = pagamentos[0];
 
     if (!pagamento) {
       throw conflito('Não há pagamento aprovado para reembolsar neste pedido');
+    }
+
+    const duplicado = Boolean(Number(pagamento.duplicado));
+
+    if (duplicado && cancelarPedido) {
+      throw conflito(
+        'Este pedido foi pago duas vezes. Use "Reembolsar" para devolver ' +
+        'primeiro o pagamento em duplicidade.'
+      );
     }
 
     const jaReembolsado = Number(pagamento.valor_reembolsado);
@@ -517,17 +609,33 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
       [novoReembolsado, statusPagamento, pagamento.id]
     );
 
-    await conexao.execute(
-      `UPDATE pedidos
-       SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
-       WHERE id = ?`,
-      [novoReembolsado, statusPagamento, pedido.id]
-    );
+    if (duplicado) {
+      // O pedido continua pago: faturamento e status do pedido não mudam
+      await atualizarAlertaDuplicado(conexao, pedido.id);
+    } else {
+      await conexao.execute(
+        `UPDATE pedidos
+         SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
+         WHERE id = ?`,
+        [novoReembolsado, statusPagamento, pedido.id]
+      );
+    }
 
-    return { valorReembolso, novoReembolsado, statusPagamento, total };
+    return { valorReembolso, novoReembolsado, statusPagamento, total, duplicado };
   });
 
-  if (resultado.total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
+  if (resultado.duplicado) {
+    await emTransacao(conexao =>
+      pedidosService.registrarHistorico(conexao, {
+        pedidoId: pedido.id,
+        statusAnterior: pedido.status,
+        statusNovo: pedido.status,
+        observacao: `Reembolso de pagamento em duplicidade: R$ ${resultado.valorReembolso.toFixed(2)}${motivo ? ` — ${motivo}` : ''}`,
+        adminId,
+        origem: 'admin'
+      })
+    );
+  } else if (resultado.total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
     await pedidosService.cancelar(pedido.id, {
       adminId,
       origem: 'admin',
@@ -549,7 +657,8 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
   return {
     valor_reembolsado: resultado.valorReembolso,
     total_reembolsado: resultado.novoReembolsado,
-    status: resultado.statusPagamento
+    status: resultado.statusPagamento,
+    duplicidade: resultado.duplicado
   };
 }
 
