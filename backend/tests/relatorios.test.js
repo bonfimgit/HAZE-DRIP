@@ -109,3 +109,29 @@ test('exportação CSV: formato Excel, proteção contra fórmula e permissão',
   assert.equal((await api.get('/admin/relatorios/exportar/pedidos', { token: tokenOperador })).status, 403);
   assert.equal((await api.get('/admin/relatorios/dashboard', { token: tokenOperador })).status, 200);
 });
+
+test('pagamentos para revisar: contagem no dashboard e filtro na lista de pedidos', async () => {
+
+  const [pedidos] = await db.query('SELECT id FROM pedidos ORDER BY id LIMIT 3');
+  const [a, b, c] = pedidos.map(p => p.id);
+
+  await db.query("UPDATE pedidos SET pagamento_status = 'pagamento_duplicado' WHERE id = ?", [a]);
+  await db.query("UPDATE pedidos SET pagamento_status = 'aprovado_apos_cancelamento' WHERE id = ?", [c]);
+
+  try {
+
+    const dashboard = await api.get('/admin/relatorios/dashboard', { token });
+    assert.equal(dashboard.dados.operacao.pagamentos_com_problema, 2);
+
+    const alertas = await api.get('/admin/pedidos?alerta=pagamento', { token });
+    assert.equal(alertas.status, 200);
+    assert.deepEqual(alertas.dados.map(p => p.id).sort((x, y) => x - y), [a, c]);
+    assert.ok(alertas.dados.every(p => p.pagamento_status));
+
+    const todos = await api.get('/admin/pedidos', { token });
+    assert.ok(todos.dados.some(p => p.id === b));
+
+  } finally {
+    await db.query('UPDATE pedidos SET pagamento_status = NULL WHERE id IN (?, ?)', [a, c]);
+  }
+});

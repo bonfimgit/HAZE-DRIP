@@ -30,6 +30,16 @@ const PROXIMO_STATUS = {
   enviado: 'entregue'
 };
 
+/*
+  Situações de pagamento que precisam de ação no painel
+  (aparecem em "Pagamentos para revisar").
+*/
+const PAGAMENTO_ALERTAS = [
+  'valor_divergente',
+  'aprovado_apos_cancelamento',
+  'pagamento_duplicado'
+];
+
 const STATUS_CANCELAVEIS = [
   'aguardando_pagamento',
   'pago',
@@ -373,14 +383,20 @@ const COLUNAS_RESUMO = `
   subtotal,
   frete,
   total,
+  pagamento_status,
   criado_em
 `;
 
 
-async function listarAdmin({ status = null, busca = null, limite = 500, pagina = 1 } = {}) {
+async function listarAdmin({ status = null, busca = null, alertaPagamento = false, limite = 500, pagina = 1 } = {}) {
 
   const filtros = [];
   const valores = [];
+
+  if (alertaPagamento) {
+    filtros.push(`pagamento_status IN (${PAGAMENTO_ALERTAS.map(() => '?').join(', ')})`);
+    valores.push(...PAGAMENTO_ALERTAS);
+  }
 
   if (status) {
     filtros.push('status = ?');
@@ -715,6 +731,7 @@ async function cancelar(pedidoId, {
 
 module.exports = {
   STATUS,
+  PAGAMENTO_ALERTAS,
   PROXIMO_STATUS,
   STATUS_CANCELAVEIS,
   registrarHistorico,

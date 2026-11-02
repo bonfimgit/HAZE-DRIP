@@ -20,6 +20,19 @@ const pedidosFiltroStatus =
 
 let pedidosCarregados = [];
 
+/*
+  pedidos.html?alerta=pagamento (link "Pagamentos para revisar" do
+  dashboard): lista só os pedidos cujo pagamento precisa de ação.
+*/
+const somenteAlertasPagamento =
+  new URLSearchParams(window.location.search).get('alerta') === 'pagamento';
+
+const ALERTAS_PAGAMENTO = {
+  valor_divergente: 'Valor pago diferente do pedido',
+  aprovado_apos_cancelamento: 'Pago após cancelamento — reembolsar',
+  pagamento_duplicado: 'Pago duas vezes — reembolsar a duplicidade'
+};
+
 const pedidosMensagem =
   document.getElementById(
     'pedidos-mensagem'
@@ -160,7 +173,9 @@ function renderizarPedidos(
   ) {
 
     pedidosMensagem.textContent =
-      'Nenhum pedido encontrado.';
+      somenteAlertasPagamento
+        ? 'Nenhum pagamento para revisar.'
+        : 'Nenhum pedido encontrado.';
 
     return;
 
@@ -169,6 +184,12 @@ function renderizarPedidos(
 
   pedidosMensagem.textContent =
     `${pedidos.length} pedido(s) encontrado(s).`;
+
+  if (somenteAlertasPagamento) {
+    pedidosMensagem.innerHTML =
+      `${pedidos.length} pedido(s) com pagamento para revisar. ` +
+      '<a href="pedidos.html">Ver todos os pedidos</a>';
+  }
 
 
   pedidos.forEach(
@@ -227,6 +248,10 @@ function renderizarPedidos(
             ))}
           </span>
 
+          ${ALERTAS_PAGAMENTO[pedido.pagamento_status]
+            ? `<small class="d-block text-danger mt-1">⚠ ${escaparHtml(ALERTAS_PAGAMENTO[pedido.pagamento_status])}</small>`
+            : ''}
+
         </td>
 
 
@@ -278,7 +303,7 @@ async function carregarPedidos() {
 
     const resposta =
       await fetch(
-        `${PEDIDOS_API_URL}/admin/pedidos`,
+        `${PEDIDOS_API_URL}/admin/pedidos${somenteAlertasPagamento ? '?alerta=pagamento' : ''}`,
         {
           headers: {
 
