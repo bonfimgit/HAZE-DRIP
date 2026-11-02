@@ -691,6 +691,31 @@ test('Checkout Pro sem webhook: painel encontra o pagamento ao sincronizar', asy
   assert.equal(pedido.dados.status, 'pago');
 });
 
+test('volta do Checkout Pro com payment_id confirma o pedido na hora', async () => {
+
+  const { pedidoId, mpId } = await pedidoCheckoutProPagoSemWebhook();
+  const [[{ token_acesso: tokenAcesso }]] = await db.query('SELECT token_acesso FROM pedidos WHERE id = ?', [pedidoId]);
+  const rota = `/pedidos/${pedidoId}/pagamento/confirmar`;
+
+  // Token errado ou payment_id inválido
+  assert.equal((await api.post(rota, { token: 'x', payment_id: mpId })).status, 404);
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: 'abc' })).status, 400);
+
+  // Pagamento de outro pedido não serve para este
+  const { mpId: outroMpId } = await pedidoCheckoutProPagoSemWebhook();
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: outroMpId })).status, 404);
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'aguardando_pagamento');
+
+  const confirmado = await api.post(rota, { token: tokenAcesso, payment_id: mpId });
+  assert.equal(confirmado.status, 200);
+  assert.equal(confirmado.dados.resultado, 'pedido pago');
+
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'pago');
+
+  // Repetir (recarregar a página) não faz nada
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: mpId })).dados.resultado, 'já processado');
+});
+
 test('Checkout Pro sem webhook: expiração confere no Mercado Pago e não cancela pedido pago', async () => {
 
   const { pedidoId: pagoId } = await pedidoCheckoutProPagoSemWebhook();

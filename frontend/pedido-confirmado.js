@@ -271,10 +271,43 @@
      INÍCIO
   =========================================================== */
 
-  carregar();
-  consulta = setInterval(carregar, 5000);
+  /*
+    Volta do Checkout Pro: o Mercado Pago acrescenta ?payment_id=...
+    Pede à API para conferir esse pagamento agora, sem esperar o
+    webhook. A API consulta o Mercado Pago; a URL não decide nada.
+  */
+  async function confirmarRetornoMercadoPago() {
 
-  // Não consulta para sempre se a aba ficar aberta
-  setTimeout(() => clearInterval(consulta), 30 * 60 * 1000);
+    const pagamentoId = parametros.get('payment_id');
+
+    if (!/^\d+$/.test(pagamentoId || '')) {
+      return;
+    }
+
+    try {
+      await Cliente.api(`/pedidos/${pedidoId}/pagamento/confirmar`, {
+        metodo: 'POST',
+        corpo: { token, payment_id: pagamentoId },
+        autenticado: false
+      });
+    } catch {
+      // Sem problema: o webhook e a consulta periódica confirmam depois
+    }
+
+    // Recarregar a página não repete a confirmação
+    parametros.delete('payment_id');
+    parametros.delete('collection_id');
+    history.replaceState(null, '', `${location.pathname}?${parametros}`);
+  }
+
+
+  confirmarRetornoMercadoPago().finally(() => {
+
+    carregar();
+    consulta = setInterval(carregar, 5000);
+
+    // Não consulta para sempre se a aba ficar aberta
+    setTimeout(() => clearInterval(consulta), 30 * 60 * 1000);
+  });
 
 })();

@@ -295,8 +295,29 @@ async function sincronizar(pagamentoId) {
 
 
 /*
+  Volta do Checkout Pro: o Mercado Pago redireciona o cliente para a
+  loja com ?payment_id=... na URL. Consultar esse pagamento na hora
+  confirma o pedido sem esperar o webhook (que pode atrasar ou se
+  perder). O status vem sempre da API do Mercado Pago, nunca da URL.
+
+  O pagamento precisa ser deste pedido: o ID da URL não serve para
+  mexer em pedidos de outras pessoas.
+*/
+async function confirmarRetorno(pedidoId, pagamentoId) {
+
+  const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
+
+  if (pagamento.pedido_id !== pedidoId) {
+    throw naoEncontrado('Pagamento não encontrado para este pedido');
+  }
+
+  return aplicarPagamento(pagamento);
+}
+
+
+/*
   Aplica ao pedido o estado de um pagamento já consultado no
-  Mercado Pago (chamado por sincronizar).
+  Mercado Pago (chamado por sincronizar e confirmarRetorno).
 */
 async function aplicarPagamento(pagamento) {
 
@@ -791,6 +812,7 @@ module.exports = {
   resumo,
   sincronizar,
   sincronizarPedido,
+  confirmarRetorno,
   processarWebhook,
   reembolsar,
   expirarPendentes

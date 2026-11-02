@@ -3,7 +3,7 @@ const { Router } = require('express');
 
 const db = require('../../config/db');
 const valida = require('../../utils/validacao');
-const { naoEncontrado, muitasRequisicoes } = require('../../utils/erros');
+const { naoEncontrado, muitasRequisicoes, requisicaoInvalida } = require('../../utils/erros');
 const { identificarCliente } = require('../../middlewares/autenticacao');
 const { criarLimitador } = require('../../middlewares/limiteTentativas');
 const { lerDadosEntrega } = require('./pedidos');
@@ -178,6 +178,28 @@ router.post('/pedidos/:id/pagamento', async (req, res) => {
   );
 
   res.status(201).json(await pagamentosService.iniciar(pedidoId, metodo));
+});
+
+
+/*
+  Volta do Checkout Pro (página do pedido com ?payment_id=...).
+  Confirma o pagamento na hora, sem depender do webhook.
+*/
+router.post('/pedidos/:id/pagamento/confirmar', async (req, res) => {
+
+  const pedidoId = valida.id(req.params.id, 'ID do pedido inválido');
+
+  await pedidoPorToken(pedidoId, req.body?.token);
+
+  const pagamentoId = String(req.body?.payment_id ?? '');
+
+  if (!/^\d{1,30}$/.test(pagamentoId)) {
+    throw requisicaoInvalida('Pagamento inválido');
+  }
+
+  const { resultado } = await pagamentosService.confirmarRetorno(pedidoId, pagamentoId);
+
+  res.json({ resultado, pagamento: await pagamentosService.resumo(pedidoId) });
 });
 
 
