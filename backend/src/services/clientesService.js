@@ -307,7 +307,7 @@ async function enviarVerificacao(cliente) {
   const email = templates.verificacaoEmail({ nome: cliente.nome, token });
 
   try {
-    await emailService.enviar({ para: cliente.email, ...email });
+    await emailService.enfileirar({ para: cliente.email, ...email });
   } catch (erro) {
     logger.erro('Falha ao enviar e-mail de verificação', { erro: erro.message });
   }
@@ -415,7 +415,7 @@ async function solicitarRecuperacao(email) {
   const mensagem = templates.recuperacaoSenha({ nome: cliente.nome, token });
 
   try {
-    await emailService.enviar({ para: cliente.email, ...mensagem });
+    await emailService.enfileirar({ para: cliente.email, ...mensagem });
   } catch (erro) {
     logger.erro('Falha ao enviar e-mail de recuperação', { erro: erro.message });
   }
@@ -563,6 +563,9 @@ async function excluirConta(clienteId, senha) {
   await db.execute('DELETE FROM carrinho_itens WHERE cliente_id = ?', [clienteId]);
   await db.execute('DELETE FROM cliente_tokens WHERE cliente_id = ?', [clienteId]);
   await db.execute('DELETE FROM cliente_sessoes WHERE cliente_id = ?', [clienteId]);
+
+  // E-mails guardados na fila também têm dados pessoais
+  await emailService.removerDoDestinatario(cliente.email);
 
   await db.execute(
     `UPDATE clientes

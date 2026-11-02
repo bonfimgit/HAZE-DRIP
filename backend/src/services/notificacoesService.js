@@ -19,7 +19,8 @@ async function enviarStatusPedido({ pedidoId }) {
 
   const mensagem = templates.statusPedido(pedido);
 
-  await emailService.enviar({
+  // Gravado na fila: se o envio falhar ou o servidor reiniciar, tenta de novo
+  await emailService.enfileirar({
     para: pedido.cliente_email,
     ...mensagem
   });

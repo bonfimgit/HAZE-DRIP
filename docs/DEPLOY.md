@@ -86,6 +86,12 @@ As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log
 1. Crie a conta em resend.com, adicione e **verifique o domínio** da loja (registros DNS).
 2. Gere a API key e configure `RESEND_API_KEY` e `EMAIL_REMETENTE` (ex.: `Haze Drip <pedidos@hazedrip.com.br>`).
 3. São enviados: confirmação de e-mail, recuperação de senha e cada mudança de status do pedido.
+4. **Fila de e-mails:** todo e-mail é gravado na tabela `email_fila` e enviado na hora. Se o Resend falhar ou o Render reiniciar no meio, a API tenta de novo a cada minuto (1, 2, 4, 8... minutos entre as tentativas). Depois de 8 falhas o e-mail fica como `falhou` e aparece no log. Os enviados são apagados depois de 30 dias.
+   Para ver o que não saiu:
+   ```sql
+   SELECT id, para, assunto, status, tentativas, ultimo_erro, criado_em
+   FROM email_fila WHERE status IN ('pendente', 'falhou') ORDER BY id DESC;
+   ```
 
 ## 6. Backup e recuperação
 
