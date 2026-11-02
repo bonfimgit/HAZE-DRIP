@@ -48,7 +48,7 @@ async function requisitar(metodo, caminho, { corpo, chaveIdempotencia } = {}) {
 
   const texto = await resposta.text();
 
-  let dados = null;
+  let dados;
 
   try {
     dados = JSON.parse(texto);

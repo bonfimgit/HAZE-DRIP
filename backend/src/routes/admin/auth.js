@@ -1,6 +1,5 @@
 const { Router } = require('express');
 
-const valida = require('../../utils/validacao');
 const { requisicaoInvalida } = require('../../utils/erros');
 const { autenticarAdmin } = require('../../middlewares/autenticacao');
 const adminAuthService = require('../../services/adminAuthService');

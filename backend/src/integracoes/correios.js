@@ -56,7 +56,7 @@ async function lerResposta(resposta, contexto) {
 
   const texto = await resposta.text();
 
-  let dados = null;
+  let dados;
 
   try {
     dados = JSON.parse(texto);

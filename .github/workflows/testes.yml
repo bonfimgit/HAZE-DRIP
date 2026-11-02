@@ -39,6 +39,14 @@ jobs:
 
       - run: npm ci
 
+      # Dependências que vão para o servidor: falha com vulnerabilidade
+      # moderada ou maior (as de desenvolvimento, como o ESLint, ficam de fora)
+      - name: Vulnerabilidades nas dependências (npm audit)
+        run: npm run audit:prod
+
+      - name: ESLint (backend, loja e painel)
+        run: npm run lint
+
       - name: Verificar sintaxe do frontend e do painel
         working-directory: .
         run: for f in frontend/*.js admin/*.js; do node --check "$f"; done
