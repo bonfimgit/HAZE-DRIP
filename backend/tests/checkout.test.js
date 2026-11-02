@@ -435,6 +435,11 @@ test('checkout PIX cria pedido com frete e pagamento; acompanhamento por token',
   assert.equal((await api.get(`/pedidos/${id}/acompanhar?token=${'0'.repeat(64)}`)).status, 404);
   assert.equal((await api.get(`/pedidos/${id}/acompanhar`)).status, 404);
 
+  // Mesmo número de caracteres, mas com acento (mais bytes): 404, não 500
+  const comAcento = encodeURIComponent('é' + '0'.repeat(63));
+  assert.equal((await api.get(`/pedidos/${id}/acompanhar?token=${comAcento}`)).status, 404);
+  assert.equal((await api.post(`/pedidos/${id}/pagamento`, { token: 'é' + '0'.repeat(63), metodo_pagamento: 'pix' })).status, 404);
+
   // Mesma chave: devolve o mesmo pedido
   const repetido = await api.post('/checkout', corpo);
   assert.equal(repetido.status, 200);
