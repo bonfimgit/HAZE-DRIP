@@ -120,9 +120,11 @@ router.patch('/admin/pedidos/:id/cancelar', autenticarAdmin, async (req, res) =>
 
     const pagamentosService = require('../../services/pagamentosService');
 
+    // cancelarPedido: recusa antes de reembolsar se o pedido já foi enviado
     const reembolso = await pagamentosService.reembolsar(pedidoId, {
       adminId: req.admin.id,
-      motivo: motivo || 'Pedido cancelado com reembolso'
+      motivo: motivo || 'Pedido cancelado com reembolso',
+      cancelarPedido: true
     });
 
     return res.json({
