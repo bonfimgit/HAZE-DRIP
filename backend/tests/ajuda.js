@@ -19,6 +19,8 @@ process.env.DB_NAME = process.env.TEST_DB_NAME || 'haze_drip_test';
 process.env.FRONTEND_URLS = 'http://loja.teste';
 process.env.STORE_URL = 'http://loja.teste';
 process.env.API_URL = 'http://api.teste';
+// Testes criam muitos pedidos do mesmo IP; o teste do limite baixa este valor
+process.env.CHECKOUT_LIMITE_POR_HORA = '100000';
 
 if (!/test/.test(process.env.DB_NAME)) {
   throw new Error('Por segurança, o banco de teste precisa ter "test" no nome.');

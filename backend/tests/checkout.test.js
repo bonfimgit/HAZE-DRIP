@@ -79,7 +79,9 @@ global.fetch = async (url, opcoes) => {
     status: p.status,
     transaction_amount: p.valor,
     transaction_amount_refunded: p.reembolsado || 0,
-    external_reference: String(p.pedido_id)
+    external_reference: String(p.pedido_id),
+    ...(p.tipo ? { payment_type_id: p.tipo } : {}),
+    ...(p.vencimento ? { date_of_expiration: p.vencimento } : {})
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 
@@ -768,6 +770,94 @@ test('reembolso: somente gerente; total cancela e devolve estoque', async () => 
   assert.deepEqual(reembolsos.slice(-2).map(r => r.valor), [10, 115]);
 
   assert.equal((await api.post(`/admin/pedidos/${pedidoId}/reembolso`, {}, { token })).status, 409);
+});
+
+
+test('limite de pedidos criados por IP', async () => {
+
+  const { limitePedidos } = require('../src/routes/loja/checkout');
+  limitePedidos.limparTudo();
+  process.env.CHECKOUT_LIMITE_POR_HORA = '2';
+
+  try {
+
+    const primeiro = checkout();
+    assert.equal((await api.post('/checkout', primeiro)).status, 201);
+
+    // Reenvio com a mesma chave (clique duplo) não conta
+    assert.equal((await api.post('/checkout', primeiro)).status, 200);
+
+    // Tentativa recusada (forma de pagamento inválida) não conta
+    assert.equal((await api.post('/checkout', checkout({ metodo_pagamento: 'x' }))).status, 400);
+
+    assert.equal((await api.post('/checkout', checkout())).status, 201);
+
+    const bloqueado = await api.post('/checkout', checkout());
+    assert.equal(bloqueado.status, 429);
+    assert.match(bloqueado.dados.mensagem, /muitos pedidos/);
+
+  } finally {
+    process.env.CHECKOUT_LIMITE_POR_HORA = '100000';
+    limitePedidos.limparTudo();
+  }
+});
+
+test('Checkout Pro abandonado expira em 2 horas; boleto gerado mantém a reserva até compensar', async () => {
+
+  // Abandonado: prazo de 2 horas (antes eram 3 dias)
+  const abandonado = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const [[pedidoAbandonado]] = await db.query(
+    'SELECT TIMESTAMPDIFF(MINUTE, NOW(), pagamento_expira_em) AS minutos FROM pedidos WHERE id = ?',
+    [abandonado.dados.pedido.id]
+  );
+  assert.ok(pedidoAbandonado.minutos > 100 && pedidoAbandonado.minutos <= 120, String(pedidoAbandonado.minutos));
+
+  // Boleto gerado, vence amanhã e ainda não foi pago
+  const comBoleto = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const boletoId = comBoleto.dados.pedido.id;
+  const vencimento = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  pagamentosMp.set(String(proximoPagamento++), {
+    status: 'pending', tipo: 'ticket', vencimento: vencimento.toISOString(),
+    valor: comBoleto.dados.pedido.total, pedido_id: boletoId
+  });
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id IN (?, ?)',
+    [abandonado.dados.pedido.id, boletoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  assert.equal((await api.get(`/admin/pedidos/${abandonado.dados.pedido.id}`, { token })).dados.status, 'cancelado');
+
+  const pedidoBoleto = (await api.get(`/admin/pedidos/${boletoId}`, { token })).dados;
+  assert.equal(pedidoBoleto.status, 'aguardando_pagamento');
+
+  // Reserva vai até o vencimento + 3 dias de compensação
+  const prazo = new Date(pedidoBoleto.pagamento_expira_em).getTime();
+  const esperado = vencimento.getTime() + 3 * 24 * 60 * 60 * 1000;
+  assert.ok(Math.abs(prazo - esperado) < 2000, `${new Date(prazo).toISOString()} != ${new Date(esperado).toISOString()}`);
+});
+
+test('boleto vencido há mais de 3 dias não segura o estoque', async () => {
+
+  const resposta = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const pedidoId = resposta.dados.pedido.id;
+
+  pagamentosMp.set(String(proximoPagamento++), {
+    status: 'pending', tipo: 'ticket',
+    vencimento: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    valor: resposta.dados.pedido.total, pedido_id: pedidoId
+  });
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'cancelado');
 });
 
 

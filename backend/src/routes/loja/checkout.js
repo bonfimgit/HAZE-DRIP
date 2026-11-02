@@ -3,14 +3,30 @@ const { Router } = require('express');
 
 const db = require('../../config/db');
 const valida = require('../../utils/validacao');
-const { naoEncontrado } = require('../../utils/erros');
+const { naoEncontrado, muitasRequisicoes } = require('../../utils/erros');
 const { identificarCliente } = require('../../middlewares/autenticacao');
+const { criarLimitador } = require('../../middlewares/limiteTentativas');
 const { lerDadosEntrega } = require('./pedidos');
 const checkoutService = require('../../services/checkoutService');
 const pedidosService = require('../../services/pedidosService');
 const pagamentosService = require('../../services/pagamentosService');
 
 const router = Router();
+
+
+/*
+  Limite de pedidos criados por IP (padrão: 10 por hora).
+  Sem isso, um script podia abrir dezenas de pedidos com e-mails
+  falsos e segurar o estoque da loja até cada um expirar.
+  Conta só pedidos realmente criados: reenvio com a mesma chave de
+  idempotência e tentativas recusadas (estoque, cupom) não contam.
+*/
+const limitePedidos = criarLimitador({
+  maximo: () => Number(process.env.CHECKOUT_LIMITE_POR_HORA) || 10,
+  janelaMs: 60 * 60 * 1000
+});
+
+router.limitePedidos = limitePedidos;
 
 
 function lerCupom(valor) {
@@ -48,6 +64,12 @@ router.post('/checkout', identificarCliente, async (req, res) => {
 
   const corpo = req.body || {};
 
+  if (limitePedidos.bloqueado(req.ip)) {
+    throw muitasRequisicoes(
+      'Você fez muitos pedidos em pouco tempo. Aguarde um pouco ou fale com o atendimento.'
+    );
+  }
+
   const { cliente, endereco } = await lerDadosEntrega(corpo, req.cliente);
 
   const chave = corpo.chave_idempotencia == null
@@ -64,6 +86,10 @@ router.post('/checkout', identificarCliente, async (req, res) => {
     metodoPagamento: corpo.metodo_pagamento,
     chaveIdempotencia: chave
   });
+
+  if (!resultado.repetido) {
+    limitePedidos.registrarFalha(req.ip); // conta o pedido criado
+  }
 
   res.status(resultado.repetido ? 200 : 201).json({
     mensagem: 'Pedido criado com sucesso',

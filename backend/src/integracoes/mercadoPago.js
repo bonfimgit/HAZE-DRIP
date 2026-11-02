@@ -161,6 +161,8 @@ const mercadoPago = {
       valor_reembolsado: Number(pagamento.transaction_amount_refunded || 0),
       metodo: pagamento.payment_method_id ?? null,
       tipo: pagamento.payment_type_id ?? null,
+      // Vencimento do boleto/PIX (date_of_expiration)
+      vencimento: pagamento.date_of_expiration ?? null,
       pedido_id: Number(pagamento.external_reference)
     };
   },

@@ -26,8 +26,20 @@ const METODOS = ['pix', 'mercadopago'];
 // Prazo para pagar antes de o pedido ser cancelado e o estoque devolvido
 const PRAZO_MINUTOS = {
   pix: 30,
-  mercadopago: 3 * 24 * 60 // cobre o prazo do boleto
+  /*
+    Checkout Pro: tempo para escolher e concluir o pagamento.
+    Antes eram 3 dias para todo pedido (por causa do boleto), e um
+    checkout abandonado segurava o estoque esse tempo todo. Agora só
+    um boleto realmente gerado estende a reserva (ver expirarPendentes).
+  */
+  mercadopago: 2 * 60
 };
+
+// Depois do vencimento do boleto, prazo para a compensação bancária
+const DIAS_COMPENSACAO_BOLETO = 3;
+
+// Demais pagamentos pendentes (ex.: PIX gerado no Checkout Pro)
+const MINUTOS_TOLERANCIA_PENDENTE = 15;
 
 
 function urlNotificacao() {
@@ -198,6 +210,24 @@ const STATUS_PAGAMENTO = {
 async function sincronizar(pagamentoId) {
 
   const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
+
+  const resultado = await aplicarPagamento(pagamento);
+
+  // Dados do Mercado Pago usados pela expiração (boleto pendente etc.)
+  return {
+    ...resultado,
+    status_mp: pagamento.status,
+    tipo_mp: pagamento.tipo,
+    vencimento_mp: pagamento.vencimento
+  };
+}
+
+
+/*
+  Aplica ao pedido o estado de um pagamento já consultado no
+  Mercado Pago (chamado por sincronizar).
+*/
+async function aplicarPagamento(pagamento) {
 
   if (!Number.isInteger(pagamento.pedido_id) || pagamento.pedido_id <= 0) {
     return { resultado: 'pagamento sem pedido vinculado' };
@@ -525,6 +555,54 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
 
 
 /*
+  Se o pedido tem um pagamento pendente que ainda pode ser pago,
+  devolve até quando manter a reserva; senão, null.
+  - Boleto: vencimento + dias de compensação bancária
+  - Outros (PIX do Checkout Pro): vencimento + alguns minutos
+  O prazo é calculado a partir do vencimento (fixo), então a reserva
+  não se estende para sempre.
+*/
+function prazoDePagamentoPendente(resultados, pedido) {
+
+  // PIX direto da loja já tem prazo próprio (30 min): só o Checkout Pro estende
+  if (pedido.metodo_pagamento !== 'mercadopago') {
+    return null;
+  }
+
+  const agora = Date.now();
+  let maior = null;
+
+  for (const r of resultados) {
+
+    if (!['pending', 'in_process', 'authorized'].includes(r.status_mp)) {
+      continue;
+    }
+
+    const boleto = r.tipo_mp === 'ticket';
+
+    // Sem vencimento: só o boleto ganha prazo (contado da criação do pedido)
+    if (!r.vencimento_mp && !boleto) {
+      continue;
+    }
+
+    const base = r.vencimento_mp
+      ? new Date(r.vencimento_mp).getTime()
+      : new Date(pedido.criado_em).getTime() + DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000;
+
+    const limite = base + (boleto
+      ? DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000
+      : MINUTOS_TOLERANCIA_PENDENTE * 60 * 1000);
+
+    if (limite > agora && (!maior || limite > maior)) {
+      maior = limite;
+    }
+  }
+
+  return maior ? new Date(maior) : null;
+}
+
+
+/*
   Cancela pedidos cujo prazo de pagamento acabou e devolve o estoque.
   Antes, confere no Mercado Pago se o pagamento não foi aprovado.
 */
@@ -546,9 +624,23 @@ async function expirarPendentes() {
     try {
 
       // Inclui pagamentos do Checkout Pro que ainda não chegaram por webhook
-      await sincronizarPedido(id);
+      const resultados = await sincronizarPedido(id);
 
       const atual = await buscarPedido(id);
+
+      // Boleto ou PIX gerado e ainda dentro do prazo: mantém a reserva
+      if (atual.status === 'aguardando_pagamento') {
+
+        const novoPrazo = prazoDePagamentoPendente(resultados, atual);
+
+        if (novoPrazo) {
+          await db.execute(
+            'UPDATE pedidos SET pagamento_expira_em = ? WHERE id = ?',
+            [novoPrazo, id]
+          );
+          continue;
+        }
+      }
 
       if (atual.status === 'aguardando_pagamento') {
         /*
