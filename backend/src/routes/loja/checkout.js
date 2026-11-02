@@ -3,14 +3,30 @@ const { Router } = require('express');
 
 const db = require('../../config/db');
 const valida = require('../../utils/validacao');
-const { naoEncontrado } = require('../../utils/erros');
+const { naoEncontrado, muitasRequisicoes, requisicaoInvalida } = require('../../utils/erros');
 const { identificarCliente } = require('../../middlewares/autenticacao');
+const { criarLimitador } = require('../../middlewares/limiteTentativas');
 const { lerDadosEntrega } = require('./pedidos');
 const checkoutService = require('../../services/checkoutService');
 const pedidosService = require('../../services/pedidosService');
 const pagamentosService = require('../../services/pagamentosService');
 
 const router = Router();
+
+
+/*
+  Limite de pedidos criados por IP (padrão: 10 por hora).
+  Sem isso, um script podia abrir dezenas de pedidos com e-mails
+  falsos e segurar o estoque da loja até cada um expirar.
+  Conta só pedidos realmente criados: reenvio com a mesma chave de
+  idempotência e tentativas recusadas (estoque, cupom) não contam.
+*/
+const limitePedidos = criarLimitador({
+  maximo: () => Number(process.env.CHECKOUT_LIMITE_POR_HORA) || 10,
+  janelaMs: 60 * 60 * 1000
+});
+
+router.limitePedidos = limitePedidos;
 
 
 function lerCupom(valor) {
@@ -48,7 +64,23 @@ router.post('/checkout', identificarCliente, async (req, res) => {
 
   const corpo = req.body || {};
 
+  if (limitePedidos.bloqueado(req.ip)) {
+    throw muitasRequisicoes(
+      'Você fez muitos pedidos em pouco tempo. Aguarde um pouco ou fale com o atendimento.'
+    );
+  }
+
   const { cliente, endereco } = await lerDadosEntrega(corpo, req.cliente);
+
+  /*
+    Cliente logado: o pedido usa sempre o e-mail da conta.
+    Antes valia o e-mail digitado no formulário: o pedido aparecia em
+    "Meus pedidos", mas os e-mails (pagamento, rastreio) iam para outro
+    endereço, e o limite de cupom por cliente podia ser contornado.
+  */
+  if (req.cliente) {
+    cliente.email = req.cliente.email;
+  }
 
   const chave = corpo.chave_idempotencia == null
     ? null
@@ -64,6 +96,10 @@ router.post('/checkout', identificarCliente, async (req, res) => {
     metodoPagamento: corpo.metodo_pagamento,
     chaveIdempotencia: chave
   });
+
+  if (!resultado.repetido) {
+    limitePedidos.registrarFalha(req.ip); // conta o pedido criado
+  }
 
   res.status(resultado.repetido ? 200 : 201).json({
     mensagem: 'Pedido criado com sucesso',
@@ -142,6 +178,28 @@ router.post('/pedidos/:id/pagamento', async (req, res) => {
   );
 
   res.status(201).json(await pagamentosService.iniciar(pedidoId, metodo));
+});
+
+
+/*
+  Volta do Checkout Pro (página do pedido com ?payment_id=...).
+  Confirma o pagamento na hora, sem depender do webhook.
+*/
+router.post('/pedidos/:id/pagamento/confirmar', async (req, res) => {
+
+  const pedidoId = valida.id(req.params.id, 'ID do pedido inválido');
+
+  await pedidoPorToken(pedidoId, req.body?.token);
+
+  const pagamentoId = String(req.body?.payment_id ?? '');
+
+  if (!/^\d{1,30}$/.test(pagamentoId)) {
+    throw requisicaoInvalida('Pagamento inválido');
+  }
+
+  const { resultado } = await pagamentosService.confirmarRetorno(pedidoId, pagamentoId);
+
+  res.json({ resultado, pagamento: await pagamentosService.resumo(pedidoId) });
 });
 
 

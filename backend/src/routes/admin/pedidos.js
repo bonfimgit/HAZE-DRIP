@@ -42,7 +42,10 @@ router.get('/admin/pedidos', autenticarAdmin, async (req, res) => {
     ? valida.texto(req.query.busca, 'Busca inválida', { max: 100 })
     : null;
 
-  res.json(await pedidosService.listarAdmin({ status, busca }));
+  // ?alerta=pagamento: só pedidos com pagamento para revisar (link do dashboard)
+  const alertaPagamento = req.query.alerta === 'pagamento';
+
+  res.json(await pedidosService.listarAdmin({ status, busca, alertaPagamento }));
 });
 
 router.get('/admin/pedidos/:id', autenticarAdmin, async (req, res) => {

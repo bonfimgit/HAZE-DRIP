@@ -79,7 +79,9 @@ global.fetch = async (url, opcoes) => {
     status: p.status,
     transaction_amount: p.valor,
     transaction_amount_refunded: p.reembolsado || 0,
-    external_reference: String(p.pedido_id)
+    external_reference: String(p.pedido_id),
+    ...(p.tipo ? { payment_type_id: p.tipo } : {}),
+    ...(p.vencimento ? { date_of_expiration: p.vencimento } : {})
   }), { status: 200, headers: { 'Content-Type': 'application/json' } });
 };
 
@@ -689,6 +691,31 @@ test('Checkout Pro sem webhook: painel encontra o pagamento ao sincronizar', asy
   assert.equal(pedido.dados.status, 'pago');
 });
 
+test('volta do Checkout Pro com payment_id confirma o pedido na hora', async () => {
+
+  const { pedidoId, mpId } = await pedidoCheckoutProPagoSemWebhook();
+  const [[{ token_acesso: tokenAcesso }]] = await db.query('SELECT token_acesso FROM pedidos WHERE id = ?', [pedidoId]);
+  const rota = `/pedidos/${pedidoId}/pagamento/confirmar`;
+
+  // Token errado ou payment_id inválido
+  assert.equal((await api.post(rota, { token: 'x', payment_id: mpId })).status, 404);
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: 'abc' })).status, 400);
+
+  // Pagamento de outro pedido não serve para este
+  const { mpId: outroMpId } = await pedidoCheckoutProPagoSemWebhook();
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: outroMpId })).status, 404);
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'aguardando_pagamento');
+
+  const confirmado = await api.post(rota, { token: tokenAcesso, payment_id: mpId });
+  assert.equal(confirmado.status, 200);
+  assert.equal(confirmado.dados.resultado, 'pedido pago');
+
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'pago');
+
+  // Repetir (recarregar a página) não faz nada
+  assert.equal((await api.post(rota, { token: tokenAcesso, payment_id: mpId })).dados.resultado, 'já processado');
+});
+
 test('Checkout Pro sem webhook: expiração confere no Mercado Pago e não cancela pedido pago', async () => {
 
   const { pedidoId: pagoId } = await pedidoCheckoutProPagoSemWebhook();
@@ -771,12 +798,187 @@ test('reembolso: somente gerente; total cancela e devolve estoque', async () => 
 });
 
 
+test('limite de pedidos criados por IP', async () => {
+
+  const { limitePedidos } = require('../src/routes/loja/checkout');
+  limitePedidos.limparTudo();
+  process.env.CHECKOUT_LIMITE_POR_HORA = '2';
+
+  try {
+
+    const primeiro = checkout();
+    assert.equal((await api.post('/checkout', primeiro)).status, 201);
+
+    // Reenvio com a mesma chave (clique duplo) não conta
+    assert.equal((await api.post('/checkout', primeiro)).status, 200);
+
+    // Tentativa recusada (forma de pagamento inválida) não conta
+    assert.equal((await api.post('/checkout', checkout({ metodo_pagamento: 'x' }))).status, 400);
+
+    assert.equal((await api.post('/checkout', checkout())).status, 201);
+
+    const bloqueado = await api.post('/checkout', checkout());
+    assert.equal(bloqueado.status, 429);
+    assert.match(bloqueado.dados.mensagem, /muitos pedidos/);
+
+  } finally {
+    process.env.CHECKOUT_LIMITE_POR_HORA = '100000';
+    limitePedidos.limparTudo();
+  }
+});
+
+test('Checkout Pro abandonado expira em 2 horas; boleto gerado mantém a reserva até compensar', async () => {
+
+  // Abandonado: prazo de 2 horas (antes eram 3 dias)
+  const abandonado = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const [[pedidoAbandonado]] = await db.query(
+    'SELECT TIMESTAMPDIFF(MINUTE, NOW(), pagamento_expira_em) AS minutos FROM pedidos WHERE id = ?',
+    [abandonado.dados.pedido.id]
+  );
+  assert.ok(pedidoAbandonado.minutos > 100 && pedidoAbandonado.minutos <= 120, String(pedidoAbandonado.minutos));
+
+  // Boleto gerado, vence amanhã e ainda não foi pago
+  const comBoleto = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const boletoId = comBoleto.dados.pedido.id;
+  const vencimento = new Date(Date.now() + 24 * 60 * 60 * 1000);
+  pagamentosMp.set(String(proximoPagamento++), {
+    status: 'pending', tipo: 'ticket', vencimento: vencimento.toISOString(),
+    valor: comBoleto.dados.pedido.total, pedido_id: boletoId
+  });
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id IN (?, ?)',
+    [abandonado.dados.pedido.id, boletoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  assert.equal((await api.get(`/admin/pedidos/${abandonado.dados.pedido.id}`, { token })).dados.status, 'cancelado');
+
+  const pedidoBoleto = (await api.get(`/admin/pedidos/${boletoId}`, { token })).dados;
+  assert.equal(pedidoBoleto.status, 'aguardando_pagamento');
+
+  // Reserva vai até o vencimento + 3 dias de compensação
+  const prazo = new Date(pedidoBoleto.pagamento_expira_em).getTime();
+  const esperado = vencimento.getTime() + 3 * 24 * 60 * 60 * 1000;
+  assert.ok(Math.abs(prazo - esperado) < 2000, `${new Date(prazo).toISOString()} != ${new Date(esperado).toISOString()}`);
+});
+
+test('boleto vencido há mais de 3 dias não segura o estoque', async () => {
+
+  const resposta = await api.post('/checkout', checkout({ metodo_pagamento: 'mercadopago' }));
+  const pedidoId = resposta.dados.pedido.id;
+
+  pagamentosMp.set(String(proximoPagamento++), {
+    status: 'pending', tipo: 'ticket',
+    vencimento: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+    valor: resposta.dados.pedido.total, pedido_id: pedidoId
+  });
+
+  await db.query(
+    'UPDATE pedidos SET pagamento_expira_em = DATE_SUB(NOW(), INTERVAL 1 MINUTE) WHERE id = ?',
+    [pedidoId]
+  );
+
+  await pagamentosService.expirarPendentes();
+
+  assert.equal((await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados.status, 'cancelado');
+});
+
+
 async function pedidoPago() {
   const { pedidoId, mpId } = await pedidoComPix();
   pagamentosMp.get(mpId).status = 'approved';
   await api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
   return pedidoId;
 }
+
+/*
+  Cliente gerou um segundo PIX (o primeiro "expirou" na tela) e pagou os dois.
+*/
+async function pedidoComDoisPix() {
+  const { pedidoId, mpId } = await pedidoComPix();
+  const tokenAcesso = (await db.query('SELECT token_acesso FROM pedidos WHERE id = ?', [pedidoId]))[0][0].token_acesso;
+  await api.post(`/pedidos/${pedidoId}/pagamento`, { token: tokenAcesso, metodo_pagamento: 'pix' });
+  const [[segundo]] = await db.query(
+    "SELECT provedor_id FROM pagamentos WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id <> ?",
+    [pedidoId, mpId]
+  );
+  return { pedidoId, mpId1: mpId, mpId2: segundo.provedor_id };
+}
+
+const webhook = mpId =>
+  api.post(`/pagamentos/webhook/mercadopago?type=payment&data.id=${mpId}`, {}, { cabecalhos: assinar(mpId) });
+
+async function resultadoEvento(mpId) {
+  const [eventos] = await db.query(
+    'SELECT resultado FROM pagamento_eventos WHERE recurso_id = ? ORDER BY id', [mpId]
+  );
+  return eventos.map(e => e.resultado);
+}
+
+test('pedido pago duas vezes: duplicidade marcada, reembolsada sem cancelar o pedido', async () => {
+
+  const { pedidoId, mpId1, mpId2 } = await pedidoComDoisPix();
+
+  pagamentosMp.get(mpId1).status = 'approved';
+  pagamentosMp.get(mpId2).status = 'approved';
+
+  await webhook(mpId1);
+  await webhook(mpId2);
+  await webhook(mpId2); // notificação repetida
+
+  assert.deepEqual(await resultadoEvento(mpId2), ['pagamento duplicado', 'já processado']);
+
+  let pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'pagamento_duplicado');
+
+  // "Cancelar e reembolsar" pede para resolver a duplicidade antes
+  const cancelar = await api.patch(`/admin/pedidos/${pedidoId}/cancelar`, { reembolsar: true }, { token });
+  assert.equal(cancelar.status, 409);
+  assert.match(cancelar.dados.mensagem, /pago duas vezes/);
+
+  // Reembolso devolve o pagamento duplicado, e o pedido segue pago
+  const antes = reembolsos.length;
+  const reembolso = await api.post(`/admin/pedidos/${pedidoId}/reembolso`, {}, { token });
+  assert.equal(reembolso.status, 200);
+  assert.equal(reembolso.dados.duplicidade, true);
+  assert.equal(reembolsos.at(-1).id, mpId2);
+  assert.equal(reembolsos.length, antes + 1);
+
+  pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'aprovado');
+  assert.equal(pedido.valor_reembolsado, 0);
+
+  // Notificação do Mercado Pago confirmando o reembolso da duplicidade não cancela o pedido
+  Object.assign(pagamentosMp.get(mpId2), { status: 'refunded', reembolsado: pedido.total });
+  await webhook(mpId2);
+
+  assert.equal((await resultadoEvento(mpId2)).at(-1), 'duplicidade reembolsada');
+  pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'aprovado');
+});
+
+test('dois pagamentos aprovados ao mesmo tempo: um paga o pedido, o outro vira duplicidade', async () => {
+
+  const { pedidoId, mpId1, mpId2 } = await pedidoComDoisPix();
+
+  pagamentosMp.get(mpId1).status = 'approved';
+  pagamentosMp.get(mpId2).status = 'approved';
+
+  await Promise.all([webhook(mpId1), webhook(mpId2)]);
+
+  const resultados = [...await resultadoEvento(mpId1), ...await resultadoEvento(mpId2)].sort();
+  assert.deepEqual(resultados, ['pagamento duplicado', 'pedido pago']);
+
+  const pedido = (await api.get(`/admin/pedidos/${pedidoId}`, { token })).dados;
+  assert.equal(pedido.status, 'pago');
+  assert.equal(pedido.pagamento_status, 'pagamento_duplicado');
+});
+
 
 test('dois cliques simultâneos em reembolsar não devolvem o valor duas vezes', async () => {
 

@@ -9,6 +9,7 @@
 const db = require('../config/db');
 const { requisicaoInvalida } = require('../utils/erros');
 const { arredondar } = require('../utils/dinheiro');
+const pedidosService = require('./pedidosService');
 
 const STATUS_VENDA = ['pago', 'em_preparacao', 'enviado', 'entregue'];
 const SQL_VENDA = `p.status IN ('pago', 'em_preparacao', 'enviado', 'entregue')`;
@@ -164,7 +165,8 @@ async function dashboard(filtro) {
          AND v.estoque <= GREATEST(v.estoque_minimo, 0)) AS estoque_baixo,
         (SELECT COUNT(*) FROM produtos WHERE ativo = TRUE) AS produtos_ativos,
         (SELECT COUNT(*) FROM produtos WHERE ativo = TRUE AND destaque_home = TRUE) AS produtos_destaque,
-        (SELECT COUNT(*) FROM pedidos WHERE pagamento_status IN ('valor_divergente', 'aprovado_apos_cancelamento')) AS pagamentos_com_problema`
+        (SELECT COUNT(*) FROM pedidos WHERE pagamento_status IN (?)) AS pagamentos_com_problema`,
+    [pedidosService.PAGAMENTO_ALERTAS]
   );
 
   return {

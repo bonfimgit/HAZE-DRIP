@@ -39,7 +39,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 - Relatórios em CSV, usuários com perfis (gerente/operador) e auditoria das ações
 
 ### Qualidade e segurança
-- **78 testes automatizados** de API (pedidos simultâneos, estoque, pagamentos, permissões), rodando contra MySQL 8 no GitHub Actions
+- **96 testes automatizados** de API (pedidos e pagamentos simultâneos, estoque, reembolsos, permissões), rodando contra MySQL 8 no GitHub Actions
 - Senhas com bcrypt, JWT com sessões revogáveis, limite de tentativas, Helmet, CORS restrito
 - Proteção contra XSS e SQL Injection, validação centralizada, logs estruturados
 
@@ -108,7 +108,7 @@ Testes: `npm test` (veja as variáveis `TEST_DB_*` em [docs/DEPLOY.md](docs/DEPL
 
 ## 📚 Documentação
 
-- [Referência da API](docs/API.md): 103 rotas
+- [Referência da API](docs/API.md): 104 rotas
 - [Deploy e operação](docs/DEPLOY.md): variáveis, migrações, Mercado Pago, e-mails, backup e monitoramento
 - [Checklist de produção](docs/PRODUCAO.md)
 
@@ -135,8 +135,8 @@ Este projeto faz parte da minha formação em Sistemas de Informação e desenvo
 
 **João Victor Silva Bonfim Santos**
 
-Estudante de **Sistemas de Informação** e desenvolvedor Full Stack em formação. Estou buscando minha primeira oportunidade profissional na área de desenvolvimento de software, onde possa continuar evoluindo e contribuir com projetos reais.
+Desenvolvedor Full Stack e estudante de **Sistemas de Informação**. Já atuei como desenvolvedor em uma empresa de energia solar e como analista, apoiando as áreas de suporte e infraestrutura. Busco uma vaga em desenvolvimento de software ou em suporte/infraestrutura.
 
-**Áreas de interesse:** desenvolvimento Full Stack e Backend, Node.js, JavaScript, APIs REST, banco de dados e desenvolvimento web.
+**Áreas de atuação:** desenvolvimento Full Stack e Backend, Node.js, JavaScript, APIs REST, banco de dados, suporte e infraestrutura.
 
 📍 Passos — MG, Brasil

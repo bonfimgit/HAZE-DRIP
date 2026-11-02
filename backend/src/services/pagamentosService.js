@@ -26,8 +26,20 @@ const METODOS = ['pix', 'mercadopago'];
 // Prazo para pagar antes de o pedido ser cancelado e o estoque devolvido
 const PRAZO_MINUTOS = {
   pix: 30,
-  mercadopago: 3 * 24 * 60 // cobre o prazo do boleto
+  /*
+    Checkout Pro: tempo para escolher e concluir o pagamento.
+    Antes eram 3 dias para todo pedido (por causa do boleto), e um
+    checkout abandonado segurava o estoque esse tempo todo. Agora só
+    um boleto realmente gerado estende a reserva (ver expirarPendentes).
+  */
+  mercadopago: 2 * 60
 };
+
+// Depois do vencimento do boleto, prazo para a compensação bancária
+const DIAS_COMPENSACAO_BOLETO = 3;
+
+// Demais pagamentos pendentes (ex.: PIX gerado no Checkout Pro)
+const MINUTOS_TOLERANCIA_PENDENTE = 15;
 
 
 function urlNotificacao() {
@@ -178,6 +190,77 @@ async function marcarAprovadoAposCancelamento(pedidoId, pagamentoId) {
 }
 
 
+/*
+  Pagamento aprovado para um pedido que já está pago.
+  Se outro pagamento (não duplicado) já aprovou o pedido, este é uma
+  duplicidade: fica marcado para reembolso e o pedido mostra o alerta.
+  Notificação repetida do pagamento que pagou o pedido: nada a fazer.
+*/
+async function marcarSeDuplicado(pedidoId, pagamentoId) {
+
+  const [outros] = await db.execute(
+    `SELECT id FROM pagamentos
+     WHERE pedido_id = ?
+     AND provedor = 'mercadopago'
+     AND tipo = 'pagamento'
+     AND provedor_id <> ?
+     AND duplicado = FALSE
+     AND status IN ('aprovado', 'reembolsado_parcial', 'reembolsado')`,
+    [pedidoId, pagamentoId]
+  );
+
+  if (outros.length === 0) {
+    return { resultado: 'já processado' };
+  }
+
+  const [marcacao] = await db.execute(
+    `UPDATE pagamentos SET duplicado = TRUE
+     WHERE pedido_id = ? AND provedor = 'mercadopago' AND tipo = 'pagamento'
+     AND provedor_id = ? AND duplicado = FALSE`,
+    [pedidoId, pagamentoId]
+  );
+
+  // Já estava marcado (notificação repetida)
+  if (marcacao.affectedRows === 0) {
+    return { resultado: 'já processado' };
+  }
+
+  await db.execute(
+    "UPDATE pedidos SET pagamento_status = 'pagamento_duplicado' WHERE id = ?",
+    [pedidoId]
+  );
+
+  logger.erro('Pedido pago duas vezes — reembolsar o pagamento duplicado', {
+    pedidoId,
+    pagamentoId
+  });
+
+  return { resultado: 'pagamento duplicado' };
+}
+
+
+/*
+  Sem duplicidades com saldo a reembolsar, o pedido volta a "aprovado".
+*/
+async function atualizarAlertaDuplicado(conexao, pedidoId) {
+
+  const [[pendentes]] = await conexao.execute(
+    `SELECT COUNT(*) AS total FROM pagamentos
+     WHERE pedido_id = ? AND duplicado = TRUE
+     AND status IN ('aprovado', 'reembolsado_parcial')`,
+    [pedidoId]
+  );
+
+  if (Number(pendentes.total) === 0) {
+    await conexao.execute(
+      `UPDATE pedidos SET pagamento_status = 'aprovado'
+       WHERE id = ? AND pagamento_status = 'pagamento_duplicado'`,
+      [pedidoId]
+    );
+  }
+}
+
+
 const STATUS_PAGAMENTO = {
   approved: 'aprovado',
   authorized: 'pendente',
@@ -199,6 +282,45 @@ async function sincronizar(pagamentoId) {
 
   const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
 
+  const resultado = await aplicarPagamento(pagamento);
+
+  // Dados do Mercado Pago usados pela expiração (boleto pendente etc.)
+  return {
+    ...resultado,
+    status_mp: pagamento.status,
+    tipo_mp: pagamento.tipo,
+    vencimento_mp: pagamento.vencimento
+  };
+}
+
+
+/*
+  Volta do Checkout Pro: o Mercado Pago redireciona o cliente para a
+  loja com ?payment_id=... na URL. Consultar esse pagamento na hora
+  confirma o pedido sem esperar o webhook (que pode atrasar ou se
+  perder). O status vem sempre da API do Mercado Pago, nunca da URL.
+
+  O pagamento precisa ser deste pedido: o ID da URL não serve para
+  mexer em pedidos de outras pessoas.
+*/
+async function confirmarRetorno(pedidoId, pagamentoId) {
+
+  const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
+
+  if (pagamento.pedido_id !== pedidoId) {
+    throw naoEncontrado('Pagamento não encontrado para este pedido');
+  }
+
+  return aplicarPagamento(pagamento);
+}
+
+
+/*
+  Aplica ao pedido o estado de um pagamento já consultado no
+  Mercado Pago (chamado por sincronizar e confirmarRetorno).
+*/
+async function aplicarPagamento(pagamento) {
+
   if (!Number.isInteger(pagamento.pedido_id) || pagamento.pedido_id <= 0) {
     return { resultado: 'pagamento sem pedido vinculado' };
   }
@@ -208,7 +330,7 @@ async function sincronizar(pagamentoId) {
 
   // Registra/atualiza o pagamento (no Checkout Pro ele nasce no MP)
   const [existentes] = await db.execute(
-    `SELECT id FROM pagamentos
+    `SELECT id, duplicado FROM pagamentos
      WHERE provedor = 'mercadopago'
      AND provedor_id = ?
      AND tipo = 'pagamento'
@@ -280,7 +402,8 @@ async function sincronizar(pagamentoId) {
         const atual = await buscarPedido(pedido.id);
 
         if (atual.status !== 'cancelado') {
-          return { resultado: 'já processado' };
+          // Outro pagamento aprovou o pedido no mesmo instante
+          return marcarSeDuplicado(atual.id, pagamento.id);
         }
 
         return marcarAprovadoAposCancelamento(atual.id, pagamento.id);
@@ -291,12 +414,22 @@ async function sincronizar(pagamentoId) {
       return marcarAprovadoAposCancelamento(pedido.id, pagamento.id);
     }
 
-    return { resultado: 'já processado' };
+    // Pedido já pago: este pode ser um segundo pagamento (pagou duas vezes)
+    return marcarSeDuplicado(pedido.id, pagamento.id);
   }
 
   /* ---------- Reembolsado / estornado ---------- */
 
   if (['refunded', 'charged_back'].includes(pagamento.status)) {
+
+    /*
+      Reembolso do pagamento em duplicidade: o pedido continua pago
+      pelo outro pagamento. Não cancela nem altera o faturamento.
+    */
+    if (existentes.length && Number(existentes[0].duplicado)) {
+      await emTransacao(conexao => atualizarAlertaDuplicado(conexao, pedido.id));
+      return { resultado: 'duplicidade reembolsada' };
+    }
 
     await db.execute(
       `UPDATE pedidos
@@ -446,16 +579,26 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
        AND provedor = 'mercadopago'
        AND tipo = 'pagamento'
        AND status IN ('aprovado', 'reembolsado_parcial')
-       ORDER BY id DESC
+       ORDER BY duplicado DESC, id DESC
        LIMIT 1
        FOR UPDATE`,
       [pedidoId]
     );
 
+    // Pagamento em duplicidade é reembolsado antes do pagamento do pedido
     const pagamento = pagamentos[0];
 
     if (!pagamento) {
       throw conflito('Não há pagamento aprovado para reembolsar neste pedido');
+    }
+
+    const duplicado = Boolean(Number(pagamento.duplicado));
+
+    if (duplicado && cancelarPedido) {
+      throw conflito(
+        'Este pedido foi pago duas vezes. Use "Reembolsar" para devolver ' +
+        'primeiro o pagamento em duplicidade.'
+      );
     }
 
     const jaReembolsado = Number(pagamento.valor_reembolsado);
@@ -487,17 +630,33 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
       [novoReembolsado, statusPagamento, pagamento.id]
     );
 
-    await conexao.execute(
-      `UPDATE pedidos
-       SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
-       WHERE id = ?`,
-      [novoReembolsado, statusPagamento, pedido.id]
-    );
+    if (duplicado) {
+      // O pedido continua pago: faturamento e status do pedido não mudam
+      await atualizarAlertaDuplicado(conexao, pedido.id);
+    } else {
+      await conexao.execute(
+        `UPDATE pedidos
+         SET valor_reembolsado = ?, reembolsado_em = NOW(), pagamento_status = ?
+         WHERE id = ?`,
+        [novoReembolsado, statusPagamento, pedido.id]
+      );
+    }
 
-    return { valorReembolso, novoReembolsado, statusPagamento, total };
+    return { valorReembolso, novoReembolsado, statusPagamento, total, duplicado };
   });
 
-  if (resultado.total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
+  if (resultado.duplicado) {
+    await emTransacao(conexao =>
+      pedidosService.registrarHistorico(conexao, {
+        pedidoId: pedido.id,
+        statusAnterior: pedido.status,
+        statusNovo: pedido.status,
+        observacao: `Reembolso de pagamento em duplicidade: R$ ${resultado.valorReembolso.toFixed(2)}${motivo ? ` — ${motivo}` : ''}`,
+        adminId,
+        origem: 'admin'
+      })
+    );
+  } else if (resultado.total && pedidosService.STATUS_CANCELAVEIS.includes(pedido.status)) {
     await pedidosService.cancelar(pedido.id, {
       adminId,
       origem: 'admin',
@@ -519,8 +678,57 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
   return {
     valor_reembolsado: resultado.valorReembolso,
     total_reembolsado: resultado.novoReembolsado,
-    status: resultado.statusPagamento
+    status: resultado.statusPagamento,
+    duplicidade: resultado.duplicado
   };
+}
+
+
+/*
+  Se o pedido tem um pagamento pendente que ainda pode ser pago,
+  devolve até quando manter a reserva; senão, null.
+  - Boleto: vencimento + dias de compensação bancária
+  - Outros (PIX do Checkout Pro): vencimento + alguns minutos
+  O prazo é calculado a partir do vencimento (fixo), então a reserva
+  não se estende para sempre.
+*/
+function prazoDePagamentoPendente(resultados, pedido) {
+
+  // PIX direto da loja já tem prazo próprio (30 min): só o Checkout Pro estende
+  if (pedido.metodo_pagamento !== 'mercadopago') {
+    return null;
+  }
+
+  const agora = Date.now();
+  let maior = null;
+
+  for (const r of resultados) {
+
+    if (!['pending', 'in_process', 'authorized'].includes(r.status_mp)) {
+      continue;
+    }
+
+    const boleto = r.tipo_mp === 'ticket';
+
+    // Sem vencimento: só o boleto ganha prazo (contado da criação do pedido)
+    if (!r.vencimento_mp && !boleto) {
+      continue;
+    }
+
+    const base = r.vencimento_mp
+      ? new Date(r.vencimento_mp).getTime()
+      : new Date(pedido.criado_em).getTime() + DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000;
+
+    const limite = base + (boleto
+      ? DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000
+      : MINUTOS_TOLERANCIA_PENDENTE * 60 * 1000);
+
+    if (limite > agora && (!maior || limite > maior)) {
+      maior = limite;
+    }
+  }
+
+  return maior ? new Date(maior) : null;
 }
 
 
@@ -546,9 +754,23 @@ async function expirarPendentes() {
     try {
 
       // Inclui pagamentos do Checkout Pro que ainda não chegaram por webhook
-      await sincronizarPedido(id);
+      const resultados = await sincronizarPedido(id);
 
       const atual = await buscarPedido(id);
+
+      // Boleto ou PIX gerado e ainda dentro do prazo: mantém a reserva
+      if (atual.status === 'aguardando_pagamento') {
+
+        const novoPrazo = prazoDePagamentoPendente(resultados, atual);
+
+        if (novoPrazo) {
+          await db.execute(
+            'UPDATE pedidos SET pagamento_expira_em = ? WHERE id = ?',
+            [novoPrazo, id]
+          );
+          continue;
+        }
+      }
 
       if (atual.status === 'aguardando_pagamento') {
         /*
@@ -590,6 +812,7 @@ module.exports = {
   resumo,
   sincronizar,
   sincronizarPedido,
+  confirmarRetorno,
   processarWebhook,
   reembolsar,
   expirarPendentes

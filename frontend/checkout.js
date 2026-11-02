@@ -271,7 +271,10 @@
       ]);
 
       $('checkout-nome').value ||= perfil.nome;
-      $('checkout-email').value ||= perfil.email;
+      // Logado: o pedido vai para o e-mail da conta (a API também garante)
+      $('checkout-email').value = perfil.email;
+      $('checkout-email').readOnly = true;
+      $('checkout-email').title = 'E-mail da sua conta. Para usar outro, altere-o em Minha conta.';
       $('checkout-telefone').value ||= perfil.telefone || '';
 
       enderecosSalvos = enderecos;

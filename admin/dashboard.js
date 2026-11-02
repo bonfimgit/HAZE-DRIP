@@ -79,7 +79,7 @@ function renderizarPendencias(operacao) {
     { valor: operacao.para_enviar, rotulo: 'Pedidos para preparar/enviar', link: 'pedidos.html?status=pago' },
     { valor: operacao.aguardando_pagamento, rotulo: 'Aguardando pagamento', link: 'pedidos.html?status=aguardando_pagamento' },
     { valor: operacao.estoque_baixo, rotulo: 'Variações com estoque baixo', link: 'estoque.html', alerta: operacao.estoque_baixo > 0 },
-    { valor: operacao.pagamentos_com_problema, rotulo: 'Pagamentos para revisar', link: 'pedidos.html', alerta: operacao.pagamentos_com_problema > 0, ocultarZero: true },
+    { valor: operacao.pagamentos_com_problema, rotulo: 'Pagamentos para revisar', link: 'pedidos.html?alerta=pagamento', alerta: operacao.pagamentos_com_problema > 0, ocultarZero: true },
     { valor: operacao.produtos_ativos, rotulo: `Produtos ativos (${operacao.produtos_destaque} em destaque)`, link: 'produtos.html' }
   ].filter(item => !(item.ocultarZero && item.valor === 0));
 

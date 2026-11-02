@@ -4,6 +4,9 @@
   Suficiente para uma única instância da API (cenário atual no
   Render). Com várias instâncias, trocar por um armazenamento
   compartilhado (ex.: Redis).
+
+  "maximo" pode ser um número ou uma função que devolve o número
+  (lido a cada requisição, ex.: de uma variável de ambiente).
 */
 
 const { muitasRequisicoes } = require('../utils/erros');
@@ -16,6 +19,8 @@ function criarLimitador({
 }) {
 
   const registros = new Map();
+
+  const limite = () => (typeof maximo === 'function' ? maximo() : maximo);
 
   // Limpeza periódica para não acumular chaves antigas
   const limpeza = setInterval(() => {
@@ -51,7 +56,7 @@ function criarLimitador({
 
       registro.quantidade++;
 
-      if (registro.quantidade > maximo) {
+      if (registro.quantidade > limite()) {
         throw muitasRequisicoes(mensagem);
       }
 
@@ -60,7 +65,7 @@ function criarLimitador({
 
     // Uso manual: conta só falhas (ex.: senha errada)
     bloqueado(k) {
-      return obter(k).quantidade >= maximo;
+      return obter(k).quantidade >= limite();
     },
 
     registrarFalha(k) {

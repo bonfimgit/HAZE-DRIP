@@ -39,6 +39,7 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `CLOUDINARY_*` | Painel do Cloudinary |
 | `MERCADOPAGO_ACCESS_TOKEN` | `APP_USR-...` (produção) |
 | `MERCADOPAGO_WEBHOOK_SECRET` | Assinatura secreta do webhook |
+| `CHECKOUT_LIMITE_POR_HORA` | Pedidos criados por IP por hora (opcional, padrão 10) |
 | `RESEND_API_KEY` / `EMAIL_REMETENTE` | Chave e remetente com domínio verificado |
 | `CORREIOS_*` / `FRETE_*` | Frete pelos Correios (opcional, veja a seção 4.1) |
 

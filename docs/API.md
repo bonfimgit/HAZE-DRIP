@@ -32,6 +32,7 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, servico_frete, metodo_pagamento: "pix" \| "mercadopago", chave_idempotencia }` |
 | GET | `/pedidos/:id/acompanhar?token=` | 🔓 | Pedido + pagamento pelo token do pedido (compra sem login) |
 | POST | `/pedidos/:id/pagamento` | 🔓 | Gera novo pagamento `{ token, metodo_pagamento }` |
+| POST | `/pedidos/:id/pagamento/confirmar` | 🔓 | Volta do Checkout Pro: confere o pagamento `{ token, payment_id }` no Mercado Pago |
 | POST | `/pagamentos/webhook/mercadopago` | Mercado Pago | Notificações; assinatura conferida com `MERCADOPAGO_WEBHOOK_SECRET` |
 
 ## Conta do cliente
@@ -83,7 +84,7 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | GET/POST/PUT/DELETE/PATCH | `/admin/categorias`, `/categorias/:id`, `/categorias/:id/reativar` | 🛠️ | Categorias |
 | GET/POST/PUT/DELETE/PATCH | `/admin/campanhas...` | 🛠️ | Campanha da Home e promoções (`inicio_em`, `fim_em`, `desconto_percentual`, `produto_ids`) |
 | GET/PATCH | `/admin/avaliacoes`, `/admin/avaliacoes/:id` | 🛠️ | Moderação `{ visivel }` |
-| GET | `/admin/pedidos?status=&busca=` | 🛠️ | Pedidos |
+| GET | `/admin/pedidos?status=&busca=&alerta=pagamento` | 🛠️ | Pedidos (`alerta=pagamento`: só os com pagamento para revisar) |
 | GET | `/admin/pedidos/:id` | 🛠️ | Detalhe com itens e histórico |
 | PATCH | `/admin/pedidos/:id/status` | 🛠️ | Próximo status (+ rastreio ao enviar). Marcar como `pago` à mão: 👑 |
 | PATCH | `/admin/pedidos/:id/rastreio` | 🛠️ | `{ codigo_rastreio, transportadora, url_rastreio }` |
