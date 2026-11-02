@@ -21,6 +21,9 @@ const logger = require('../utils/logger');
 const DURACAO_ACESSO = '30m';
 const DIAS_SESSAO = 30;
 
+// Reuso do refresh token logo após a rotação (abas simultâneas)
+const TOLERANCIA_REUSO_SEGUNDOS = 30;
+
 const DURACAO_TOKEN = {
   recuperar_senha: 60 * 60 * 1000,           // 1 hora
   verificar_email: 48 * 60 * 60 * 1000       // 48 horas
@@ -177,11 +180,26 @@ async function renovarSessao(refreshToken) {
   }
 
   /*
-    Refresh token já usado: indica possível roubo.
-    Encerra todas as sessões do cliente por segurança.
+    Refresh token já usado.
+
+    Logo depois da rotação (poucos segundos), o reuso costuma ser
+    legítimo: duas abas renovando ao mesmo tempo, ou a resposta da
+    renovação que se perdeu na rede. Nesse caso só recusa (a outra
+    aba já tem o token novo) sem derrubar as demais sessões.
+
+    Depois disso, o reuso indica possível roubo do token: encerra
+    todas as sessões do cliente por segurança.
+
+    Em nenhum dos casos um token antigo gera uma sessão nova.
   */
   if (sessao.revogado_em) {
-    await revogarTodasSessoes(sessao.cliente_id);
+
+    const segundosDesdeRevogacao = (Date.now() - new Date(sessao.revogado_em).getTime()) / 1000;
+
+    if (segundosDesdeRevogacao > TOLERANCIA_REUSO_SEGUNDOS) {
+      await revogarTodasSessoes(sessao.cliente_id);
+    }
+
     throw naoAutorizado('Sessão expirada. Faça login novamente.');
   }
 

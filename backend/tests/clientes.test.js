@@ -87,11 +87,21 @@ test('login, refresh rotativo e logout', async () => {
   assert.equal(renovado.status, 200);
   assert.notEqual(renovado.dados.refresh_token, login.dados.refresh_token);
 
-  // Reuso de refresh token antigo derruba todas as sessões
+  // Reuso logo após a rotação (duas abas): recusa, mas não derruba as outras sessões
+  const reusoImediato = await api.post('/clientes/refresh', { refresh_token: login.dados.refresh_token });
+  assert.equal(reusoImediato.status, 401);
+
+  const outraAba = await api.post('/clientes/refresh', { refresh_token: renovado.dados.refresh_token });
+  assert.equal(outraAba.status, 200);
+
+  // Reuso de refresh token antigo (fora da tolerância) derruba todas as sessões
+  await db.query(
+    'UPDATE cliente_sessoes SET revogado_em = DATE_SUB(NOW(), INTERVAL 5 MINUTE) WHERE revogado_em IS NOT NULL'
+  );
   const reuso = await api.post('/clientes/refresh', { refresh_token: login.dados.refresh_token });
   assert.equal(reuso.status, 401);
 
-  const depoisDoReuso = await api.post('/clientes/refresh', { refresh_token: renovado.dados.refresh_token });
+  const depoisDoReuso = await api.post('/clientes/refresh', { refresh_token: outraAba.dados.refresh_token });
   assert.equal(depoisDoReuso.status, 401);
 
   const novoLogin = await api.post('/clientes/login', { email: 'maria@teste.com', senha: 'Senha1234' });
