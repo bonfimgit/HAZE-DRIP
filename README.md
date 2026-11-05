@@ -39,7 +39,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 - Relatórios em CSV, usuários com perfis (gerente/operador) e auditoria das ações
 
 ### Qualidade e segurança
-- **103 testes automatizados** de API (pedidos e pagamentos simultâneos, estoque, reembolsos, permissões), rodando contra MySQL 8 no GitHub Actions
+- **106 testes automatizados** de API (pedidos e pagamentos simultâneos, estoque, reembolsos, permissões), rodando contra MySQL 8 e TiDB no GitHub Actions
 - Fila de e-mails com novas tentativas (nada se perde se o servidor reiniciar)
 - ESLint e `npm audit` no CI
 - Senhas com bcrypt, JWT com sessões revogáveis, limite de tentativas, Helmet, CORS restrito
@@ -66,7 +66,7 @@ Aguardando pagamento → Pago → Em preparação → Enviado → Entregue
 | Backend | Node.js, Express 5, JWT, bcrypt, Multer, Helmet |
 | Banco | MySQL 8 (transações, índices, migrações versionadas) |
 | Serviços | Mercado Pago, Cloudinary, Resend, ViaCEP |
-| Infra | Render (API), Aiven (MySQL), Netlify (loja e painel), GitHub Actions (CI) |
+| Infra | Render (API), TiDB Cloud (banco compatível com MySQL), Netlify (loja e painel), GitHub Actions (CI) |
 | Testes | `node:test` + `fetch` contra banco real |
 
 ## 🗂️ Estrutura
