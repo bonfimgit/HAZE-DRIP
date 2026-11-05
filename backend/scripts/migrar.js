@@ -11,6 +11,16 @@
   definidos e nenhum administrador cadastrado, cria um gerente.
   Útil no Render, que não tem terminal no plano gratuito. Depois do
   primeiro login, apague essas variáveis.
+
+  Compatível com MySQL 8, MariaDB e TiDB (TiDB Cloud). As tabelas são
+  criadas com a opção AUTO_ID_CACHE=1 escrita como comentário
+  executável do TiDB ("/" "*T![auto_id_cache] ..."): no TiDB isso
+  garante IDs sempre crescentes (o código usa "maior ID" para achar o
+  pagamento mais recente); MySQL e MariaDB tratam como comentário.
+  A collation utf8mb4_general_ci é explícita porque o padrão do TiDB
+  diferencia maiúsculas de minúsculas (a busca por "camiseta" não
+  achava "Camiseta").
+  Tabelas criadas antes desta mudança (MySQL antigo) não são alteradas.
 */
 
 const path = require('path');
@@ -207,8 +217,8 @@ if (require.main === module) {
 
       if (/certificate|self.signed|SSL|insecure transport/i.test(erro.message)) {
         console.error(
-          'Dica: o banco exige SSL com o CA certificate do serviço (Aiven: aba Overview > CA certificate).\n' +
-          'Use DB_SSL_CA (conteúdo do .pem) ou DB_SSL_CA_FILE (caminho do arquivo). Veja docs/DEPLOY.md.'
+          'Dica: o banco exige SSL. TiDB Cloud: use DB_SSL=true (certificado público).\n' +
+          'Com CA própria (ex.: Aiven), use DB_SSL_CA (conteúdo do .pem) ou DB_SSL_CA_FILE. Veja docs/DEPLOY.md.'
         );
       }
 

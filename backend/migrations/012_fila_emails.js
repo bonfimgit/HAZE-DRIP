@@ -28,7 +28,7 @@ module.exports = {
         KEY idx_email_fila_status (status, proxima_tentativa_em),
         KEY idx_email_fila_lote (lote),
         KEY idx_email_fila_para (para)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };

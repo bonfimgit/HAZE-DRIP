@@ -1,6 +1,6 @@
 # Deploy e operação
 
-Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Render** (API Node.js, plano Free) → **Aiven** (MySQL 8, plano Free) → **Cloudinary** (imagens), **Mercado Pago** (pagamentos), **Resend** (e-mails).
+Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Render** (API Node.js, plano Free) → **TiDB Cloud Starter** (compatível com MySQL, gratuito) → **Cloudinary** (imagens), **Mercado Pago** (pagamentos), **Resend** (e-mails).
 
 ## 1. Antes de publicar esta versão
 
@@ -29,8 +29,9 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | Variável | Valor |
 |---|---|
 | `NODE_ENV` | `production` |
-| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` | Aiven → serviço MySQL → *Connection information* |
-| `DB_SSL_CA` ou `DB_SSL_CA_FILE` | Aiven → *CA certificate* (conteúdo do `.pem`, ou o arquivo em *Secret Files* com `DB_SSL_CA_FILE=/etc/secrets/ca.pem`) |
+| `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD` | TiDB Cloud → instância → **Connect** (porta `4000`; o usuário tem um prefixo, ex.: `abc123.root`) |
+| `DB_NAME` | `haze_drip` (criado na seção 2.2) |
+| `DB_SSL` | `true` (o TiDB Cloud exige SSL com certificado público; deixe `DB_SSL_CA` e `DB_SSL_CA_FILE` vazios) |
 | `JWT_SECRET` | 64+ caracteres aleatórios |
 | `FRONTEND_URLS` | Domínio(s) do Netlify, ex.: `https://hazedrip.com.br,https://www.hazedrip.com.br` |
 | `STORE_URL` | URL pública da loja, ex.: `https://hazedrip.com.br/frontend` |
@@ -44,6 +45,21 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `CORREIOS_*` / `FRETE_*` | Frete pelos Correios (opcional, veja a seção 4.1) |
 
 A API não sobe sem `JWT_SECRET`.
+
+## 2.2 Banco de dados (TiDB Cloud Starter)
+
+Gratuito (5 GiB, sem cartão), compatível com MySQL e não é desligado por falta de uso.
+
+1. Crie a conta em [tidbcloud.com](https://tidbcloud.com) e uma instância **Starter**. Escolha uma região AWS perto da região do Render (ex.: Render em Virginia → `us-east-1`).
+2. Na instância, abra **Connect**, gere a senha e copie host, porta, usuário e senha.
+3. Abra o **SQL Editor** da instância e crie o banco:
+   ```sql
+   CREATE DATABASE haze_drip;
+   ```
+4. Preencha as variáveis `DB_*` no Render (tabela acima) e faça o deploy. As migrações criam todas as tabelas.
+5. Banco novo não tem administrador: defina `ADMIN_EMAIL` e `ADMIN_SENHA` no Render antes do deploy (seção 3) e apague depois do primeiro login.
+
+O CI roda todos os testes também contra o TiDB (job `testes-tidb`).
 
 ## 3. Migrações do banco
 
@@ -95,12 +111,12 @@ As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log
 
 ## 6. Backup e recuperação
 
-- **Aiven:** o plano Free inclui backups do serviço. Confira na aba *Backups* e não dependa só deles: faça a cópia manual abaixo com frequência.
-- **Cópia manual** (antes de migrações e mudanças grandes), com os dados de conexão do Aiven:
+- **TiDB Cloud:** confira na console da instância o que o plano Starter oferece de backup e não dependa só disso: faça a cópia manual abaixo com frequência.
+- **Cópia manual** (antes de migrações e mudanças grandes), com os dados de conexão do TiDB Cloud:
   ```bash
-  mysqldump -h <host> -P <porta> -u avnadmin -p --ssl-ca=ca.pem --single-transaction --no-tablespaces --set-gtid-purged=OFF <banco> > backup-$(date +%F).sql
+  mysqldump -h <host> -P 4000 -u <usuario> -p --ssl-mode=VERIFY_IDENTITY --single-transaction --no-tablespaces --set-gtid-purged=OFF <banco> > backup-$(date +%F).sql
   ```
-- **Restaurar:** `mysql -h <host> -P <porta> -u avnadmin -p --ssl-ca=ca.pem <banco> < backup.sql`. Teste a restauração em um banco separado pelo menos uma vez.
+- **Restaurar:** `mysql -h <host> -P 4000 -u <usuario> -p --ssl-mode=VERIFY_IDENTITY <banco> < backup.sql`. Teste a restauração em um banco separado pelo menos uma vez.
 - Arquivos `.sql` estão no `.gitignore`: **nunca** versione backups.
 
 ## 7. Monitoramento e alertas
