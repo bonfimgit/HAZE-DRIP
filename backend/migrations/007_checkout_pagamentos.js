@@ -20,7 +20,7 @@ module.exports = {
         ativo BOOLEAN NOT NULL DEFAULT TRUE,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_frete_uf (uf)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     // Regra padrão para todo o Brasil (editável no painel)
@@ -52,7 +52,7 @@ module.exports = {
         ativo BOOLEAN NOT NULL DEFAULT TRUE,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_cupons_codigo (codigo)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -67,7 +67,7 @@ module.exports = {
         KEY idx_cupom_usos_cupom (cupom_id, cliente_email),
         CONSTRAINT fk_cupom_usos_cupom
           FOREIGN KEY (cupom_id) REFERENCES cupons (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     /* ---------- Promoções (campanhas com período e desconto) ---------- */
@@ -86,7 +86,7 @@ module.exports = {
           FOREIGN KEY (campanha_id) REFERENCES campanhas (id) ON DELETE CASCADE,
         CONSTRAINT fk_campanha_produtos_produto
           FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await adicionarColuna('pedidos_itens', 'preco_original', 'DECIMAL(10,2) NULL');
@@ -139,7 +139,7 @@ module.exports = {
         KEY idx_pagamentos_provedor (provedor, provedor_id),
         CONSTRAINT fk_pagamentos_pedido
           FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     // Registro dos webhooks recebidos (auditoria e diagnóstico)
@@ -153,7 +153,7 @@ module.exports = {
         resultado VARCHAR(255) NULL,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_pagamento_eventos_recurso (provedor, recurso_id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };

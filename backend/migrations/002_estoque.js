@@ -26,7 +26,7 @@ module.exports = {
         KEY idx_movimentacoes_pedido (pedido_id),
         CONSTRAINT fk_movimentacoes_variacao
           FOREIGN KEY (variacao_id) REFERENCES produto_variacoes (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };

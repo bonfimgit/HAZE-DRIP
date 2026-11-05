@@ -59,3 +59,49 @@ jobs:
           TEST_DB_USER: haze
           TEST_DB_PASSWORD: haze
           TEST_DB_NAME: haze_drip_test
+
+  # Mesmos testes contra o TiDB (banco usado em produção: TiDB Cloud Starter)
+  testes-tidb:
+    runs-on: ubuntu-latest
+
+    services:
+      tidb:
+        image: pingcap/tidb:v8.5.5
+        ports:
+          - 4000:4000
+
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: backend/package-lock.json
+
+      - run: npm ci
+
+      - name: Aguardar o TiDB e criar banco e usuário de teste
+        run: |
+          for i in $(seq 1 60); do
+            mysql -h127.0.0.1 -P4000 -uroot -e "SELECT 1" >/dev/null 2>&1 && break
+            sleep 2
+          done
+          mysql -h127.0.0.1 -P4000 -uroot -e "SELECT VERSION()"
+          mysql -h127.0.0.1 -P4000 -uroot -e "
+            CREATE DATABASE IF NOT EXISTS haze_drip_test;
+            CREATE USER IF NOT EXISTS 'haze'@'%' IDENTIFIED BY 'haze';
+            GRANT ALL PRIVILEGES ON *.* TO 'haze'@'%';"
+
+      - name: Testes (TiDB)
+        run: npm test
+        env:
+          TEST_DB_HOST: 127.0.0.1
+          TEST_DB_PORT: 4000
+          TEST_DB_USER: haze
+          TEST_DB_PASSWORD: haze
+          TEST_DB_NAME: haze_drip_test

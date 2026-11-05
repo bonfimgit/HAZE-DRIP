@@ -19,7 +19,7 @@ module.exports = {
         ativo BOOLEAN NOT NULL DEFAULT TRUE,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_categorias_nome (nome)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -34,7 +34,7 @@ module.exports = {
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_produtos_categoria
           FOREIGN KEY (categoria_id) REFERENCES categorias (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -48,7 +48,7 @@ module.exports = {
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         CONSTRAINT fk_imagens_produto
           FOREIGN KEY (produto_id) REFERENCES produtos (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -65,7 +65,7 @@ module.exports = {
         UNIQUE KEY uq_produto_tamanho_cor (produto_id, tamanho, cor),
         CONSTRAINT fk_variacoes_produto
           FOREIGN KEY (produto_id) REFERENCES produtos (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -81,7 +81,7 @@ module.exports = {
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
           ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -94,7 +94,7 @@ module.exports = {
         ativo BOOLEAN NOT NULL DEFAULT TRUE,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uq_usuarios_admin_email (email)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -115,7 +115,7 @@ module.exports = {
         frete DECIMAL(10,2) NOT NULL DEFAULT 0,
         total DECIMAL(10,2) NOT NULL,
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -133,7 +133,7 @@ module.exports = {
         subtotal DECIMAL(10,2) NOT NULL,
         CONSTRAINT fk_itens_pedido
           FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };
