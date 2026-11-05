@@ -42,7 +42,7 @@ module.exports = {
         KEY idx_historico_pedido (pedido_id, criado_em),
         CONSTRAINT fk_historico_pedido
           FOREIGN KEY (pedido_id) REFERENCES pedidos (id)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };

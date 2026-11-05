@@ -16,7 +16,7 @@ module.exports = {
         criado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
         KEY idx_auditoria_admin (admin_id, criado_em),
         KEY idx_auditoria_criado_em (criado_em)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 /*T![auto_id_cache] AUTO_ID_CACHE=1 */
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
   }
 };

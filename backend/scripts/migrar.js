@@ -17,6 +17,10 @@
   executável do TiDB ("/" "*T![auto_id_cache] ..."): no TiDB isso
   garante IDs sempre crescentes (o código usa "maior ID" para achar o
   pagamento mais recente); MySQL e MariaDB tratam como comentário.
+  A collation utf8mb4_general_ci é explícita porque o padrão do TiDB
+  diferencia maiúsculas de minúsculas (a busca por "camiseta" não
+  achava "Camiseta").
+  Tabelas criadas antes desta mudança (MySQL antigo) não são alteradas.
 */
 
 const path = require('path');

@@ -80,3 +80,23 @@ test('IDs de pagamentos crescem na ordem de criação', async () => {
 
   assert.deepEqual(ids, [...ids].sort((a, b) => a - b));
 });
+
+
+test('textos comparados sem diferenciar maiúsculas (collation explícita)', async () => {
+
+  const [colunas] = await db.query(
+    `SELECT TABLE_NAME AS tabela, COLUMN_NAME AS coluna, COLLATION_NAME AS collation
+     FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE()
+     AND TABLE_NAME <> 'schema_migrations'
+     AND COLLATION_NAME IS NOT NULL`
+  );
+
+  assert.ok(colunas.length > 0);
+
+  const diferentes = colunas.filter(c => c.collation !== 'utf8mb4_general_ci');
+  assert.deepEqual(diferentes, []);
+
+  const [[{ igual }]] = await db.query("SELECT 'Camiseta' = 'camiseta' COLLATE utf8mb4_general_ci AS igual");
+  assert.equal(Number(igual), 1);
+});
