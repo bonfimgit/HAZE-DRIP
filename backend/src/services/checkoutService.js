@@ -8,6 +8,7 @@ const crypto = require('crypto');
 const db = require('../config/db');
 const { requisicaoInvalida, conflito } = require('../utils/erros');
 const { arredondar } = require('../utils/dinheiro');
+const { ufPorCep } = require('../utils/cep');
 const { publicar } = require('../utils/eventos');
 const logger = require('../utils/logger');
 const carrinhoService = require('./carrinhoService');
@@ -66,7 +67,8 @@ async function cotar({ itens, cep, uf, cupom, servicoFrete = null, clienteId = n
     try {
       resultado.frete = await freteService.calcular({
         cep,
-        uf,
+        // Só o CEP informado (ex.: "Calcular frete" na sacola): UF pela faixa do CEP
+        uf: uf || ufPorCep(cep),
         valorProdutos: subtotal - resultado.desconto,
         freteGratisCupom: Boolean(cupomAplicado?.frete_gratis),
         quantidadeItens: contarPecas(carrinho.itens),

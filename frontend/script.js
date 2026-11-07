@@ -1909,6 +1909,8 @@ function carregarSacola() {
     subtotalEl.textContent = 'R$ 0,00';
     totalEl.textContent = 'R$ 0,00';
 
+    document.dispatchEvent(new Event('sacola:atualizada'));
+
     return;
   }
 
@@ -2158,6 +2160,9 @@ botaoRemover.addEventListener('click', () => {
         }
       : null;
   }
+
+  // Avisa o "Calcular frete" (sacola-frete.js) para refazer a cotação
+  document.dispatchEvent(new Event('sacola:atualizada'));
 }
 
 
