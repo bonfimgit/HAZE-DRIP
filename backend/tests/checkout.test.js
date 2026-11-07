@@ -174,6 +174,14 @@ test('frete: regra padrão, frete grátis e regra mais específica', async () =>
   cotacao = await api.post('/checkout/cotacao', { itens, cep: '01000000', estado: 'SP' });
   assert.equal(cotacao.dados.frete.descricao, 'Entrega padrão');
 
+  // "Calcular frete" da sacola manda só o CEP: o estado vem da faixa do CEP
+  cotacao = await api.post('/checkout/cotacao', { itens, cep: '30130-010' });
+  assert.equal(cotacao.dados.frete.descricao, 'Minas');
+  assert.equal(cotacao.dados.total, 115);
+
+  cotacao = await api.post('/checkout/cotacao', { itens, cep: '01310-100' });
+  assert.equal(cotacao.dados.frete.descricao, 'Entrega padrão');
+
   const invalida = await api.post('/admin/frete', { nome: 'X', cep_inicio: '37900000', valor: 1, prazo_min_dias: 1, prazo_max_dias: 1 }, { token });
   assert.equal(invalida.status, 400);
 });

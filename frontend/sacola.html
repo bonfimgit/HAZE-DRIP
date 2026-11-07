@@ -382,6 +382,80 @@
         </div>
 
 
+        <!-- =========================================
+             CALCULAR FRETE (sacola-frete.js)
+        ========================================== -->
+        <form
+          class="sacola-frete"
+          id="sacola-frete-form"
+          novalidate
+        >
+
+          <label for="sacola-cep">
+            Calcular frete
+          </label>
+
+          <div class="sacola-frete-campo">
+
+            <input
+              type="text"
+              id="sacola-cep"
+              inputmode="numeric"
+              maxlength="9"
+              placeholder="00000-000"
+              autocomplete="postal-code"
+              aria-describedby="sacola-frete-info"
+            >
+
+            <button
+              type="submit"
+              class="sacola-frete-botao"
+              id="sacola-frete-botao"
+            >
+              Calcular
+            </button>
+
+          </div>
+
+          <a
+            href="https://buscacepinter.correios.com.br/app/endereco/index.php"
+            target="_blank"
+            rel="noopener"
+            class="sacola-frete-link"
+          >
+            Não sei meu CEP
+          </a>
+
+          <div
+            class="sacola-frete-opcoes"
+            id="sacola-frete-opcoes"
+            hidden
+          ></div>
+
+          <p
+            class="sacola-frete-info"
+            id="sacola-frete-info"
+            aria-live="polite"
+          ></p>
+
+        </form>
+
+
+        <div
+          class="sacola-resumo-linha"
+          id="sacola-frete-linha"
+          hidden
+        >
+
+          <span>Frete</span>
+
+          <strong id="sacola-frete">
+            —
+          </strong>
+
+        </div>
+
+
         <div class="sacola-resumo-linha sacola-total">
 
           <span>Total</span>
@@ -595,6 +669,7 @@
 
     <script src="script.js"></script>
     <script src="cliente.js"></script>
+    <script src="sacola-frete.js"></script>
 
   </body>
 

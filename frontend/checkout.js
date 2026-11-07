@@ -532,6 +532,22 @@
   }
 
   window.carregarCheckout();
+
+  /*
+    CEP calculado na sacola ("Calcular frete"): já preenche o checkout
+    e busca rua, bairro e cidade. Endereço salvo do cliente logado
+    continua tendo prioridade (carregarCliente).
+  */
+  try {
+    const cepDaSacola = (localStorage.getItem('hazeCep') || '').replace(/\D/g, '');
+    if (cepDaSacola.length === 8 && !$('checkout-cep').value) {
+      $('checkout-cep').value = `${cepDaSacola.slice(0, 5)}-${cepDaSacola.slice(5)}`;
+      buscarCep(cepDaSacola);
+    }
+  } catch {
+    // Sem acesso ao localStorage: o cliente digita o CEP
+  }
+
   carregarCliente();
 
 })();
