@@ -21,7 +21,7 @@ module.exports = {
         atualizado_em TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
           ON UPDATE CURRENT_TIMESTAMP,
         UNIQUE KEY uq_clientes_email (email)
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -42,7 +42,7 @@ module.exports = {
         KEY idx_enderecos_cliente (cliente_id),
         CONSTRAINT fk_enderecos_cliente
           FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     // Refresh tokens (armazenados como hash)
@@ -58,7 +58,7 @@ module.exports = {
         KEY idx_sessoes_cliente (cliente_id),
         CONSTRAINT fk_sessoes_cliente
           FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     // Tokens de uso único: recuperação de senha e verificação de e-mail
@@ -75,7 +75,7 @@ module.exports = {
         KEY idx_cliente_tokens_cliente (cliente_id, tipo),
         CONSTRAINT fk_tokens_cliente
           FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await conexao.query(`
@@ -90,7 +90,7 @@ module.exports = {
           FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE CASCADE,
         CONSTRAINT fk_carrinho_variacao
           FOREIGN KEY (variacao_id) REFERENCES produto_variacoes (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     await adicionarColuna('pedidos', 'cliente_id', 'INT NULL');

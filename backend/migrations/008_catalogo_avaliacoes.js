@@ -23,7 +23,7 @@ module.exports = {
           FOREIGN KEY (produto_id) REFERENCES produtos (id) ON DELETE CASCADE,
         CONSTRAINT fk_avaliacoes_cliente
           FOREIGN KEY (cliente_id) REFERENCES clientes (id) ON DELETE CASCADE
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci /*T![auto_id_cache] AUTO_ID_CACHE=1 */
     `);
 
     // Catálogo: filtros por status/destaque e ordenação por data

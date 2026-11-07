@@ -11,7 +11,7 @@ Marque cada item antes de divulgar a loja.
 - [ ] Mercado Pago em modo produção, webhook com assinatura secreta
 - [ ] Domínio verificado no Resend e e-mail de teste recebido
 - [ ] Monitor de `/health` ativo com alerta
-- [ ] Backup do MySQL no Aiven conferido e cópia manual com `mysqldump` agendada
+- [ ] Backup do banco (TiDB Cloud) conferido e cópia manual com `mysqldump` agendada
 
 ## Conteúdo
 
