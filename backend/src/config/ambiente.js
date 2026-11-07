@@ -43,6 +43,29 @@ function normalizarOrigem(valor) {
 // Preenchida por sslBanco(); exibida no início das migrações
 let descricaoSsl = 'sem SSL (DB_SSL_CA, DB_SSL_CA_FILE e DB_SSL vazios)';
 
+/*
+  DB_HOST deve ter só o endereço do servidor. Um erro comum é colar a
+  string de conexão inteira (mysql://usuario:senha@host:4000/banco):
+  a conexão falha com ENOTFOUND e a senha aparece no log.
+  O valor nunca é mostrado na mensagem de erro.
+*/
+function hostDoBanco() {
+
+  const host = (process.env.DB_HOST || '').trim();
+
+  if (/[/@]/.test(host) || /:\d+$/.test(host)) {
+    throw new Error(
+      'DB_HOST inválido: use só o endereço do servidor (ex.: gateway01.us-east-1.prod.aws.tidbcloud.com), ' +
+      'sem "mysql://", usuário, senha, porta ou nome do banco. ' +
+      'Cada parte vai na sua variável: DB_USER, DB_PASSWORD, DB_PORT e DB_NAME. ' +
+      'Se você colou a string de conexão com a senha, troque a senha do banco.'
+    );
+  }
+
+  return host || undefined;
+}
+
+
 const config = {
 
   ambiente: process.env.NODE_ENV || 'development',
@@ -61,7 +84,7 @@ const config = {
   urlApi: (process.env.API_URL || '').replace(/\/+$/, ''),
 
   db: {
-    host: process.env.DB_HOST,
+    host: hostDoBanco(),
     port: Number(process.env.DB_PORT) || 3306,
     user: process.env.DB_USER,
     password: process.env.DB_PASSWORD,

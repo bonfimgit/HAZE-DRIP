@@ -100,3 +100,28 @@ test('textos comparados sem diferenciar maiúsculas (collation explícita)', asy
   const [[{ igual }]] = await db.query("SELECT 'Camiseta' = 'camiseta' COLLATE utf8mb4_general_ci AS igual");
   assert.equal(Number(igual), 1);
 });
+
+
+test('DB_HOST com a string de conexão inteira é recusado sem mostrar a senha', () => {
+
+  const { spawnSync } = require('node:child_process');
+
+  const tentar = host => spawnSync(process.execPath, ['-e', "require('./src/config/ambiente')"], {
+    cwd: require('node:path').join(__dirname, '..'),
+    env: { ...process.env, DB_HOST: host },
+    encoding: 'utf8'
+  });
+
+  for (const host of [
+    'mysql://abc.root:SenhaSecreta123@gateway01.us-east-1.prod.aws.tidbcloud.com:4000/sys',
+    'abc.root@gateway01.us-east-1.prod.aws.tidbcloud.com',
+    'gateway01.us-east-1.prod.aws.tidbcloud.com:4000'
+  ]) {
+    const r = tentar(host);
+    assert.notEqual(r.status, 0, host);
+    assert.match(r.stderr, /DB_HOST inválido/);
+    assert.doesNotMatch(r.stderr, /SenhaSecreta123/);
+  }
+
+  assert.equal(tentar('gateway01.us-east-1.prod.aws.tidbcloud.com').status, 0);
+});
