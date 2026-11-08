@@ -752,6 +752,58 @@ if(qtyEl){
 ============================================================= */
 const addBtn = document.querySelector('.js-add-cart');
 
+
+/*
+  Tamanho obrigatório.
+  O botão fica bloqueado (aria-disabled) até o cliente escolher o
+  tamanho. Diferente de "disabled", ele ainda recebe o clique: assim
+  dá para mostrar a borda vermelha e o aviso em vez de não acontecer
+  nada.
+*/
+function bloquearAdicionarSemTamanho(botao) {
+  botao.disabled = false;
+  botao.setAttribute('aria-disabled', 'true');
+  delete botao.dataset.variacaoId;
+}
+
+function liberarAdicionar(botao) {
+  botao.disabled = false;
+  botao.setAttribute('aria-disabled', 'false');
+  esconderAvisoTamanho();
+}
+
+function avisarTamanhoObrigatorio() {
+
+  const aviso = document.getElementById('aviso-tamanho');
+  const tamanhos = document.getElementById('produto-tamanhos');
+
+  addBtn.classList.remove('erro-tamanho');
+  tamanhos?.classList.remove('erro-tamanho');
+
+  // Reinicia a animação mesmo em cliques seguidos
+  void addBtn.offsetWidth;
+
+  addBtn.classList.add('erro-tamanho');
+  tamanhos?.classList.add('erro-tamanho');
+
+  if (aviso) {
+    aviso.hidden = false;
+  }
+
+  // Leva o foco ao primeiro tamanho disponível (teclado e leitores de tela)
+  tamanhos?.querySelector('.size-btn:not(:disabled)')?.focus({ preventScroll: true });
+}
+
+function esconderAvisoTamanho() {
+  addBtn?.classList.remove('erro-tamanho');
+  document.getElementById('produto-tamanhos')?.classList.remove('erro-tamanho');
+  const aviso = document.getElementById('aviso-tamanho');
+  if (aviso) {
+    aviso.hidden = true;
+  }
+}
+
+
 if (addBtn) {
 
   addBtn.addEventListener('click', () => {
@@ -760,7 +812,8 @@ if (addBtn) {
       addBtn.dataset.variacaoId
     );
 
-    if (!variacaoId) {
+    if (!variacaoId || addBtn.getAttribute('aria-disabled') === 'true') {
+      avisarTamanhoObrigatorio();
       return;
     }
 
@@ -1616,7 +1669,7 @@ cores.forEach((cor, index) => {
             `${variacao.estoque} unidade(s) disponível(is)`;
 
           if (adicionarBtn) {
-            adicionarBtn.disabled = false;
+            liberarAdicionar(adicionarBtn);
 
             adicionarBtn.dataset.variacaoId = variacao.id;
             adicionarBtn.dataset.cor = variacao.cor;
@@ -1631,7 +1684,7 @@ cores.forEach((cor, index) => {
       estoqueEl.textContent = 'Selecione um tamanho';
 
       if (adicionarBtn) {
-        adicionarBtn.disabled = true;
+        bloquearAdicionarSemTamanho(adicionarBtn);
       }
     }
 

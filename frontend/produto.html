@@ -572,10 +572,13 @@
 
 
 
-              <!-- Adicionar ao carrinho -->
+              <!-- Adicionar ao carrinho
+                   (bloqueado até escolher o tamanho: script.js) -->
               <button
                 type="button"
                 class="btn-holo js-add-cart"
+                aria-disabled="true"
+                aria-describedby="aviso-tamanho"
               >
                 Adicionar ao carrinho
               </button>
@@ -603,6 +606,18 @@
               </button>
 
             </div>
+
+
+
+            <!-- Aviso: tamanho não selecionado -->
+            <p
+              class="aviso-tamanho"
+              id="aviso-tamanho"
+              role="alert"
+              hidden
+            >
+              Selecione o tamanho da peça antes de adicionar ao carrinho.
+            </p>
 
 
 
