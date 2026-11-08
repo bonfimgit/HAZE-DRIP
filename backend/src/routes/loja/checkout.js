@@ -28,6 +28,19 @@ const limitePedidos = criarLimitador({
 
 router.limitePedidos = limitePedidos;
 
+/*
+  Novos links de pagamento por pedido: no máximo 10 por hora.
+  Quem tem o link do pedido (token) poderia gerar centenas de links
+  na InfinitePay; o cliente de verdade precisa de um ou dois.
+  Conta só links realmente criados.
+*/
+const limiteLinksPorPedido = criarLimitador({
+  maximo: 10,
+  janelaMs: 60 * 60 * 1000
+});
+
+router.limiteLinksPorPedido = limiteLinksPorPedido;
+
 
 function lerCupom(valor) {
   return valida.texto(valor, 'Cupom inválido', { max: 40, opcional: true });
@@ -177,7 +190,20 @@ router.post('/pedidos/:id/pagamento', async (req, res) => {
     'Forma de pagamento inválida'
   );
 
-  res.status(201).json(await pagamentosService.iniciar(pedidoId, metodo));
+  // Limite de links por pedido (ver limiteLinksPorPedido acima)
+  const chaveLimite = `pedido:${pedidoId}`;
+
+  if (limiteLinksPorPedido.bloqueado(chaveLimite)) {
+    throw muitasRequisicoes(
+      'Muitos links de pagamento gerados para este pedido. Use o último link ou aguarde uma hora.'
+    );
+  }
+
+  const pagamento = await pagamentosService.iniciar(pedidoId, metodo);
+
+  limiteLinksPorPedido.registrarFalha(chaveLimite); // conta o link criado
+
+  res.status(201).json(pagamento);
 });
 
 

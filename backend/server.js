@@ -9,6 +9,21 @@ if (!config.jwtSecret) {
   process.exit(1);
 }
 
+/*
+  Segredo curto pode ser adivinhado por força bruta, e quem tem o
+  segredo cria tokens de gerente. Exige 32 caracteres ou mais.
+  No Render, uma versão que não inicia não substitui a que está no ar.
+  Gerar um novo: node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
+  (trocar o segredo desconecta todos os usuários, que entram de novo)
+*/
+if (config.jwtSecret.length < 32) {
+  console.error(
+    `JWT_SECRET muito curto (${config.jwtSecret.length} caracteres; mínimo 32). ` +
+    'Gere um novo com: node -e "console.log(require(\'crypto\').randomBytes(48).toString(\'hex\'))"'
+  );
+  process.exit(1);
+}
+
 const db = require('./src/config/db');
 const { criarApp } = require('./src/app');
 

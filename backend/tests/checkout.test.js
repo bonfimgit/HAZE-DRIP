@@ -929,6 +929,39 @@ test('limite de pedidos criados por IP', async () => {
 });
 
 
+test('limite de novos links de pagamento por pedido (10 por hora)', async () => {
+
+  const { limiteLinksPorPedido } = require('../src/routes/loja/checkout');
+  limiteLinksPorPedido.limparTudo();
+
+  try {
+
+    const { pedidoId, tokenAcesso } = await pedidoComLink();
+    const outro = await pedidoComLink();
+
+    // Token errado não conta para o limite
+    assert.equal((await api.post(`/pedidos/${pedidoId}/pagamento`, { token: 'x' })).status, 404);
+
+    for (let i = 0; i < 10; i++) {
+      assert.equal((await api.post(`/pedidos/${pedidoId}/pagamento`, { token: tokenAcesso })).status, 201);
+    }
+
+    const bloqueado = await api.post(`/pedidos/${pedidoId}/pagamento`, { token: tokenAcesso });
+    assert.equal(bloqueado.status, 429);
+    assert.match(bloqueado.dados.mensagem, /Muitos links/);
+
+    // 1 do checkout + 10 novos: o 11º novo não chegou à InfinitePay
+    assert.equal((await linksDoPedido(pedidoId)).length, 11);
+
+    // O limite é por pedido: outro pedido continua gerando links
+    assert.equal((await api.post(`/pedidos/${outro.pedidoId}/pagamento`, { token: outro.tokenAcesso })).status, 201);
+
+  } finally {
+    limiteLinksPorPedido.limparTudo();
+  }
+});
+
+
 /*
   Cliente gerou um segundo link (o primeiro "expirou" na tela) e pagou os dois.
 */

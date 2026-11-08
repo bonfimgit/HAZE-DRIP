@@ -151,8 +151,15 @@ async function carregarDestaques() {
     grid.innerHTML = `
       <div class="estado-erro">
         <p>Não foi possível carregar os destaques.</p>
-        <button type="button" class="btn" onclick="carregarDestaques()">Tentar de novo</button>
+        <button type="button" class="btn js-recarregar-destaques">Tentar de novo</button>
       </div>`;
+
+    /*
+      Clique ligado aqui, e não com onclick no HTML: a política de
+      segurança (CSP no netlify.toml) bloqueia JavaScript inline.
+    */
+    grid.querySelector('.js-recarregar-destaques')
+      ?.addEventListener('click', () => carregarDestaques());
   }
 }
 
