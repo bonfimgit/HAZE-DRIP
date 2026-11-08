@@ -3361,3 +3361,45 @@ body.menu-mobile-ativo{ overflow: hidden; }
     font-size: 10px;
   }
 }
+
+
+/* =============================================================
+   FOTOS DE PRODUTO — INTEIRAS, CENTRALIZADAS E COM FUNDO BRANCO
+   Antes as fotos preenchiam o quadro (object-fit: cover) e a peça
+   era cortada nas bordas. Agora a foto inteira cabe no quadro
+   (contain), centralizada, sobre fundo branco.
+   Foto ideal para cadastrar: 1200 x 1200 px (quadrada), fundo branco.
+============================================================= */
+
+/* Card (Home, catálogo, Drops, relacionados) */
+.card-art {
+  background: #fff;
+}
+
+.card-art img {
+  object-fit: contain;
+  object-position: center;
+}
+
+/* Página do produto: foto grande, miniaturas e zoom */
+.product-gallery,
+.product-thumb,
+.zoom-miniatura {
+  background: #fff;
+}
+
+.product-thumb img,
+.zoom-miniatura img {
+  object-fit: contain;
+}
+
+/* Sacola e resumo do checkout */
+.sacola-item-imagem,
+.checkout-item img {
+  background: #fff;
+}
+
+.sacola-item-imagem img,
+.checkout-item img {
+  object-fit: contain;
+}
