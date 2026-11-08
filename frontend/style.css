@@ -3330,8 +3330,10 @@ body.menu-mobile-ativo{ overflow: hidden; }
   flex: 1;
 }
 
-/* "Comprar": mesmo gradiente metálico do "Adicionar ao carrinho" */
+/* "Comprar": mesmo gradiente metálico do "Adicionar ao carrinho",
+   com bordas arredondadas */
 .card-comprar {
+  border-radius: 10px;
   justify-content: center;
   width: 100%;
   padding: 12px 10px;
