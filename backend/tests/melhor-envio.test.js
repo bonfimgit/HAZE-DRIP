@@ -219,3 +219,34 @@ test('painel: simular frete mostra a cotação do Melhor Envio', async () => {
   assert.equal(simulacao.dados.origem, 'melhorenvio');
   assert.equal(simulacao.dados.opcoes.length, 2);
 });
+
+
+test('token colado com "Bearer", aspas ou quebra de linha é limpo antes do envio', async () => {
+
+  process.env.MELHOR_ENVIO_TOKEN = '  "Bearer token-de-\nteste"\n';
+
+  await api.post('/checkout/cotacao', { itens: [{ variacao_id: ids.variacaoPId, quantidade: 1 }], cep: '01310-100' });
+
+  assert.equal(recebidas.at(-1).cabecalhos.authorization, 'Bearer token-de-teste');
+});
+
+test('token recusado (401): log explica ambiente e tamanho do token, sem mostrar o token', async () => {
+
+  const logger = require('../src/utils/logger');
+  const avisos = [];
+  const avisoOriginal = logger.aviso;
+  logger.aviso = (mensagem, dados) => avisos.push({ mensagem, dados });
+
+  responder = () => ({ status: 401, dados: { message: 'Unauthenticated.' } });
+
+  try {
+    await api.post('/checkout/cotacao', { itens: [{ variacao_id: ids.variacaoPId, quantidade: 1 }], cep: '01310-100' });
+  } finally {
+    logger.aviso = avisoOriginal;
+  }
+
+  const registro = avisos.find(a => a.mensagem.startsWith('Cotação de frete falhou'));
+  assert.ok(registro);
+  assert.match(registro.dados.erro, /401: Unauthenticated\. \(ambiente: producao; token com 14 caracteres/);
+  assert.doesNotMatch(registro.dados.erro, /token-de-teste/);
+});

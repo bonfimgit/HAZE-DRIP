@@ -27,8 +27,20 @@ const URLS = {
 };
 
 
+/*
+  Tolera os erros comuns ao colar o token no Render: "Bearer " na
+  frente, aspas em volta e quebras de linha no meio (o token é longo).
+*/
 function token() {
-  return (process.env.MELHOR_ENVIO_TOKEN || '').trim();
+  return String(process.env.MELHOR_ENVIO_TOKEN || '')
+    .trim()
+    .replace(/^["']|["']$/g, '')
+    .replace(/^Bearer\s+/i, '')
+    .replace(/\s+/g, '');
+}
+
+function ambiente() {
+  return (process.env.MELHOR_ENVIO_AMBIENTE || 'producao').toLowerCase() === 'sandbox' ? 'sandbox' : 'producao';
 }
 
 function cepOrigem() {
@@ -41,9 +53,7 @@ function base() {
     return process.env.MELHOR_ENVIO_API_URL.replace(/\/+$/, '');
   }
 
-  const ambiente = (process.env.MELHOR_ENVIO_AMBIENTE || 'producao').toLowerCase();
-
-  return ambiente === 'sandbox' ? URLS.sandbox : URLS.producao;
+  return URLS[ambiente()];
 }
 
 function servicos() {
@@ -117,8 +127,22 @@ const melhorEnvio = {
     }
 
     if (!resposta.ok) {
+
       const detalhe = dados.message || dados.error || JSON.stringify(dados.errors || '');
-      const erro = new Error(`Melhor Envio respondeu ${resposta.status}: ${String(detalhe).slice(0, 200)}`);
+
+      /*
+        Token recusado: diz qual ambiente foi usado e o tamanho do
+        token (ajuda a ver token cortado ou de outro ambiente) sem
+        mostrar o token no log.
+      */
+      const dica = resposta.status === 401
+        ? ` (ambiente: ${ambiente()}; token com ${token().length} caracteres. ` +
+          'Confira se o token é do mesmo ambiente — conta normal = producao, ' +
+          'sandbox.melhorenvio.com.br = MELHOR_ENVIO_AMBIENTE=sandbox —, ' +
+          'se não expirou e se tem a permissão de cotação de frete)'
+        : '';
+
+      const erro = new Error(`Melhor Envio respondeu ${resposta.status}: ${String(detalhe).slice(0, 200)}${dica}`);
       erro.statusMelhorEnvio = resposta.status;
       throw erro;
     }
