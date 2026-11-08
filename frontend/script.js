@@ -83,8 +83,10 @@ function criarCardProduto(produto) {
 
   card.innerHTML = `
     <a class="card-art" href="produto.html?id=${Number(produto.id)}" aria-label="${escaparHtml(produto.nome)}">
-      ${produto.promocao
-        ? `<span class="selo-promocao">-${Number(produto.promocao.desconto_percentual)}%</span>`
+      ${/* Selo "10% OFF": só aparece quando o produto tem desconto
+           (preço promocional no painel ou campanha com desconto) */ ''}
+      ${produto.promocao && Number(produto.promocao.desconto_percentual) > 0
+        ? `<span class="selo-promocao">${Number(produto.promocao.desconto_percentual)}% OFF</span>`
         : ''}
       ${esgotado ? '<span class="selo-esgotado">Esgotado</span>' : ''}
       <img src="${escaparHtml(imagem)}" alt="" loading="lazy" decoding="async" width="600" height="600">
@@ -95,7 +97,15 @@ function criarCardProduto(produto) {
       <span class="card-price mono">${formatarMoeda(produto.preco)}</span>
       ${estoqueTotal === 1 ? '<span class="aviso-ultima-peca">Atenção, última peça!</span>' : ''}
       ${nota}
-    </div>`;
+    </div>
+    ${/*
+      Botão "Comprar" embaixo de cada produto. Leva à página do produto,
+      onde o cliente escolhe o tamanho antes de ir para a sacola.
+      Produto esgotado: botão apagado e sem link.
+    */ ''}
+    ${esgotado
+      ? '<span class="btn btn-holo card-comprar" aria-disabled="true">Esgotado</span>'
+      : `<a class="btn btn-holo card-comprar" href="produto.html?id=${Number(produto.id)}" aria-label="Comprar ${escaparHtml(produto.nome)}">Comprar</a>`}`;
 
   return card;
 }

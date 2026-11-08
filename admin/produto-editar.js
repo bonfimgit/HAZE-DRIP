@@ -297,6 +297,9 @@ const produto =
         : Number(produto.preco_promocional)
           .toFixed(2);
 
+    // Mostra a % de desconto correspondente (desconto-percentual.js)
+    window.atualizarDescontoPercentual?.();
+
 
     editarCategoria.value =
       String(produto.categoria_id);

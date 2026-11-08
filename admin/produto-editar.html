@@ -270,6 +270,31 @@
           </div>
 
 
+          <!-- Atalho: % de desconto preenche o preço promocional (desconto-percentual.js) -->
+          <div class="admin-form-group">
+
+            <label for="editar-desconto">
+              Desconto (%)
+            </label>
+
+            <input
+              type="number"
+              id="editar-desconto"
+              min="0"
+              max="99"
+              step="1"
+              placeholder="Ex.: 10"
+              data-desconto-preco="editar-preco"
+              data-desconto-promocional="editar-preco-promocional"
+            >
+
+            <small class="admin-muted-text">
+              Digite a % e o preço promocional é calculado. Com desconto, a loja mostra o selo "% OFF" no produto.
+            </small>
+
+          </div>
+
+
 
           <div class="admin-form-group">
 
@@ -502,6 +527,7 @@
 
 <script src="admin.js"></script>
 <script src="produto-editar.js"></script>
+<script src="desconto-percentual.js"></script>
 
 
 </body>
