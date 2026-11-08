@@ -80,7 +80,7 @@ const config = {
   // URL pública da loja, usada em links de e-mail e retorno do pagamento
   urlLoja: (process.env.STORE_URL || '').replace(/\/+$/, ''),
 
-  // URL pública da API, usada no webhook do Mercado Pago
+  // URL pública da API, usada no webhook da InfinitePay
   urlApi: (process.env.API_URL || '').replace(/\/+$/, ''),
 
   db: {

@@ -425,19 +425,16 @@
         <div class="checkout-bloco">
           <h2>3. Pagamento</h2>
 
+          <!--
+            Pagamento pela InfinitePay: o cliente escolhe PIX ou cartão
+            na página de pagamento dela, depois de finalizar.
+          -->
           <div class="checkout-pagamentos" role="radiogroup" aria-label="Forma de pagamento">
             <label class="checkout-pagamento">
-              <input type="radio" name="metodo_pagamento" value="pix" checked>
+              <input type="radio" name="metodo_pagamento" value="infinitepay" checked>
               <span>
-                <strong>PIX</strong>
-                <small>Aprovação na hora. O código vale por 30 minutos.</small>
-              </span>
-            </label>
-            <label class="checkout-pagamento">
-              <input type="radio" name="metodo_pagamento" value="mercadopago">
-              <span>
-                <strong>Cartão ou boleto</strong>
-                <small>Pagamento seguro pelo Mercado Pago.</small>
+                <strong>PIX ou cartão de crédito</strong>
+                <small>Em até 12x no cartão. Você escolhe na página de pagamento seguro da InfinitePay. O link vale por 60 minutos.</small>
               </span>
             </label>
           </div>

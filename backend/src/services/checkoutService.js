@@ -119,6 +119,9 @@ async function buscarPorChave(chave, email) {
 */
 async function finalizar({ cliente, endereco, itens, clienteId, cupom, servicoFrete = null, metodoPagamento, chaveIdempotencia }) {
 
+  // PIX ou cartão são escolhidos na InfinitePay (valores antigos também valem)
+  metodoPagamento = pagamentosService.normalizarMetodo(metodoPagamento);
+
   if (!pagamentosService.METODOS.includes(metodoPagamento)) {
     throw requisicaoInvalida('Escolha a forma de pagamento');
   }

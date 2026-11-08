@@ -603,11 +603,11 @@ pedidoCancelar.addEventListener(
       ) || '';
 
 
-    // Pedido pago no Mercado Pago: oferece devolver o dinheiro junto
+    // Pedido pago: oferece registrar o reembolso junto (estorno feito no app da InfinitePay)
     const reembolsar =
       ['aprovado', 'reembolsado_parcial', 'pagamento_duplicado'].includes(pedidoAtual?.pagamento_status) &&
       window.confirm(
-        'Este pedido foi pago. Reembolsar o valor ao cliente pelo Mercado Pago?\n\nOK = cancelar e reembolsar\nCancelar = só cancelar (sem reembolso)'
+        'Este pedido foi pago. Você já fez (ou vai fazer) o estorno no app da InfinitePay?\n\nOK = cancelar e registrar o reembolso\nCancelar = só cancelar (sem reembolso)'
       );
 
 
@@ -855,7 +855,7 @@ function configurarFluxoStatus(
 
   pedidoStatusSalvar.title =
     somenteGerente
-      ? 'O pagamento é confirmado pelo Mercado Pago. Somente o gerente pode confirmar manualmente.'
+      ? 'O pagamento é confirmado pela InfinitePay. Somente o gerente pode confirmar manualmente.'
       : '';
 
 }
@@ -1034,7 +1034,8 @@ async function carregarPagamentos(pedido) {
     document.getElementById('pedido-pagamento-info');
 
   const metodo = {
-    pix: 'PIX',
+    infinitepay: 'InfinitePay (PIX ou cartão)',
+    pix: 'PIX (Mercado Pago)',
     mercadopago: 'Mercado Pago (cartão/boleto)'
   }[pedido.metodo_pagamento] || 'Não informado (pedido anterior ao checkout com pagamento)';
 
@@ -1078,7 +1079,11 @@ async function carregarPagamentos(pedido) {
         : pagamentos.map(pagamento => `
           <tr>
             <td>${escaparHtml(pagamento.provedor_id || '—')}</td>
-            <td>${escaparHtml(pagamento.tipo === 'preferencia' ? 'Link de pagamento' : (pagamento.metodo || 'Pagamento'))}</td>
+            <td>${escaparHtml(
+              ['link', 'preferencia'].includes(pagamento.tipo)
+                ? 'Link de pagamento'
+                : ({ pix: 'PIX', credit_card: `Cartão${pagamento.status_detalhe ? ` ${pagamento.status_detalhe}` : ''}` }[pagamento.metodo] || pagamento.metodo || 'Pagamento')
+            )}${Number(pagamento.duplicado) ? ' · <span class="text-danger">duplicado</span>' : ''}${pagamento.tipo === 'pagamento' && /^https:\/\//.test(pagamento.url || '') ? ` · <a href="${escaparHtml(pagamento.url)}" target="_blank" rel="noopener">comprovante</a>` : ''}</td>
             <td>${escaparHtml(NOMES_PAGAMENTO[pagamento.status] || pagamento.status)}</td>
             <td>${formatarDinheiro(pagamento.valor)}</td>
             <td>${formatarDinheiro(pagamento.valor_reembolsado)}</td>
@@ -1096,6 +1101,7 @@ async function carregarPagamentos(pedido) {
 
   document.getElementById('pedido-reembolsar').hidden = !podeReembolsar;
   document.getElementById('pedido-reembolso-valor').hidden = !podeReembolsar;
+  document.getElementById('pedido-reembolso-dica').hidden = !podeReembolsar;
 
 }
 
@@ -1117,7 +1123,7 @@ document
 
       saida.textContent = resultados.length
         ? `Resultado: ${resultados.map(r => r.resultado).join(', ')}`
-        : 'Nenhum pagamento do Mercado Pago para consultar.';
+        : 'Nenhum pagamento da InfinitePay para consultar.';
 
       await carregarPedido();
 
@@ -1141,8 +1147,8 @@ document
       document.getElementById('pedido-reembolso-valor').value;
 
     const texto = valor
-      ? `Reembolsar ${formatarDinheiro(valor)} deste pedido?`
-      : 'Reembolsar o valor total? Se o pedido ainda não foi enviado, ele será cancelado e o estoque devolvido.';
+      ? `Registrar reembolso de ${formatarDinheiro(valor)}? Faça o estorno no app da InfinitePay antes.`
+      : 'Registrar o reembolso do valor total? Faça o estorno no app da InfinitePay antes. Se o pedido ainda não foi enviado, ele será cancelado e o estoque devolvido.';
 
     if (!window.confirm(texto)) {
       return;
@@ -1165,7 +1171,7 @@ document
         });
 
       saida.textContent =
-        `Reembolso de ${formatarDinheiro(resultado.valor_reembolsado)} realizado.`;
+        `Reembolso de ${formatarDinheiro(resultado.valor_reembolsado)} registrado.`;
 
       document.getElementById('pedido-reembolso-valor').value = '';
 

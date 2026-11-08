@@ -20,7 +20,7 @@ app.listen(config.porta, () => {
 
 /*
   A cada 5 minutos cancela pedidos com pagamento vencido e devolve o
-  estoque (confere no Mercado Pago antes de cancelar).
+  estoque (confere na InfinitePay antes de cancelar).
 */
 const pagamentosService = require('./src/services/pagamentosService');
 

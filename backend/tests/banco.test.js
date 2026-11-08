@@ -72,7 +72,7 @@ test('IDs de pagamentos crescem na ordem de criação', async () => {
   for (let i = 0; i < 20; i++) {
     const [r] = await db.query(
       `INSERT INTO pagamentos (pedido_id, provedor, provedor_id, tipo, status, valor)
-       VALUES (?, 'mercadopago', ?, 'pagamento', 'pendente', 10)`,
+       VALUES (?, 'infinitepay', ?, 'pagamento', 'pendente', 10)`,
       [pedidoId, `ordem-${i}`]
     );
     ids.push(r.insertId);

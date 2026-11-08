@@ -5,7 +5,7 @@
    2. Preenche dados e endereços salvos do cliente logado
    3. Cotação ao vivo: frete, cupom e total
    4. Finaliza com chave de idempotência (evita pedido duplicado)
-   5. Leva ao PIX (página do pedido) ou ao Mercado Pago
+   5. Leva à página de pagamento da InfinitePay (PIX ou cartão)
 ============================================================= */
 
 (function () {
@@ -497,8 +497,12 @@
       sessionStorage.removeItem(CHAVE_IDEMPOTENCIA);
       atualizarContadorCarrinho();
 
-      // Cartão/boleto: segue para o Mercado Pago
-      if (metodo === 'mercadopago' && pagamento?.url && /^https:\/\//.test(pagamento.url)) {
+      /*
+        Segue para a página de pagamento da InfinitePay (PIX ou cartão).
+        Sem link (falha ao gerar), vai para a página do pedido, que
+        permite gerar o pagamento de novo.
+      */
+      if (pagamento?.url && /^https:\/\//.test(pagamento.url)) {
         window.location.href = pagamento.url;
         return;
       }

@@ -140,7 +140,7 @@ test('pedido cobra o frete cotado e usa o mesmo valor segurado', async () => {
     cliente: { nome: 'Ana Compradora', email: 'ana-me@teste.com', telefone: '35999998888' },
     endereco: { cep: '01310-100', rua: 'Av. Paulista', numero: '1000', bairro: 'Bela Vista', cidade: 'São Paulo', estado: 'SP' },
     itens: [{ produto_id: ids.produtoId, variacao_id: ids.variacaoPId, quantidade: 1 }],
-    metodo_pagamento: 'pix',
+    metodo_pagamento: 'infinitepay',
     servico_frete: 'me-2',
     chave_idempotencia: crypto.randomUUID()
   });

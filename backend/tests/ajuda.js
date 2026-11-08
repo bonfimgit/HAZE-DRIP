@@ -241,12 +241,12 @@ function pedidoValido(itens) {
 
 /*
   Cria um pedido pelo checkout, como a loja faz (a rota antiga
-  POST /pedidos foi removida). Sem token do Mercado Pago nos testes,
+  POST /pedidos foi removida). Sem chave da InfinitePay nos testes,
   a cobrança não é gerada, mas o pedido é criado normalmente (201),
   com o frete da regra padrão (R$ 25, grátis acima de R$ 399).
 */
 function criarPedido(api, corpo, opcoes) {
-  return api.post('/checkout', { metodo_pagamento: 'pix', ...corpo }, opcoes);
+  return api.post('/checkout', { metodo_pagamento: 'infinitepay', ...corpo }, opcoes);
 }
 
 

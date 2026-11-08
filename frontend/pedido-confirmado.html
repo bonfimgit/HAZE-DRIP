@@ -365,25 +365,23 @@
 
         <h2>Pagamento</h2>
 
-        <div id="pagamento-pix" hidden>
-          <p class="conta-texto">Abra o app do seu banco e pague com o QR Code ou com o código PIX copia e cola.</p>
-          <img id="pagamento-qr" class="pedido-qr" alt="QR Code PIX do pedido">
-          <div class="pedido-pix-copia">
-            <input type="text" id="pagamento-codigo" readonly aria-label="Código PIX copia e cola">
-            <button type="button" class="btn conta-botao-pequeno" id="pagamento-copiar">Copiar</button>
-          </div>
+        <!-- Link da InfinitePay (PIX ou cartão) -->
+        <div id="pagamento-aberto" hidden>
+          <p class="conta-texto">Pague com PIX ou cartão de crédito (em até 12x) na página segura da InfinitePay.</p>
+          <a href="#" class="btn conta-botao" id="pagamento-link" target="_self">Pagar agora</a>
           <p class="conta-dica" id="pagamento-expira"></p>
         </div>
 
-        <a href="#" class="btn conta-botao" id="pagamento-link" target="_self" hidden>Pagar com Mercado Pago</a>
-
+        <!-- Link expirou ou não foi gerado -->
         <div id="pagamento-novo" hidden>
-          <p class="conta-texto" id="pagamento-novo-texto">Gere um novo pagamento para concluir o pedido:</p>
+          <p class="conta-texto" id="pagamento-novo-texto">Gere um novo link de pagamento para concluir o pedido:</p>
           <div class="conta-acoes">
-            <button type="button" class="btn conta-botao-pequeno" data-metodo="pix">Gerar PIX</button>
-            <button type="button" class="btn conta-botao-pequeno" data-metodo="mercadopago">Cartão ou boleto</button>
+            <button type="button" class="btn conta-botao-pequeno" data-metodo="infinitepay">Gerar novo link de pagamento</button>
           </div>
         </div>
+
+        <!-- Depois de pago: comprovante da InfinitePay -->
+        <a href="#" class="conta-dica" id="pagamento-comprovante" target="_blank" rel="noopener" hidden>Ver comprovante do pagamento →</a>
 
         <p class="conta-mensagem" id="pagamento-mensagem" role="status"></p>
 

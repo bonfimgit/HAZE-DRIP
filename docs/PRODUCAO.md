@@ -8,7 +8,7 @@ Marque cada item antes de divulgar a loja.
 - [ ] Backup do banco feito e restauração testada
 - [ ] `npm run migrate` executado sem erros
 - [ ] Variáveis de produção configuradas (`NODE_ENV=production`, URLs https)
-- [ ] Mercado Pago em modo produção, webhook com assinatura secreta
+- [ ] InfinitePay: checkout integrado habilitado, `INFINITEPAY_API_KEY` e `INFINITEPAY_HANDLE` no Render, `API_URL` em https
 - [ ] Domínio verificado no Resend e e-mail de teste recebido
 - [ ] Monitor de `/health` ativo com alerta
 - [ ] Backup do banco (TiDB Cloud) conferido e cópia manual com `mysqldump` agendada
@@ -25,15 +25,15 @@ Marque cada item antes de divulgar a loja.
 ## Testes em produção (com valores baixos)
 
 - [ ] **Compra:** visitante e cliente logado, com e sem cupom
-- [ ] **Pagamento:** PIX aprovado → pedido vira "Pago" sozinho; cartão; boleto
-- [ ] **Expiração:** PIX não pago → pedido cancelado e estoque devolvido em até ~35 min
+- [ ] **Pagamento:** PIX e cartão na InfinitePay → pedido vira "Pago" sozinho (ao voltar para a loja e pelo webhook)
+- [ ] **Expiração:** link não pago → pedido cancelado e estoque devolvido em até ~75 min
 - [ ] **Estoque:** venda baixa o estoque; dois clientes não compram a última unidade
 - [ ] **Cancelamento:** devolve estoque e o uso do cupom
-- [ ] **Reembolso:** parcial e total pelo painel; valor volta no Mercado Pago
+- [ ] **Reembolso:** estorno no app da InfinitePay + "Registrar reembolso" no painel (parcial e total)
 - [ ] **Painel:** fluxo pago → preparação → enviado (com rastreio) → entregue; e-mails recebidos em cada etapa
 - [ ] **Conta:** cadastro, confirmação de e-mail, recuperação de senha, endereços, Meus pedidos, avaliação após entrega
 - [ ] **LGPD:** baixar dados e excluir conta
-- [ ] **Mobile:** navegação, filtros, sacola, checkout e PIX no celular
+- [ ] **Mobile:** navegação, filtros, sacola, checkout e pagamento no celular
 - [ ] **Segurança:** painel inacessível sem login; operador sem acesso a relatórios/usuários/reembolso
 - [ ] **Relatórios:** dashboard e CSV batem com os pedidos de teste
 
