@@ -1023,6 +1023,55 @@ body.zoom-aberto {
 .qty-add .wishlist-btn svg{ width:18px; height:18px; }
 .qty-add .wishlist-btn.active svg{ fill: var(--holo-3); stroke: var(--holo-3); }
 
+/* ---- Tamanho obrigatório (script.js: avisarTamanhoObrigatorio) ------------
+   Sem tamanho escolhido o botão fica apagado. Ao clicar mesmo assim,
+   ganha uma borda vermelha, os tamanhos ficam destacados e aparece o aviso. */
+.js-add-cart[aria-disabled="true"]{
+  opacity:.5;
+  cursor:not-allowed;
+  filter:grayscale(.4);
+}
+.js-add-cart[aria-disabled="true"]:hover{ filter:grayscale(.4); }
+
+/* opacity e filter também apagariam a borda: no aviso o botão fica
+   nítido e a borda vermelha forte (o clique continua bloqueado) */
+.js-add-cart.erro-tamanho,
+.js-add-cart.erro-tamanho:hover{
+  opacity:1;
+  filter:none;
+  outline:2px solid var(--red);
+  outline-offset:3px;
+  box-shadow:0 0 16px rgba(255, 92, 92, .35);
+  animation: holo-shift 6s ease infinite, tremer-aviso .35s ease;
+}
+
+.sizes.erro-tamanho .size-btn:not(:disabled){ border-color: var(--red); }
+
+.aviso-tamanho{
+  display:flex; align-items:center; gap:8px;
+  margin-top:12px;
+  color: var(--red);
+  font-size:13px;
+}
+.aviso-tamanho::before{
+  content:"!";
+  display:inline-flex; align-items:center; justify-content:center;
+  width:18px; height:18px; flex:none;
+  border:1.5px solid currentColor; border-radius:50%;
+  font-size:11px; font-weight:700;
+}
+.aviso-tamanho[hidden]{ display:none; }
+
+@keyframes tremer-aviso{
+  0%, 100%{ transform:translateX(0); }
+  25%{ transform:translateX(-4px); }
+  75%{ transform:translateX(4px); }
+}
+
+@media (prefers-reduced-motion: reduce){
+  .js-add-cart.erro-tamanho{ animation: none; }
+}
+
 .accordion{ margin-top:44px; border-top:1px solid var(--line); }
 .accordion-item{ border-bottom:1px solid var(--line); }
 .accordion-head{
