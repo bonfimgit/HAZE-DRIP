@@ -8,6 +8,7 @@ const valida = require('../../utils/validacao');
 const { requisicaoInvalida } = require('../../utils/erros');
 const { autenticarAdmin, autorizar } = require('../../middlewares/autenticacao');
 const freteService = require('../../services/freteService');
+const { ufPorCep } = require('../../utils/cep');
 const cuponsService = require('../../services/cuponsService');
 const pagamentosService = require('../../services/pagamentosService');
 const db = require('../../config/db');
@@ -80,9 +81,13 @@ router.delete('/admin/frete/:id', autenticarAdmin, async (req, res) => {
 
 // Simulador: qual regra atende um CEP
 router.get('/admin/frete/simular', autenticarAdmin, async (req, res) => {
+
+  const cep = valida.cep(req.query.cep);
+
   res.json(await freteService.calcular({
-    cep: valida.cep(req.query.cep),
-    uf: req.query.uf ? valida.uf(req.query.uf) : null,
+    cep,
+    // Sem UF informada, usa a faixa do CEP (igual à sacola)
+    uf: req.query.uf ? valida.uf(req.query.uf) : ufPorCep(cep),
     valorProdutos: req.query.valor ? valida.dinheiro(req.query.valor, 'Valor inválido', { min: 0 }) : 0
   }));
 });

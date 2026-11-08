@@ -198,7 +198,7 @@
         const falta = cotacao.frete.gratis_acima - (cotacao.subtotal - cotacao.desconto);
         if (falta > 0) {
           const opcoes = cotacao.frete.opcoes || [];
-          texto += ` Faltam ${formatarMoeda(falta)} para frete grátis${opcoes.length ? ` no ${opcoes[0].nome}` : ''}.`;
+          texto += ` Faltam ${formatarMoeda(falta)} para frete grátis${opcoes.length ? ` no ${[opcoes[0].transportadora, opcoes[0].nome].filter(Boolean).join(' ')}` : ''}.`;
         }
       }
 
@@ -236,8 +236,8 @@
         <label class="checkout-pagamento">
           <input type="radio" name="servico_frete" value="${escaparHtml(opcao.codigo)}" ${opcao.codigo === servicoFrete ? 'checked' : ''}>
           <span>
-            <strong>${escaparHtml(opcao.nome)} · ${opcao.gratis ? 'Grátis' : formatarMoeda(opcao.valor)}</strong>
-            <small>${prazo ? `Entrega em até ${prazo}` : 'Correios'}</small>
+            <strong>${escaparHtml([opcao.transportadora, opcao.nome].filter(Boolean).join(' '))} · ${opcao.gratis ? 'Grátis' : formatarMoeda(opcao.valor)}</strong>
+            <small>${prazo ? `Entrega em até ${prazo}` : escaparHtml(opcao.transportadora || 'Transportadora')}</small>
           </span>
         </label>`;
     }).join('');

@@ -28,6 +28,7 @@ const { naoEncontrado, requisicaoInvalida } = require('../utils/erros');
 const { arredondar } = require('../utils/dinheiro');
 const logger = require('../utils/logger');
 const correios = require('../integracoes/correios');
+const melhorEnvio = require('../integracoes/melhorEnvio');
 
 
 function especificidade(regra) {
@@ -105,13 +106,35 @@ function pacote(quantidadeItens) {
 
 
 /*
-  Opções dos Correios para o CEP, já com adicional e dias de postagem.
-  Devolve null quando os Correios não estão configurados ou falharam
-  (o frete cai na tabela).
+  Quem cota o frete:
+  1. Melhor Envio (MELHOR_ENVIO_TOKEN): grátis, sem contrato
+  2. API dos Correios (CORREIOS_*): exige contrato
+  3. Nenhum: o frete vem da tabela do painel
 */
-async function cotarCorreios({ cep, quantidadeItens }) {
+function provedorDeFrete() {
 
-  if (!correios.configurado()) {
+  if (melhorEnvio.configurado()) {
+    return { nome: 'melhorenvio', integracao: melhorEnvio, transportadora: null };
+  }
+
+  if (correios.configurado()) {
+    return { nome: 'correios', integracao: correios, transportadora: 'Correios' };
+  }
+
+  return null;
+}
+
+
+/*
+  Opções de entrega para o CEP (Melhor Envio ou Correios), já com
+  adicional e dias de postagem. Devolve null quando nenhum provedor
+  está configurado ou a cotação falhou (o frete cai na tabela).
+*/
+async function cotarCorreios({ cep, quantidadeItens, valorProdutos = 0 }) {
+
+  const provedor = provedorDeFrete();
+
+  if (!provedor) {
     return null;
   }
 
@@ -122,7 +145,8 @@ async function cotarCorreios({ cep, quantidadeItens }) {
   }
 
   const dadosPacote = pacote(quantidadeItens);
-  const chave = `${cepDestino}|${dadosPacote.pesoGramas}`;
+  // Valor segurado muda o preço no Melhor Envio: faz parte da chave
+  const chave = `${provedor.nome}|${cepDestino}|${dadosPacote.pesoGramas}|${Math.round(Number(valorProdutos) || 0)}`;
   const emCache = cacheCorreios.get(chave);
 
   if (emCache && emCache.expira > Date.now()) {
@@ -134,10 +158,11 @@ async function cotarCorreios({ cep, quantidadeItens }) {
     const adicional = numeroAmbiente('FRETE_ADICIONAL', 0);
     const diasPostagem = numeroAmbiente('FRETE_DIAS_POSTAGEM', 1);
 
-    const opcoes = (await correios.cotar({ cepDestino, ...dadosPacote }))
+    const opcoes = (await provedor.integracao.cotar({ cepDestino, ...dadosPacote, valorSeguro: valorProdutos }))
       .map(opcao => ({
         codigo: opcao.codigo,
         nome: opcao.nome,
+        transportadora: opcao.transportadora || provedor.transportadora || '',
         valor: arredondar(opcao.valor + adicional),
         prazo_dias: opcao.prazo_dias == null ? null : opcao.prazo_dias + diasPostagem
       }))
@@ -152,7 +177,7 @@ async function cotarCorreios({ cep, quantidadeItens }) {
     return opcoes;
 
   } catch (erro) {
-    logger.aviso('Cotação dos Correios falhou; usando a tabela de frete', { erro: erro.message });
+    logger.aviso('Cotação de frete falhou; usando a tabela de frete', { provedor: provedor.nome, erro: erro.message });
     return null;
   }
 }
@@ -177,6 +202,8 @@ async function calcular({
   freteGratisCupom = false,
   quantidadeItens = 1,
   servico = null,
+  // Valor declarado no Melhor Envio (subtotal dos produtos, sem desconto)
+  valorSeguro = valorProdutos,
   opcoesCorreios,
   conexao = db
 }) {
@@ -191,7 +218,7 @@ async function calcular({
 
   const opcoes = opcoesCorreios !== undefined
     ? opcoesCorreios
-    : await cotarCorreios({ cep, quantidadeItens });
+    : await cotarCorreios({ cep, quantidadeItens, valorProdutos: valorSeguro });
 
   if (opcoes && opcoes.length > 0) {
 
@@ -207,9 +234,10 @@ async function calcular({
 
     return {
       regra_id: regra ? regra.id : null,
-      origem: 'correios',
+      origem: String(escolhida.codigo).startsWith('me-') ? 'melhorenvio' : 'correios',
       servico: escolhida.codigo,
-      descricao: `Correios ${escolhida.nome}`,
+      // "Correios PAC", "Correios SEDEX", "Jadlog .Package"...
+      descricao: [escolhida.transportadora ?? 'Correios', escolhida.nome].filter(Boolean).join(' '),
       valor: escolhida.valor,
       valor_original: escolhida.valor_original,
       gratis: escolhida.gratis,

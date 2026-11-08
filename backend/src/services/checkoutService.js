@@ -70,6 +70,7 @@ async function cotar({ itens, cep, uf, cupom, servicoFrete = null, clienteId = n
         // Só o CEP informado (ex.: "Calcular frete" na sacola): UF pela faixa do CEP
         uf: uf || ufPorCep(cep),
         valorProdutos: subtotal - resultado.desconto,
+        valorSeguro: subtotal,
         freteGratisCupom: Boolean(cupomAplicado?.frete_gratis),
         quantidadeItens: contarPecas(carrinho.itens),
         servico: servicoFrete
@@ -137,10 +138,17 @@ async function finalizar({ cliente, endereco, itens, clienteId, cupom, servicoFr
 
   const tokenAcesso = crypto.randomBytes(32).toString('hex');
 
-  // Cotação dos Correios fora da transação: não trava estoque esperando a API
+  /*
+    Cotação da transportadora fora da transação: não trava estoque
+    esperando a API. O valor segurado é o subtotal (preços do banco),
+    o mesmo usado na cotação mostrada ao cliente.
+  */
+  const { subtotal: subtotalCotacao } = await carrinhoService.validar(itens);
+
   const opcoesCorreios = await freteService.cotarCorreios({
     cep: endereco.cep,
-    quantidadeItens: contarPecas(itens)
+    quantidadeItens: contarPecas(itens),
+    valorProdutos: subtotalCotacao
   });
 
   let pedido;

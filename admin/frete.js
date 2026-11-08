@@ -138,11 +138,12 @@ $frete('frete-simulador').addEventListener('submit', async evento => {
 
   try {
     const frete = await adminApi(`/admin/frete/simular?${parametros}`);
-    if (frete.origem === 'correios') {
-      // Uma linha por serviço dos Correios (PAC, SEDEX...)
-      saida.textContent = frete.opcoes
+    if (frete.origem === 'correios' || frete.origem === 'melhorenvio') {
+      // Uma linha por serviço (Correios PAC, SEDEX...), cotado ao vivo
+      const fonte = frete.origem === 'melhorenvio' ? 'Melhor Envio' : 'API dos Correios';
+      saida.textContent = `${fonte} — ` + frete.opcoes
         .map(opcao =>
-          `Correios ${opcao.nome}: ${opcao.gratis ? 'grátis' : moedaPainel(opcao.valor)}` +
+          `${[opcao.transportadora, opcao.nome].filter(Boolean).join(' ')}: ${opcao.gratis ? 'grátis' : moedaPainel(opcao.valor)}` +
           (opcao.prazo_dias == null ? '' : `, ${opcao.prazo_dias} dias úteis`))
         .join(' · ') + '.';
       return;
