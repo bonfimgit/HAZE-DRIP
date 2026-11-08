@@ -124,6 +124,11 @@ function montarFiltros(filtros) {
     condicoes.push('base.estoque_total > 0');
   }
 
+  // Página Drops: só produtos marcados como Drop (destaque_home no banco)
+  if (filtros.drop) {
+    condicoes.push('base.destaque_home = TRUE');
+  }
+
   return {
     where: condicoes.length ? `WHERE ${condicoes.join(' AND ')}` : '',
     valores
@@ -190,13 +195,17 @@ async function buscar(filtros) {
   considera só os produtos delas (a lista continua completa,
   com total 0 no que a categoria não tem).
   Toda categoria ativa aparece, mesmo sem produtos (total 0).
+  drop: true conta só os produtos marcados como Drop (página Drops).
 */
-async function facetas({ categorias: escolhidas } = {}) {
+async function facetas({ categorias: escolhidas, drop = false } = {}) {
+
+  // Trecho fixo (sem dado do usuário) somado às junções com produtos
+  const soDrop = drop ? ' AND p.destaque_home = TRUE' : '';
 
   const [categorias] = await db.query(
     `SELECT c.id, c.nome, COUNT(p.id) AS total
      FROM categorias c
-     LEFT JOIN produtos p ON p.categoria_id = c.id AND p.ativo = TRUE
+     LEFT JOIN produtos p ON p.categoria_id = c.id AND p.ativo = TRUE${soDrop}
      WHERE c.ativo = TRUE
      GROUP BY c.id, c.nome
      ORDER BY c.nome`
@@ -205,7 +214,7 @@ async function facetas({ categorias: escolhidas } = {}) {
   const [tamanhos] = await db.query(
     `SELECT v.tamanho AS valor, COUNT(DISTINCT v.produto_id) AS total
      FROM produto_variacoes v
-     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE
+     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE${soDrop}
      WHERE v.ativo = TRUE AND v.estoque > 0
      GROUP BY v.tamanho`
   );
@@ -213,20 +222,21 @@ async function facetas({ categorias: escolhidas } = {}) {
   const [cores] = await db.query(
     `SELECT v.cor AS valor, COUNT(DISTINCT v.produto_id) AS total
      FROM produto_variacoes v
-     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE
+     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE${soDrop}
      WHERE v.ativo = TRUE AND v.estoque > 0
      GROUP BY v.cor
      ORDER BY v.cor`
   );
 
   if (escolhidas?.length) {
-    await contarNasCategorias(tamanhos, 'tamanho', escolhidas);
-    await contarNasCategorias(cores, 'cor', escolhidas);
+    await contarNasCategorias(tamanhos, 'tamanho', escolhidas, soDrop);
+    await contarNasCategorias(cores, 'cor', escolhidas, soDrop);
   }
 
   const [[faixa]] = await db.query(
     `SELECT MIN(preco_efetivo) AS minimo, MAX(preco_efetivo) AS maximo
-     FROM (${BASE}) AS base`
+     FROM (${BASE}) AS base
+     ${drop ? 'WHERE base.destaque_home = TRUE' : ''}`
   );
 
   // Ordem natural de tamanhos de roupa
@@ -254,12 +264,12 @@ async function facetas({ categorias: escolhidas } = {}) {
 
 
 // Troca o total de cada opção pelo total dentro das categorias
-async function contarNasCategorias(opcoes, coluna, categorias) {
+async function contarNasCategorias(opcoes, coluna, categorias, soDrop = '') {
 
   const [linhas] = await db.query(
     `SELECT v.${coluna} AS valor, COUNT(DISTINCT v.produto_id) AS total
      FROM produto_variacoes v
-     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE
+     INNER JOIN produtos p ON p.id = v.produto_id AND p.ativo = TRUE${soDrop}
      WHERE v.ativo = TRUE AND v.estoque > 0 AND p.categoria_id IN (?)
      GROUP BY v.${coluna}`,
     [categorias]

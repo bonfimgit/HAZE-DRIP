@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drops — Haze Drip</title>
+<meta name="description" content="Drops Haze Drip: os lançamentos mais recentes de streetwear.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rubik+Wet+Paint&family=Inter:wght@400;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<!-- data-catalogo="drops": catalogo.js mostra só os produtos marcados como Drop no painel -->
+<body data-catalogo="drops">
+
+<!-- =========================================================
+     NAV — igual à Home, só muda o item "active" pra "Shop"
+========================================================== -->
+<header class="nav">
+  <div class="wrap">
+    <a href="index.html" class="nav-logo">
+      <img src="../assets/haze-logo.webp" alt="Haze Drip" class="logo-img nav">
+    </a>
+    <ul class="nav-links">
+      <li><a href="catalogo.html">Catálogo <span class="chev">▾</span></a></li>
+      <li><a href="sobre.html">Sobre <span class="chev">▾</span></a></li>
+      <li><a href="drops.html" class="active">Drops</a></li>
+      <li><a href="contato.html">Contato</a></li>
+    </ul>
+    <div class="nav-right">
+      <a href="#" class="nav-icon-btn currency mono" aria-hidden="true" tabindex="-1">BRL <span class="chev">▾</span></a>
+      <a href="conta.html" class="nav-icon-btn account" aria-label="Minha conta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"/></svg>
+      </a>
+      <a href="catalogo.html" class="nav-icon-btn mobile-search" aria-label="Buscar">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      </a>
+      <a href="sacola.html" class="nav-icon-btn cart-link" aria-label="Carrinho">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+        <span class="cart-badge js-cart-count">0</span>
+      </a>
+      <button class="nav-burger" aria-label="Abrir menu"><span></span><span></span><span></span></button>
+    </div>
+  </div>
+<nav class="bottom-nav" aria-label="Navegação rápida">
+  <a href="index.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 11.5 12 4l8 7.5"/><path d="M6 10v10h12V10"/></svg>
+    Início
+  </a>
+  <a href="catalogo.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+    catálogo
+  </a>
+  <a href="drops.html" class="active">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3v6M12 15v6M4.5 7.5l4.2 2.4M15.3 14.1l4.2 2.4M4.5 16.5l4.2-2.4M15.3 9.9l4.2-2.4"/></svg>
+    Drops
+  </a>
+  <a href="sacola.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 8h12l-1 12H7L6 8Z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg>
+    <span class="badge js-cart-count">0</span>
+    Carrinho
+  </a>
+  <a href="conta.html">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.4-3.8 4.6-5.8 7.5-5.8s6.1 2 7.5 5.8"/></svg>
+    Perfil
+  </a>
+</nav>
+</header>
+
+<section class="page-head">
+  <div class="wrap">
+    <h1>Drops</h1>
+    <p class="breadcrumb"><a href="index.html">Início</a> / Drops</p>
+  </div>
+</section>
+
+<section class="wrap">
+
+  <!-- BUSCA + BOTÃO DE FILTROS (o botão só aparece no mobile) -->
+  <form class="shop-toolbar catalogo-busca" id="catalogo-busca-form" role="search">
+    <label class="shop-search">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <span class="visually-hidden">Buscar produtos</span>
+      <input type="search" id="catalogo-busca" placeholder="Buscar produtos..." maxlength="100">
+    </label>
+    <button type="button" class="shop-filter-btn js-toggle-filters" aria-label="Abrir filtros" aria-controls="catalogo-filtros" aria-expanded="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4"/></svg>
+    </button>
+  </form>
+
+  <!-- CATEGORIAS EM ABAS (mobile) -->
+  <div class="category-tabs" id="catalogo-abas" role="group" aria-label="Categorias"></div>
+
+  <div class="catalog-layout">
+
+    <!-- FILTROS -->
+    <aside class="filters" id="catalogo-filtros" aria-label="Filtros">
+
+      <div class="filters-head">
+        <h4 style="margin:0;">Filtros</h4>
+        <button type="button" class="js-close-filters" aria-label="Fechar filtros">✕</button>
+      </div>
+
+      <div class="filter-group">
+        <h4>Categorias</h4>
+        <div id="filtro-categorias"><p class="estado-carregando">Carregando...</p></div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Tamanho</h4>
+        <div id="filtro-tamanhos" class="filtro-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Cor</h4>
+        <div id="filtro-cores" class="filtro-chips"></div>
+      </div>
+
+      <div class="filter-group">
+        <h4>Preço</h4>
+        <div class="filtro-preco">
+          <label><span class="visually-hidden">Preço mínimo</span><input type="number" id="filtro-preco-min" min="0" step="1" placeholder="Mín."></label>
+          <span aria-hidden="true">—</span>
+          <label><span class="visually-hidden">Preço máximo</span><input type="number" id="filtro-preco-max" min="0" step="1" placeholder="Máx."></label>
+        </div>
+      </div>
+
+      <div class="filter-group">
+        <label class="filter-opt"><span><input type="checkbox" id="filtro-promocao"> Em promoção</span></label>
+        <label class="filter-opt"><span><input type="checkbox" id="filtro-disponivel"> Só com estoque</span></label>
+      </div>
+
+      <button type="button" class="conta-link-botao" id="filtros-limpar">Limpar filtros</button>
+
+    </aside>
+
+    <!-- PRODUTOS -->
+    <main class="catalog-main">
+
+      <div class="catalog-toolbar">
+        <span aria-live="polite"><span class="js-result-count">0</span> produtos</span>
+        <label>
+          <span class="visually-hidden">Ordenar por</span>
+          <select id="catalogo-ordem">
+            <option value="recentes">Mais recentes</option>
+            <option value="mais_vendidos">Mais vendidos</option>
+            <option value="menor_preco">Menor preço</option>
+            <option value="maior_preco">Maior preço</option>
+            <option value="avaliacao">Mais bem avaliados</option>
+            <option value="nome">Nome (A-Z)</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="grid grid-3" id="catalogo-grid" aria-busy="true"></div>
+
+      <div class="load-more">
+        <button type="button" class="btn" id="catalogo-mais" hidden>Carregar mais</button>
+      </div>
+
+    </main>
+
+  </div>
+</section>
+
+<!-- =========================================================
+     RODAPÉ — idêntico ao da Home
+========================================================== -->
+<footer class="footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <a href="index.html" class="nav-logo"><img src="../assets/haze-logo.webp" alt="Haze Drip" class="logo-img footer"></a>
+        <p>Streetwear de verdade. Feito pra quem vive, não pra quem assiste.</p>
+      </div>
+      <div>
+        <h4>Shop</h4>
+        <ul><li><a href="catalogo.html">Camisetas</a></li><li><a href="catalogo.html">Moletons</a></li><li><a href="catalogo.html">Calças</a></li><li><a href="catalogo.html">Bonés</a></li><li><a href="catalogo.html">Acessórios</a></li></ul>
+      </div>
+      <div>
+        <h4>Informações</h4>
+        <ul>
+          <li>
+            <a href="sobre.html">
+              Sobre nós
+            </a>
+          </li>
+
+          <li>
+            <a href="privacidade.html">
+              Políticas e privacidade
+            </a>
+          </li>
+
+          <li>
+            <a href="envio.html">
+              Envio e prazos
+            </a>
+          </li>
+
+          <li>
+            <a href="trocas.html">
+              Trocas e devoluções
+            </a>
+          </li>
+        </ul>
+      </div>
+      <div>
+        <h4>Ajuda</h4>
+        <ul>
+          <li>
+            <a href="contato.html">
+              Contato
+            </a>
+          </li>
+
+          <li>
+            <a href="minha-conta.html#pedidos">
+              Rastreamento
+            </a>
+          </li>
+
+          <li>
+            <a href="contato.html#faq">
+              FAQ
+            </a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2026 Haze Drip. Todos os direitos reservados.</span>
+      <span>Siga a Haze · Instagram · TikTok · X</span>
+    </div>
+  </div>
+</footer>
+
+<!-- =========================================================
+     BARRA INFERIOR MOBILE — "Shop" fica marcado como ativo aqui
+========================================================== -->
+
+<script src="script.js"></script>
+    <script src="cliente.js"></script>
+<script src="catalogo.js"></script>
+</body>
+</html>

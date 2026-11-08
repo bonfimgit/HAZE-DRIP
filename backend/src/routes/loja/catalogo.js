@@ -43,6 +43,7 @@ router.get('/catalogo', cachePublico(60), async (req, res) => {
     precoMax: precoOpcional(q.preco_max, 'Preço máximo inválido'),
     promocao: valida.paraBoolean(q.promocao),
     disponivel: valida.paraBoolean(q.disponivel),
+    drop: valida.paraBoolean(q.drop), // ?drop=1: página Drops
     ordem: q.ordem ? valida.umDe(q.ordem, Object.keys(catalogoService.ORDENS), 'Ordenação inválida') : 'recentes',
     pagina: q.pagina ? valida.inteiro(q.pagina, 'Página inválida', { min: 1, max: 1000 }) : 1,
     limite: q.limite ? valida.inteiro(q.limite, 'Limite inválido', { min: 1, max: catalogoService.MAX_LIMITE }) : 12
@@ -51,7 +52,8 @@ router.get('/catalogo', cachePublico(60), async (req, res) => {
 
 router.get('/catalogo/filtros', cachePublico(300), async (req, res) => {
   res.json(await catalogoService.facetas({
-    categorias: lista(req.query.categoria)?.map(id => valida.id(id, 'Categoria inválida'))
+    categorias: lista(req.query.categoria)?.map(id => valida.id(id, 'Categoria inválida')),
+    drop: valida.paraBoolean(req.query.drop) // ?drop=1: contagens da página Drops
   }));
 });
 

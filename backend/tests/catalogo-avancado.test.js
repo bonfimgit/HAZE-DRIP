@@ -84,6 +84,47 @@ test('catálogo pagina, busca, filtra e ordena', async () => {
   assert.equal((await api.get('/catalogo?limite=500')).status, 400);
 });
 
+/*
+  Página Drops: ?drop=1 traz só produtos marcados como Drop
+  (destaque_home). Aqui só a Camiseta Haze está marcada.
+*/
+test('página Drops: catálogo e filtros só com produtos marcados como Drop', async () => {
+
+  let r = await api.get('/catalogo?drop=1');
+  assert.equal(r.status, 200);
+  assert.deepEqual(r.dados.produtos.map(p => p.nome), ['Camiseta Haze']);
+
+  // Os outros filtros continuam valendo dentro dos Drops
+  r = await api.get('/catalogo?drop=1&tamanho=G');
+  assert.equal(r.dados.total, 0);
+
+  // Sem drop=1 o catálogo continua completo
+  r = await api.get('/catalogo');
+  assert.equal(r.dados.total, 3);
+
+  // Filtros contam só os Drops
+  r = await api.get('/catalogo/filtros?drop=1');
+  assert.equal(r.status, 200);
+  const total = nome => r.dados.categorias.find(c => c.nome === nome).total;
+  assert.equal(total('Camisetas'), 1);
+  assert.equal(total('Moletons'), 0);
+  assert.deepEqual(r.dados.tamanhos.map(t => t.valor), ['P', 'M']);
+  assert.deepEqual(r.dados.preco, { minimo: 100, maximo: 100 });
+
+  r = await api.get(`/catalogo/filtros?drop=1&categoria=${moletonsId}`);
+  assert.ok(r.dados.tamanhos.every(t => t.total === 0));
+
+  // Desmarcar o Drop tira o produto da página
+  await db.query('UPDATE produtos SET destaque_home = FALSE WHERE id = ?', [ids.produtoId]);
+  try {
+    r = await api.get('/catalogo?drop=1&ordem=nome');
+    assert.equal(r.dados.total, 0);
+  } finally {
+    await db.query('UPDATE produtos SET destaque_home = TRUE WHERE id = ?', [ids.produtoId]);
+  }
+});
+
+
 test('filtro de preço usa o preço promocional', async () => {
 
   const [campanha] = await db.query(

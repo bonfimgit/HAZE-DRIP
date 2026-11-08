@@ -16,8 +16,8 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | GET | `/health` | 🔓 | Saúde da API e do banco (500 se o banco cair) |
-| GET | `/catalogo` | 🔓 | Busca/filtros/ordem/paginação: `busca`, `categoria`, `tamanho`, `cor` (listas separadas por vírgula), `preco_min`, `preco_max`, `promocao=1`, `disponivel=1`, `ordem` (`recentes`, `mais_vendidos`, `menor_preco`, `maior_preco`, `avaliacao`, `nome`), `pagina`, `limite` (até 48) |
-| GET | `/catalogo/filtros` | 🔓 | Categorias, tamanhos, cores (com contagem) e faixa de preço |
+| GET | `/catalogo` | 🔓 | Busca/filtros/ordem/paginação: `busca`, `categoria`, `tamanho`, `cor` (listas separadas por vírgula), `preco_min`, `preco_max`, `promocao=1`, `disponivel=1`, `drop=1` (só produtos marcados como Drop), `ordem` (`recentes`, `mais_vendidos`, `menor_preco`, `maior_preco`, `avaliacao`, `nome`), `pagina`, `limite` (até 48) |
+| GET | `/catalogo/filtros` | 🔓 | Categorias, tamanhos, cores (com contagem) e faixa de preço; `drop=1` conta só os Drops |
 | GET | `/produtos` | 🔓 | Produtos ativos (lista simples) |
 | GET | `/produtos/destaques` | 🔓 | Destaques da Home |
 | GET | `/produtos/:id` | 🔓 | Produto com imagens, variações e estoque; `preco` já com promoção e `preco_original` |
