@@ -29,11 +29,11 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | GET | `/campanha` | 🔓 | Campanha da Home vigente (404 se não houver) |
 | POST | `/carrinho/validar` | 🔓 | `{ itens: [{ variacao_id, quantidade }] }` → preços atuais, estoque e avisos |
 | POST | `/checkout/cotacao` | 🔓/👤 | `{ itens, cep, estado, cupom, email, servico_frete }` → subtotal, desconto, frete (com `opcoes` dos Correios quando ativos), total |
-| POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, servico_frete, metodo_pagamento: "pix" \| "mercadopago", chave_idempotencia }` |
+| POST | `/checkout` | 🔓/👤 | Cria pedido e pagamento. `{ cliente, endereco \| endereco_id, itens, cupom, servico_frete, metodo_pagamento: "infinitepay", chave_idempotencia }` |
 | GET | `/pedidos/:id/acompanhar?token=` | 🔓 | Pedido + pagamento pelo token do pedido (compra sem login) |
-| POST | `/pedidos/:id/pagamento` | 🔓 | Gera novo pagamento `{ token, metodo_pagamento }` |
-| POST | `/pedidos/:id/pagamento/confirmar` | 🔓 | Volta do Checkout Pro: confere o pagamento `{ token, payment_id }` no Mercado Pago |
-| POST | `/pagamentos/webhook/mercadopago` | Mercado Pago | Notificações; assinatura conferida com `MERCADOPAGO_WEBHOOK_SECRET` |
+| POST | `/pedidos/:id/pagamento` | 🔓 | Gera novo link de pagamento `{ token }` |
+| POST | `/pedidos/:id/pagamento/confirmar` | 🔓 | Volta da InfinitePay: confere o pagamento `{ token, order_nsu, transaction_nsu, slug, receipt_url? }` (payment_check) |
+| POST | `/pagamentos/webhook/infinitepay` | InfinitePay | Aviso de pagamento (não assinado): confirmado na InfinitePay antes de valer; 503 se a confirmação falhar (a InfinitePay reenvia) |
 
 ## Conta do cliente
 
@@ -90,8 +90,8 @@ Legenda: 🔓 público · 👤 cliente · 🛠️ admin · 👑 somente gerente
 | PATCH | `/admin/pedidos/:id/rastreio` | 🛠️ | `{ codigo_rastreio, transportadora, url_rastreio }` |
 | PATCH | `/admin/pedidos/:id/cancelar` | 🛠️ | `{ motivo?, reembolsar? }`. Pedido já pago e `reembolsar`: 👑. Com `reembolsar`, pedido enviado responde 409 sem reembolsar |
 | GET | `/admin/pedidos/:id/pagamentos` | 🛠️ | Pagamentos do pedido |
-| POST | `/admin/pedidos/:id/pagamentos/sincronizar` | 🛠️ | Consulta o Mercado Pago de novo (inclui busca pela referência do pedido, para o Checkout Pro) |
-| POST | `/admin/pedidos/:id/reembolso` | 👑 | `{ valor?, motivo? }` (vazio = total) |
+| POST | `/admin/pedidos/:id/pagamentos/sincronizar` | 🛠️ | Confere de novo, na InfinitePay, os pagamentos registrados |
+| POST | `/admin/pedidos/:id/reembolso` | 👑 | Registra reembolso feito no app da InfinitePay `{ valor?, motivo? }` (vazio = total) |
 | GET | `/admin/clientes`, `/admin/clientes/:id` | 🛠️ | Clientes |
 | PATCH | `/admin/clientes/:id/bloqueio` | 🛠️ | `{ bloqueado, motivo? }` |
 | GET/POST/PUT/DELETE | `/admin/frete`, `/admin/frete/:id` | 🛠️ | Regras de frete |
@@ -108,6 +108,6 @@ aguardando_pagamento → pago → em_preparacao → enviado → entregue
         └────────────────┴──────────┴──→ cancelado (devolve estoque e o uso do cupom)
 ```
 
-- `pago` vem do webhook do Mercado Pago (ou manualmente no painel).
-- Sem pagamento no prazo (PIX 30 min, cartão/boleto 3 dias), o pedido é cancelado automaticamente.
+- `pago` vem da confirmação na InfinitePay (volta do cliente ou webhook) ou manualmente no painel.
+- Sem pagamento no prazo (link de 60 min + 10 min de folga), o pedido é cancelado automaticamente.
 - Cada mudança fica no histórico (data, origem e responsável) e gera e-mail ao cliente.

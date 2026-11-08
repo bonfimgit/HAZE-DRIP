@@ -1,6 +1,6 @@
 # Haze Drip — E-commerce Full Stack
 
-E-commerce de streetwear desenvolvido do zero: loja virtual, área do cliente, checkout com Mercado Pago, painel administrativo, API REST com regras de negócio, controle de estoque transacional e relatórios.
+E-commerce de streetwear desenvolvido do zero: loja virtual, área do cliente, checkout com InfinitePay, painel administrativo, API REST com regras de negócio, controle de estoque transacional e relatórios.
 
 O projeto foi criado para aplicar na prática conhecimentos da minha formação em **Sistemas de Informação** e dos meus estudos em desenvolvimento web.
 
@@ -26,7 +26,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 - Frete por tabela (faixa de CEP, estado ou padrão), prazo e frete grátis acima de um valor
 - Cupons (percentual, valor fixo, frete grátis) com validade e limites de uso
 - Promoções por campanha com período e desconto automáticos
-- **Mercado Pago:** PIX com QR Code na própria loja ou cartão/boleto pelo Checkout Pro
+- **InfinitePay:** PIX ou cartão em até 12x pelo Checkout Integrado, com confirmação na volta para a loja e por webhook
 - Webhook com verificação de assinatura, conferência do valor pago e expiração automática
 - Proteção contra pedido duplicado (chave de idempotência)
 
@@ -50,7 +50,7 @@ O projeto foi criado para aplicar na prática conhecimentos da minha formação 
 - **Estoque sem venda dupla:** a criação do pedido trava as variações (`SELECT ... FOR UPDATE`) em ordem fixa e só baixa o estoque com `estoque >= quantidade`. Os testes disparam pedidos simultâneos pela última unidade.
 - **Preço do servidor:** valores enviados pelo navegador são ignorados. Preço, promoção, cupom e frete são recalculados no banco.
 - **Tudo ou nada:** pedido, itens, baixa de estoque, uso do cupom e histórico ficam na mesma transação.
-- **Pagamento confiável:** o webhook não é usado como fonte de verdade. A API consulta o pagamento no Mercado Pago e compara o valor pago com o total.
+- **Pagamento confiável:** o webhook não é usado como fonte de verdade. A API confirma o pagamento na InfinitePay e compara o valor pago com o total.
 
 ```text
 Aguardando pagamento → Pago → Em preparação → Enviado → Entregue
@@ -65,7 +65,7 @@ Aguardando pagamento → Pago → Em preparação → Enviado → Entregue
 | Frontend | HTML5, CSS3, JavaScript (sem framework), Bootstrap no painel |
 | Backend | Node.js, Express 5, JWT, bcrypt, Multer, Helmet |
 | Banco | MySQL 8 (transações, índices, migrações versionadas) |
-| Serviços | Mercado Pago, Cloudinary, Resend, ViaCEP |
+| Serviços | InfinitePay, Melhor Envio, Cloudinary, Resend, ViaCEP |
 | Infra | Render (API), TiDB Cloud (banco compatível com MySQL), Netlify (loja e painel), GitHub Actions (CI) |
 | Testes | `node:test` + `fetch` contra banco real |
 
@@ -83,7 +83,7 @@ HAZE-DRIP/
 │   │   ├── routes/      loja/ e admin/ (camada HTTP)
 │   │   ├── services/    Regras de negócio e SQL
 │   │   ├── middlewares/ Autenticação, limites, upload, auditoria, erros
-│   │   ├── integracoes/ Mercado Pago
+│   │   ├── integracoes/ InfinitePay, Melhor Envio, Correios
 │   │   ├── emails/      Modelos de e-mail
 │   │   └── utils/       Validação, transações, logs, eventos
 │   ├── migrations/      Esquema do banco versionado
@@ -111,7 +111,7 @@ Testes: `npm test` (veja as variáveis `TEST_DB_*` em [docs/DEPLOY.md](docs/DEPL
 ## 📚 Documentação
 
 - [Referência da API](docs/API.md): 104 rotas
-- [Deploy e operação](docs/DEPLOY.md): variáveis, migrações, Mercado Pago, e-mails, backup e monitoramento
+- [Deploy e operação](docs/DEPLOY.md): variáveis, migrações, InfinitePay, frete, e-mails, backup e monitoramento
 - [Checklist de produção](docs/PRODUCAO.md)
 
 ## 🔐 Segurança

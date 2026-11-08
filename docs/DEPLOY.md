@@ -1,6 +1,6 @@
 # Deploy e operação
 
-Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Render** (API Node.js, plano Free) → **TiDB Cloud Starter** (compatível com MySQL, gratuito) → **Cloudinary** (imagens), **Mercado Pago** (pagamentos), **Resend** (e-mails).
+Arquitetura: **Netlify** (loja `frontend/` e painel `admin/`) → **Render** (API Node.js, plano Free) → **TiDB Cloud Starter** (compatível com MySQL, gratuito) → **Cloudinary** (imagens), **InfinitePay** (pagamentos), **Resend** (e-mails).
 
 ## 1. Antes de publicar esta versão
 
@@ -38,8 +38,9 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `API_URL` | URL pública da API (https) |
 | `TZ` / `DB_TIMEZONE` | `America/Sao_Paulo` / `-03:00` (padrão) |
 | `CLOUDINARY_*` | Painel do Cloudinary |
-| `MERCADOPAGO_ACCESS_TOKEN` | `APP_USR-...` (produção) |
-| `MERCADOPAGO_WEBHOOK_SECRET` | Assinatura secreta do webhook |
+| `INFINITEPAY_API_KEY` | Chave do Checkout Integrado (`inchk_...`, seção 4) |
+| `INFINITEPAY_HANDLE` | Sua InfiniteTag, sem o `$` |
+| `INFINITEPAY_PARCELAS_SEM_JUROS` | Opcional: parcelas com juros pagos pela loja (padrão `1`) |
 | `CHECKOUT_LIMITE_POR_HORA` | Pedidos criados por IP por hora (opcional, padrão 10) |
 | `RESEND_API_KEY` / `EMAIL_REMETENTE` | Chave e remetente com domínio verificado |
 | `MELHOR_ENVIO_TOKEN`, `MELHOR_ENVIO_CEP_ORIGEM` | Frete calculado pelo Melhor Envio (gratuito, seção 4.0) |
@@ -75,12 +76,20 @@ npm run migrate
 - No Render as migrações rodam a cada início (`npm run migrate && npm start`); se nada estiver pendente, não fazem nada.
 - Banco novo: `npm run migrate` cria tudo. Para o primeiro gerente, defina `ADMIN_EMAIL` e `ADMIN_SENHA` (8+ caracteres; `ADMIN_NOME` opcional) e rode o migrate (no Render, basta um deploy). Só cria se não houver nenhum admin; apague as variáveis depois do primeiro login. Localmente também funciona `node criar-admin.js "SenhaForte123"`.
 
-## 4. Mercado Pago
+## 4. InfinitePay (pagamentos)
 
-1. Crie uma aplicação em **Suas integrações** e copie o **Access Token** (use o de teste primeiro).
-2. Em **Webhooks**, configure a URL `https://<sua-api>/pagamentos/webhook/mercadopago`, marque o evento **Pagamentos** e copie a **assinatura secreta** para `MERCADOPAGO_WEBHOOK_SECRET`.
-3. Teste com as contas e cartões de teste do Mercado Pago: compra com PIX e com cartão, pedido mudando para "Pago" sozinho e reembolso pelo painel.
-4. Se um webhook se perder, use **Consultar Mercado Pago** no detalhe do pedido. A cada 5 minutos a API também confere os pedidos vencidos antes de cancelá-los.
+PIX e cartão de crédito (até 12x) pelo **Checkout Integrado** da InfinitePay ([documentação](https://www.infinitepay.io/checkout-documentacao)).
+
+1. No app/site da InfinitePay, em **Configurações do Checkout**, ative **"Habilitar checkout integrado"**.
+2. Ali mesmo, crie uma **chave de API** (começa com `inchk_`; aparece **uma vez só**) e coloque em `INFINITEPAY_API_KEY`. A sua **InfiniteTag** (sem o `$`) vai em `INFINITEPAY_HANDLE`.
+3. Não há webhook para cadastrar: a API envia o endereço `https://<sua-api>/pagamentos/webhook/infinitepay` em cada link (precisa de `API_URL` com https).
+4. **Não existe ambiente de testes:** teste com uma compra real de valor baixo (mínimo R$ 1,00), com PIX e com cartão, e confira o pedido mudando para "Pago" sozinho.
+
+Como funciona:
+- Ao finalizar a compra, a API cria um link de pagamento (vale **60 minutos**, aceita um pagamento só) e leva o cliente para a página da InfinitePay. Sem pagamento, o pedido é cancelado 10 minutos depois do fim do link e o estoque volta.
+- A confirmação acontece quando o cliente volta para a loja e pelo webhook. Os webhooks da InfinitePay não são assinados, então a API sempre confirma o pagamento na InfinitePay (`payment_check`) antes de marcar o pedido como pago.
+- **Reembolso:** a InfinitePay não tem API de reembolso. Faça o estorno no app da InfinitePay e depois use **Registrar reembolso** no pedido do painel (atualiza o pedido e, no total de pedido não enviado, cancela e devolve o estoque).
+- **Consultar InfinitePay** (detalhe do pedido) confere de novo os pagamentos já registrados. A InfinitePay não tem busca de pagamentos por pedido: se o cliente pagou e o pedido não mudou, confira o pagamento no app da InfinitePay (ele mostra o número do pedido) e, se for o caso, marque como pago manualmente (gerente).
 
 ## 4.0 Frete pelo Melhor Envio (recomendado, gratuito)
 

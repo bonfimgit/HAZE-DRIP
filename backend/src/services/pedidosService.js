@@ -60,7 +60,7 @@ const MAX_QUANTIDADE_ITEM = 99;
 /*
   Prazo padrão para pagar (minutos).
   Todo pedido nasce com prazo: se a cobrança não puder ser gerada
-  (Mercado Pago fora do ar, por exemplo), o pedido ainda expira e o
+  (InfinitePay fora do ar, por exemplo), o pedido ainda expira e o
   estoque volta. Ao gerar a cobrança, pagamentosService.iniciar()
   substitui este prazo pelo do método escolhido.
 */

@@ -55,7 +55,7 @@ router.get('/admin/pedidos/:id', autenticarAdmin, async (req, res) => {
 
 /*
   Ações sensíveis que só o gerente pode fazer:
-  - confirmar pagamento manualmente (o normal é o Mercado Pago
+  - confirmar pagamento manualmente (o normal é a InfinitePay
     confirmar sozinho; marcar à mão libera a entrega sem dinheiro)
   - cancelar pedido já pago sem reembolsar (o cliente fica sem o
     produto e sem o dinheiro)
@@ -112,7 +112,7 @@ router.patch('/admin/pedidos/:id/cancelar', autenticarAdmin, async (req, res) =>
   const motivo = valida.texto(req.body?.motivo, 'Motivo inválido', { max: 255, opcional: true });
 
   /*
-    reembolsar: true devolve o valor pago no Mercado Pago e cancela.
+    reembolsar: true registra o reembolso (feito no app da InfinitePay) e cancela.
     Só o gerente pode reembolsar.
   */
   if (valida.paraBoolean(req.body?.reembolsar)) {

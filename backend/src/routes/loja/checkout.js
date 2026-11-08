@@ -164,7 +164,7 @@ router.get('/pedidos/:id/acompanhar', async (req, res) => {
 });
 
 
-// Gera de novo o pagamento (PIX expirou, trocou de método, falha anterior)
+// Gera um novo link de pagamento (o anterior expirou ou falhou)
 router.post('/pedidos/:id/pagamento', async (req, res) => {
 
   const pedidoId = valida.id(req.params.id, 'ID do pedido inválido');
@@ -172,7 +172,7 @@ router.post('/pedidos/:id/pagamento', async (req, res) => {
   await pedidoPorToken(pedidoId, req.body?.token);
 
   const metodo = valida.umDe(
-    req.body?.metodo_pagamento,
+    pagamentosService.normalizarMetodo(req.body?.metodo_pagamento),
     pagamentosService.METODOS,
     'Forma de pagamento inválida'
   );
@@ -182,8 +182,8 @@ router.post('/pedidos/:id/pagamento', async (req, res) => {
 
 
 /*
-  Volta do Checkout Pro (página do pedido com ?payment_id=...).
-  Confirma o pagamento na hora, sem depender do webhook.
+  Volta da página da InfinitePay. A URL traz order_nsu,
+  transaction_nsu e slug; a confirmação é feita na InfinitePay.
 */
 router.post('/pedidos/:id/pagamento/confirmar', async (req, res) => {
 
@@ -191,36 +191,42 @@ router.post('/pedidos/:id/pagamento/confirmar', async (req, res) => {
 
   await pedidoPorToken(pedidoId, req.body?.token);
 
-  const pagamentoId = String(req.body?.payment_id ?? '');
+  const ler = (campo, padrao, max) => {
+    const valor = String(req.body?.[campo] ?? '').trim();
+    if (!padrao.test(valor) || valor.length > max) {
+      throw requisicaoInvalida('Pagamento inválido');
+    }
+    return valor;
+  };
 
-  if (!/^\d{1,30}$/.test(pagamentoId)) {
-    throw requisicaoInvalida('Pagamento inválido');
-  }
-
-  const { resultado } = await pagamentosService.confirmarRetorno(pedidoId, pagamentoId);
+  const { resultado } = await pagamentosService.confirmarRetorno(pedidoId, {
+    orderNsu: ler('order_nsu', /^\d+-[a-z0-9]+$/, 80),
+    transactionNsu: ler('transaction_nsu', /^[\w-]+$/, 80),
+    slug: ler('slug', /^[\w-]+$/, 120),
+    comprovante: /^https:\/\//.test(req.body?.receipt_url || '') ? String(req.body.receipt_url).slice(0, 500) : null
+  });
 
   res.json({ resultado, pagamento: await pagamentosService.resumo(pedidoId) });
 });
 
 
 /* =============================================================
-   WEBHOOK DO MERCADO PAGO
+   WEBHOOK DA INFINITEPAY
 ============================================================= */
 
-router.post('/pagamentos/webhook/mercadopago', async (req, res) => {
+router.post('/pagamentos/webhook/infinitepay', async (req, res) => {
 
-  const tipo = req.query.type || req.query.topic || req.body?.type || null;
-  const recursoId = req.query['data.id'] || req.body?.data?.id || req.query.id || null;
+  const { resultado, tentarDeNovo } = await pagamentosService.processarWebhook(req.body || {});
 
-  await pagamentosService.processarWebhook({
-    tipo,
-    recursoId: recursoId ? String(recursoId).slice(0, 80) : null,
-    assinatura: req.headers['x-signature'],
-    requestId: req.headers['x-request-id']
-  });
+  /*
+    Falha ao confirmar na InfinitePay: responde erro para ela reenviar
+    o aviso. Nos demais casos 200 (o evento fica em pagamento_eventos).
+  */
+  if (tentarDeNovo) {
+    return res.status(503).json({ recebido: false });
+  }
 
-  // Sempre 200: o evento fica registrado em pagamento_eventos
-  res.json({ recebido: true });
+  res.json({ recebido: true, resultado });
 });
 
 

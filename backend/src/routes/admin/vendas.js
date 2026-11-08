@@ -163,8 +163,8 @@ router.put('/admin/cupons/:id', autenticarAdmin, async (req, res) => {
 router.get('/admin/pedidos/:id/pagamentos', autenticarAdmin, async (req, res) => {
 
   const [pagamentos] = await db.execute(
-    `SELECT id, provedor, provedor_id, tipo, metodo, status, status_detalhe,
-            valor, valor_reembolsado, expira_em, criado_em, atualizado_em
+    `SELECT id, provedor, provedor_id, order_nsu, tipo, metodo, status, status_detalhe,
+            valor, valor_reembolsado, url, duplicado, expira_em, criado_em, atualizado_em
      FROM pagamentos
      WHERE pedido_id = ?
      ORDER BY id DESC`,
@@ -175,9 +175,7 @@ router.get('/admin/pedidos/:id/pagamentos', autenticarAdmin, async (req, res) =>
 });
 
 /*
-  Consulta o Mercado Pago de novo (caso um webhook tenha se perdido).
-  Busca também pela referência do pedido, para achar pagamentos do
-  Checkout Pro que nunca chegaram por webhook.
+  Confere de novo, na InfinitePay, os pagamentos registrados do pedido.
 */
 router.post('/admin/pedidos/:id/pagamentos/sincronizar', autenticarAdmin, async (req, res) => {
 
@@ -186,7 +184,7 @@ router.post('/admin/pedidos/:id/pagamentos/sincronizar', autenticarAdmin, async 
   res.json({ resultados });
 });
 
-// Reembolso: somente gerente
+// Registro de reembolso (feito no app da InfinitePay): somente gerente
 router.post('/admin/pedidos/:id/reembolso', autenticarAdmin, autorizar('gerente'), async (req, res) => {
 
   const { valor, motivo } = req.body || {};

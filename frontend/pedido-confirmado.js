@@ -1,8 +1,8 @@
 /* =============================================================
    HAZE DRIP — PÁGINA DO PEDIDO (confirmação e pagamento)
    -------------------------------------------------------------
-   Acesso por ?pedido=ID&token=TOKEN (vem do checkout, do retorno
-   do Mercado Pago ou do último pedido salvo no navegador).
+   Acesso por ?pedido=ID&token=TOKEN (vem do checkout, da volta da
+   InfinitePay ou do último pedido salvo no navegador).
    Enquanto aguarda pagamento, consulta o status a cada 5 segundos.
 ============================================================= */
 
@@ -132,39 +132,42 @@
 
     const bloco = $('confirmacao-pagamento');
     const pagamento = pedido.pagamento;
+    const urlSegura = valor => /^https:\/\//.test(valor || '');
 
+    // Pago: mostra só o comprovante da InfinitePay (quando houver)
     if (pedido.status !== 'aguardando_pagamento') {
-      bloco.hidden = true;
+
       clearInterval(contagem);
+
+      const comprovante = pagamento?.tipo === 'pagamento' && urlSegura(pagamento.url);
+
+      bloco.hidden = !comprovante;
+      $('pagamento-aberto').hidden = true;
+      $('pagamento-novo').hidden = true;
+      $('pagamento-comprovante').hidden = !comprovante;
+
+      if (comprovante) {
+        $('pagamento-comprovante').href = pagamento.url;
+      }
       return;
     }
 
     bloco.hidden = false;
+    $('pagamento-comprovante').hidden = true;
 
     const expirado = pagamento?.expira_em && new Date(pagamento.expira_em) < new Date();
-    const pix = pagamento && pagamento.pix_qr_code && !expirado;
-    const link = pagamento && pagamento.url && pagamento.tipo === 'preferencia' && !expirado;
+    const link = pagamento?.tipo === 'link' && urlSegura(pagamento.url) && !expirado;
 
-    $('pagamento-pix').hidden = !pix;
-    $('pagamento-link').hidden = !link;
-    $('pagamento-novo').hidden = Boolean(pix || link);
+    $('pagamento-aberto').hidden = !link;
+    $('pagamento-novo').hidden = Boolean(link);
 
     $('pagamento-novo-texto').textContent = expirado
-      ? 'O prazo de pagamento acabou. Gere um novo pagamento:'
-      : 'Escolha como pagar:';
+      ? 'O prazo do link de pagamento acabou. Gere um novo link:'
+      : 'Gere o link de pagamento para concluir o pedido:';
 
-    if (pix) {
-
-      if (pagamento.pix_qr_code_base64) {
-        $('pagamento-qr').src = `data:image/png;base64,${pagamento.pix_qr_code_base64}`;
-      }
-
-      $('pagamento-codigo').value = pagamento.pix_qr_code;
-      iniciarContagem(new Date(pagamento.expira_em));
-    }
-
-    if (link && /^https:\/\//.test(pagamento.url)) {
+    if (link) {
       $('pagamento-link').href = pagamento.url;
+      iniciarContagem(new Date(pagamento.expira_em));
     }
   }
 
@@ -179,7 +182,7 @@
 
       if (restante <= 0) {
         clearInterval(contagem);
-        $('pagamento-expira').textContent = 'Código expirado.';
+        $('pagamento-expira').textContent = 'Link de pagamento expirado.';
         carregar();
         return;
       }
@@ -188,28 +191,12 @@
       const segundos = Math.floor((restante % 60000) / 1000);
 
       $('pagamento-expira').textContent =
-        `O código expira em ${minutos}:${String(segundos).padStart(2, '0')}.`;
+        `O link vale por mais ${minutos}:${String(segundos).padStart(2, '0')}.`;
     }
 
     atualizar();
     contagem = setInterval(atualizar, 1000);
   }
-
-
-  $('pagamento-copiar').addEventListener('click', async () => {
-
-    const campo = $('pagamento-codigo');
-
-    try {
-      await navigator.clipboard.writeText(campo.value);
-    } catch {
-      campo.select();
-      document.execCommand('copy');
-    }
-
-    $('pagamento-copiar').textContent = 'Copiado ✓';
-    setTimeout(() => { $('pagamento-copiar').textContent = 'Copiar'; }, 2000);
-  });
 
 
   $('pagamento-novo').addEventListener('click', async evento => {
@@ -229,7 +216,8 @@
         autenticado: false
       });
 
-      if (botao.dataset.metodo === 'mercadopago' && /^https:\/\//.test(pagamento.url || '')) {
+      // Link novo: segue direto para a página de pagamento da InfinitePay
+      if (/^https:\/\//.test(pagamento.url || '')) {
         window.location.href = pagamento.url;
         return;
       }
@@ -272,36 +260,48 @@
   =========================================================== */
 
   /*
-    Volta do Checkout Pro: o Mercado Pago acrescenta ?payment_id=...
-    Pede à API para conferir esse pagamento agora, sem esperar o
-    webhook. A API consulta o Mercado Pago; a URL não decide nada.
+    Volta da InfinitePay: a URL traz order_nsu, transaction_nsu, slug
+    (e receipt_url, capture_method). Pede à API para confirmar o
+    pagamento agora, sem esperar o webhook. A API confere na
+    InfinitePay; a URL sozinha não decide nada.
   */
-  async function confirmarRetornoMercadoPago() {
+  const PARAMETROS_RETORNO = ['order_nsu', 'transaction_nsu', 'slug', 'receipt_url', 'capture_method'];
 
-    const pagamentoId = parametros.get('payment_id');
+  async function confirmarRetornoInfinitePay() {
 
-    if (!/^\d+$/.test(pagamentoId || '')) {
+    const transacao = parametros.get('transaction_nsu');
+
+    if (!transacao) {
       return;
     }
+
+    $('pagamento-mensagem').textContent = 'Confirmando seu pagamento...';
 
     try {
       await Cliente.api(`/pedidos/${pedidoId}/pagamento/confirmar`, {
         metodo: 'POST',
-        corpo: { token, payment_id: pagamentoId },
+        corpo: {
+          token,
+          order_nsu: parametros.get('order_nsu'),
+          transaction_nsu: transacao,
+          slug: parametros.get('slug'),
+          receipt_url: parametros.get('receipt_url')
+        },
         autenticado: false
       });
     } catch {
       // Sem problema: o webhook e a consulta periódica confirmam depois
     }
 
+    $('pagamento-mensagem').textContent = '';
+
     // Recarregar a página não repete a confirmação
-    parametros.delete('payment_id');
-    parametros.delete('collection_id');
+    PARAMETROS_RETORNO.forEach(nome => parametros.delete(nome));
     history.replaceState(null, '', `${location.pathname}?${parametros}`);
   }
 
 
-  confirmarRetornoMercadoPago().finally(() => {
+  confirmarRetornoInfinitePay().finally(() => {
 
     carregar();
     consulta = setInterval(carregar, 5000);

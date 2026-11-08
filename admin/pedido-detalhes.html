@@ -291,7 +291,7 @@
           <table class="table table-dark align-middle mb-0">
             <thead>
               <tr>
-                <th>Mercado Pago</th>
+                <th>InfinitePay</th>
                 <th>Tipo</th>
                 <th>Status</th>
                 <th>Valor</th>
@@ -305,13 +305,19 @@
 
         <div class="d-flex flex-wrap gap-2 mt-3 align-items-center">
           <button type="button" id="pedido-pagamento-sincronizar" class="btn btn-sm btn-outline-light">
-            CONSULTAR MERCADO PAGO
+            CONSULTAR INFINITEPAY
           </button>
           <input type="number" id="pedido-reembolso-valor" min="0.01" step="0.01" placeholder="Valor (vazio = total)" class="form-control form-control-sm bg-dark text-light border-secondary" style="max-width:190px" aria-label="Valor do reembolso">
+          <!-- A InfinitePay não tem API de reembolso: o estorno é feito no app e registrado aqui -->
           <button type="button" id="pedido-reembolsar" class="btn btn-sm btn-outline-warning">
-            REEMBOLSAR
+            REGISTRAR REEMBOLSO
           </button>
         </div>
+
+        <p class="admin-muted-text small mt-2 mb-0" id="pedido-reembolso-dica" hidden>
+          Faça o estorno no app da InfinitePay e depois registre aqui. O registro atualiza o pedido,
+          o faturamento e, no reembolso total de pedido não enviado, cancela e devolve o estoque.
+        </p>
 
         <div id="pedido-pagamento-mensagem" class="mt-2"></div>
 

@@ -1,52 +1,66 @@
 /*
-  Pagamentos via Mercado Pago.
+  Pagamentos via InfinitePay (Checkout Integrado).
 
   Fluxo:
     checkout -> pedido criado (aguardando_pagamento)
-             -> iniciar(): cria PIX ou link do Checkout Pro
-             -> cliente paga
-             -> webhook -> sincronizar(): consulta o pagamento na API
-             -> aprovado e valor confere -> pedido "pago"
+             -> iniciar(): cria o link de pagamento (PIX ou cartão)
+             -> cliente paga na página da InfinitePay
+             -> volta para a loja (confirmarRetorno) e/ou webhook
+             -> sincronizar(): confirma na InfinitePay (payment_check)
+             -> pago e valor confere -> pedido "pago"
 
-  Nunca confiamos no corpo do webhook: o status é sempre buscado
-  na API do Mercado Pago com o nosso token.
+  Nunca confiamos no que chega pela URL ou pelo webhook (os webhooks
+  da InfinitePay não são assinados): o pagamento só é aceito depois
+  de confirmado na API, e o link precisa ter sido criado por nós.
 */
 
 const db = require('../config/db');
 const config = require('../config/ambiente');
-const mercadoPago = require('../integracoes/mercadoPago');
+const infinitePay = require('../integracoes/infinitePay');
 const { emTransacao } = require('../utils/transacao');
 const { naoEncontrado, requisicaoInvalida, conflito } = require('../utils/erros');
 const { arredondar } = require('../utils/dinheiro');
 const logger = require('../utils/logger');
 const pedidosService = require('./pedidosService');
 
-const METODOS = ['pix', 'mercadopago'];
+// PIX e cartão são escolhidos na página da InfinitePay
+const METODOS = ['infinitepay'];
 
-// Prazo para pagar antes de o pedido ser cancelado e o estoque devolvido
-const PRAZO_MINUTOS = {
-  pix: 30,
-  /*
-    Checkout Pro: tempo para escolher e concluir o pagamento.
-    Antes eram 3 dias para todo pedido (por causa do boleto), e um
-    checkout abandonado segurava o estoque esse tempo todo. Agora só
-    um boleto realmente gerado estende a reserva (ver expirarPendentes).
-  */
-  mercadopago: 2 * 60
-};
+/*
+  Valores antigos (páginas da loja ainda em cache durante o deploy)
+  e pedido sem forma de pagamento informada viram "infinitepay".
+*/
+function normalizarMetodo(metodo) {
+  return metodo == null || ['pix', 'mercadopago', 'cartao', 'infinitepay'].includes(metodo)
+    ? 'infinitepay'
+    : metodo;
+}
 
-// Depois do vencimento do boleto, prazo para a compensação bancária
-const DIAS_COMPENSACAO_BOLETO = 3;
+// Tempo para pagar: o link deixa de aceitar pagamento depois disso
+const MINUTOS_LINK = 60;
 
-// Demais pagamentos pendentes (ex.: PIX gerado no Checkout Pro)
-const MINUTOS_TOLERANCIA_PENDENTE = 15;
+/*
+  Folga antes de cancelar o pedido: um pagamento feito no último
+  minuto do link ainda tem tempo de ser confirmado.
+*/
+const MINUTOS_FOLGA_EXPIRACAO = 10;
 
 
 function urlNotificacao() {
-  // O Mercado Pago só aceita notificação em endereço público https
+  // Webhook só em endereço público https
   return /^https:\/\//.test(config.urlApi)
-    ? `${config.urlApi}/pagamentos/webhook/mercadopago`
+    ? `${config.urlApi}/pagamentos/webhook/infinitepay`
     : null;
+}
+
+
+/*
+  Identificador de cada link (order_nsu): "<pedido>-<sufixo>".
+  Um pedido pode ter mais de um link (cliente gerou o pagamento de
+  novo), e cada um precisa de um order_nsu próprio.
+*/
+function novoOrderNsu(pedidoId) {
+  return `${pedidoId}-${Date.now().toString(36)}`;
 }
 
 
@@ -70,12 +84,13 @@ async function buscarPedido(pedidoId) {
 
 
 /*
-  Cria a cobrança de um pedido aguardando pagamento.
-  Pode ser chamada de novo (ex.: PIX expirou ou trocou o método).
+  Cria o link de pagamento de um pedido aguardando pagamento.
+  Pode ser chamada de novo (link expirou ou falhou): cada chamada gera
+  um link novo, e a reserva do estoque é renovada.
 */
-async function iniciar(pedidoId, metodo) {
+async function iniciar(pedidoId, metodo = 'infinitepay') {
 
-  if (!METODOS.includes(metodo)) {
+  if (!METODOS.includes(normalizarMetodo(metodo))) {
     throw requisicaoInvalida('Forma de pagamento inválida');
   }
 
@@ -85,69 +100,44 @@ async function iniciar(pedidoId, metodo) {
     throw conflito('Este pedido não está aguardando pagamento');
   }
 
-  const expiraEm = new Date(Date.now() + PRAZO_MINUTOS[metodo] * 60 * 1000);
+  const linkValidoAte = new Date(Date.now() + MINUTOS_LINK * 60 * 1000);
+  const pedidoExpiraEm = new Date(linkValidoAte.getTime() + MINUTOS_FOLGA_EXPIRACAO * 60 * 1000);
   const valor = Number(pedido.total);
+  const orderNsu = novoOrderNsu(pedido.id);
 
-  const dadosComuns = {
-    pedidoId: pedido.id,
+  const link = await infinitePay.criarLink({
+    orderNsu,
     valor,
     descricao: `Pedido #${pedido.id} — Haze Drip`,
-    email: pedido.cliente_email,
-    nome: pedido.cliente_nome.split(' ')[0],
-    expiraEm,
+    cliente: { nome: pedido.cliente_nome, email: pedido.cliente_email },
+    urlRetorno: urlRetorno(pedido),
     urlNotificacao: urlNotificacao(),
-    // Mesma chave = mesma cobrança, mesmo se a requisição for repetida
-    chaveIdempotencia: `pedido-${pedido.id}-${metodo}-${Math.floor(Date.now() / 60000)}`
-  };
+    validoAte: linkValidoAte
+  });
 
-  let cobranca;
-
-  if (metodo === 'pix') {
-    cobranca = await mercadoPago.criarPix(dadosComuns);
-  } else {
-    cobranca = await mercadoPago.criarPreferencia({
-      ...dadosComuns,
-      urlRetorno: urlRetorno(pedido)
-    });
-  }
-
+  // tipo "link": o link criado (o pagamento em si é registrado ao ser confirmado)
   await db.execute(
     `INSERT INTO pagamentos
-      (pedido_id, provedor, provedor_id, tipo, metodo, status, status_detalhe,
-       valor, pix_qr_code, pix_qr_code_base64, url, expira_em)
-     VALUES (?, 'mercadopago', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [
-      pedido.id,
-      cobranca.id,
-      metodo === 'pix' ? 'pagamento' : 'preferencia',
-      metodo === 'pix' ? 'pix' : null,
-      cobranca.status || 'pendente',
-      cobranca.status_detalhe || null,
-      valor,
-      cobranca.qr_code || null,
-      cobranca.qr_code_base64 || null,
-      cobranca.url || null,
-      expiraEm
-    ]
+      (pedido_id, provedor, provedor_id, order_nsu, slug, tipo, status, valor, url, expira_em)
+     VALUES (?, 'infinitepay', ?, ?, ?, 'link', 'pendente', ?, ?, ?)`,
+    [pedido.id, orderNsu, orderNsu, link.slug, valor, link.url, linkValidoAte]
   );
 
   await db.execute(
     `UPDATE pedidos
-     SET metodo_pagamento = ?,
+     SET metodo_pagamento = 'infinitepay',
          pagamento_status = 'pendente',
          pagamento_url = ?,
          pagamento_expira_em = ?
      WHERE id = ?`,
-    [metodo, cobranca.url || null, expiraEm, pedido.id]
+    [link.url, pedidoExpiraEm, pedido.id]
   );
 
   return {
-    metodo,
+    metodo: 'infinitepay',
     status: 'pendente',
-    url: cobranca.url || null,
-    pix_qr_code: cobranca.qr_code || null,
-    pix_qr_code_base64: cobranca.qr_code_base64 || null,
-    expira_em: expiraEm
+    url: link.url,
+    expira_em: linkValidoAte
   };
 }
 
@@ -157,8 +147,9 @@ async function iniciar(pedidoId, metodo) {
 */
 async function resumo(pedidoId) {
 
+  // Link mais recente; depois de pago, url é o comprovante da InfinitePay
   const [pagamentos] = await db.execute(
-    `SELECT tipo, metodo, status, url, pix_qr_code, pix_qr_code_base64, expira_em
+    `SELECT tipo, metodo, status, url, expira_em
      FROM pagamentos
      WHERE pedido_id = ?
      ORDER BY id DESC
@@ -201,7 +192,7 @@ async function marcarSeDuplicado(pedidoId, pagamentoId) {
   const [outros] = await db.execute(
     `SELECT id FROM pagamentos
      WHERE pedido_id = ?
-     AND provedor = 'mercadopago'
+     AND provedor = 'infinitepay'
      AND tipo = 'pagamento'
      AND provedor_id <> ?
      AND duplicado = FALSE
@@ -215,7 +206,7 @@ async function marcarSeDuplicado(pedidoId, pagamentoId) {
 
   const [marcacao] = await db.execute(
     `UPDATE pagamentos SET duplicado = TRUE
-     WHERE pedido_id = ? AND provedor = 'mercadopago' AND tipo = 'pagamento'
+     WHERE pedido_id = ? AND provedor = 'infinitepay' AND tipo = 'pagamento'
      AND provedor_id = ? AND duplicado = FALSE`,
     [pedidoId, pagamentoId]
   );
@@ -275,49 +266,75 @@ const STATUS_PAGAMENTO = {
 
 
 /*
-  Consulta um pagamento no Mercado Pago e aplica o resultado ao pedido.
-  Chamado pelo webhook, pela expiração e manualmente pelo admin.
+  Confirma um pagamento na InfinitePay e aplica o resultado ao pedido.
+  Chamado pela volta do cliente, pelo webhook, pela expiração e pelo
+  botão "Sincronizar" do painel.
+
+  dados: { orderNsu, transactionNsu, slug, comprovante? }
+  O order_nsu precisa ser de um link criado pela loja: é dele (no
+  banco) que sai o pedido, nunca do texto que chegou.
 */
-async function sincronizar(pagamentoId) {
+async function sincronizar({ orderNsu, transactionNsu, slug, comprovante = null }) {
 
-  const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
+  const [links] = await db.execute(
+    `SELECT pedido_id FROM pagamentos
+     WHERE provedor = 'infinitepay' AND tipo = 'link' AND provedor_id = ?`,
+    [orderNsu]
+  );
 
-  const resultado = await aplicarPagamento(pagamento);
+  if (links.length === 0) {
+    return { resultado: 'link desconhecido' };
+  }
 
-  // Dados do Mercado Pago usados pela expiração (boleto pendente etc.)
-  return {
-    ...resultado,
-    status_mp: pagamento.status,
-    tipo_mp: pagamento.tipo,
-    vencimento_mp: pagamento.vencimento
-  };
+  const verificacao = await infinitePay.verificarPagamento({ orderNsu, transactionNsu, slug });
+
+  // Não pago ou dados que não batem: nada é gravado
+  if (!verificacao.pago) {
+    return { resultado: 'não pago' };
+  }
+
+  return aplicarPagamento({
+    id: transactionNsu,
+    pedido_id: Number(links[0].pedido_id),
+    status: 'approved',
+    valor: verificacao.valor,
+    metodo: verificacao.metodo,
+    status_detalhe: verificacao.parcelas ? `${verificacao.parcelas}x` : null,
+    valor_reembolsado: 0,
+    order_nsu: orderNsu,
+    slug,
+    comprovante
+  });
 }
 
 
 /*
-  Volta do Checkout Pro: o Mercado Pago redireciona o cliente para a
-  loja com ?payment_id=... na URL. Consultar esse pagamento na hora
-  confirma o pedido sem esperar o webhook (que pode atrasar ou se
-  perder). O status vem sempre da API do Mercado Pago, nunca da URL.
+  Volta da página da InfinitePay: ela redireciona o cliente para a
+  loja com order_nsu, transaction_nsu e slug na URL. Confirmar na hora
+  marca o pedido como pago sem esperar o webhook.
 
-  O pagamento precisa ser deste pedido: o ID da URL não serve para
-  mexer em pedidos de outras pessoas.
+  O link precisa ser deste pedido: dados de outro pedido não servem
+  para mexer em pedidos de outras pessoas.
 */
-async function confirmarRetorno(pedidoId, pagamentoId) {
+async function confirmarRetorno(pedidoId, dados) {
 
-  const pagamento = await mercadoPago.buscarPagamento(pagamentoId);
+  const [links] = await db.execute(
+    `SELECT id FROM pagamentos
+     WHERE pedido_id = ? AND provedor = 'infinitepay' AND tipo = 'link' AND provedor_id = ?`,
+    [pedidoId, dados.orderNsu]
+  );
 
-  if (pagamento.pedido_id !== pedidoId) {
+  if (links.length === 0) {
     throw naoEncontrado('Pagamento não encontrado para este pedido');
   }
 
-  return aplicarPagamento(pagamento);
+  return sincronizar(dados);
 }
 
 
 /*
-  Aplica ao pedido o estado de um pagamento já consultado no
-  Mercado Pago (chamado por sincronizar e confirmarRetorno).
+  Aplica ao pedido um pagamento já confirmado na InfinitePay
+  (chamado por sincronizar).
 */
 async function aplicarPagamento(pagamento) {
 
@@ -328,10 +345,10 @@ async function aplicarPagamento(pagamento) {
   const pedido = await buscarPedido(pagamento.pedido_id);
   const statusLocal = STATUS_PAGAMENTO[pagamento.status] || pagamento.status;
 
-  // Registra/atualiza o pagamento (no Checkout Pro ele nasce no MP)
+  // Registra/atualiza a transação (ela nasce na InfinitePay)
   const [existentes] = await db.execute(
     `SELECT id, duplicado FROM pagamentos
-     WHERE provedor = 'mercadopago'
+     WHERE provedor = 'infinitepay'
      AND provedor_id = ?
      AND tipo = 'pagamento'
      AND pedido_id = ?`,
@@ -346,11 +363,16 @@ async function aplicarPagamento(pagamento) {
       [statusLocal, pagamento.status_detalhe, pagamento.metodo, pagamento.valor_reembolsado, existentes[0].id]
     );
   } else {
+    // url = comprovante da InfinitePay (receipt_url), quando veio
     await db.execute(
       `INSERT INTO pagamentos
-        (pedido_id, provedor, provedor_id, tipo, metodo, status, status_detalhe, valor, valor_reembolsado)
-       VALUES (?, 'mercadopago', ?, 'pagamento', ?, ?, ?, ?, ?)`,
-      [pedido.id, pagamento.id, pagamento.metodo, statusLocal, pagamento.status_detalhe, pagamento.valor, pagamento.valor_reembolsado]
+        (pedido_id, provedor, provedor_id, order_nsu, slug, tipo, metodo, status, status_detalhe, valor, valor_reembolsado, url)
+       VALUES (?, 'infinitepay', ?, ?, ?, 'pagamento', ?, ?, ?, ?, ?, ?)`,
+      [
+        pedido.id, pagamento.id, pagamento.order_nsu || null, pagamento.slug || null,
+        pagamento.metodo, statusLocal, pagamento.status_detalhe, pagamento.valor,
+        pagamento.valor_reembolsado, pagamento.comprovante || null
+      ]
     );
   }
 
@@ -386,7 +408,7 @@ async function aplicarPagamento(pagamento) {
         */
         await pedidosService.avancarStatus(pedido.id, 'pago', {
           origem: 'pagamento',
-          observacao: `Mercado Pago #${pagamento.id} (${pagamento.metodo || 'pagamento'})`,
+          observacao: `InfinitePay #${pagamento.id} (${pagamento.metodo === 'pix' ? 'PIX' : pagamento.metodo === 'credit_card' ? `cartão${pagamento.status_detalhe ? ` ${pagamento.status_detalhe}` : ''}` : 'pagamento'})`,
           pagamentoStatus: 'aprovado'
         });
 
@@ -464,37 +486,34 @@ async function aplicarPagamento(pagamento) {
 
 
 /*
-  Sincroniza todos os pagamentos de um pedido.
+  Confere de novo, na InfinitePay, os pagamentos já registrados de um
+  pedido. Usado pelo botão "Sincronizar" do painel e pela expiração.
 
-  Junta os pagamentos já registrados no banco com os encontrados no
-  Mercado Pago pela referência do pedido. Assim um pagamento do
-  Checkout Pro (cartão/boleto) é encontrado mesmo que o webhook
-  tenha se perdido. Usado pela expiração e pelo painel.
+  A InfinitePay não tem busca de pagamentos por pedido: um pagamento
+  só é conhecido pela volta do cliente ou pelo webhook (que é reenviado
+  pela InfinitePay enquanto não responder 200).
 
-  Se a busca no Mercado Pago falhar, o erro sobe: quem chamou não
-  deve concluir que o pedido não foi pago.
+  Se a consulta falhar, o erro sobe: quem chamou não deve concluir
+  que o pedido não foi pago.
 */
 async function sincronizarPedido(pedidoId) {
 
   const [registrados] = await db.execute(
-    `SELECT provedor_id FROM pagamentos
-     WHERE pedido_id = ? AND tipo = 'pagamento' AND provedor_id IS NOT NULL`,
+    `SELECT provedor_id, order_nsu, slug FROM pagamentos
+     WHERE pedido_id = ? AND provedor = 'infinitepay' AND tipo = 'pagamento'
+     AND order_nsu IS NOT NULL AND slug IS NOT NULL`,
     [pedidoId]
   );
 
-  const ids = new Set(registrados.map(pagamento => String(pagamento.provedor_id)));
-
-  // Sem token (desenvolvimento) não há onde buscar
-  if (mercadoPago.configurado()) {
-    for (const id of await mercadoPago.buscarPagamentosDoPedido(pedidoId)) {
-      ids.add(id);
-    }
-  }
-
   const resultados = [];
 
-  for (const id of ids) {
-    resultados.push({ pagamento: id, ...(await sincronizar(id)) });
+  for (const registro of registrados) {
+    const resultado = await sincronizar({
+      orderNsu: registro.order_nsu,
+      transactionNsu: registro.provedor_id,
+      slug: registro.slug
+    });
+    resultados.push({ pagamento: registro.provedor_id, ...resultado });
   }
 
   return resultados;
@@ -502,48 +521,65 @@ async function sincronizarPedido(pedidoId) {
 
 
 /*
-  Webhook do Mercado Pago.
-  Responde rápido e registra o evento; erros não derrubam a resposta,
-  para o MP não ficar reenviando indefinidamente notificações inválidas.
+  Webhook da InfinitePay.
+
+  O aviso não é assinado: os dados só servem para perguntar à
+  InfinitePay (payment_check) se o pagamento existe e foi pago.
+  Resultado:
+    { resultado, tentarDeNovo } — tentarDeNovo = true quando a
+    consulta falhou (a rota responde erro e a InfinitePay reenvia)
 */
-async function processarWebhook({ tipo, recursoId, assinatura, requestId }) {
+async function processarWebhook(corpo = {}) {
 
-  const assinaturaValida = mercadoPago.validarAssinatura({
-    assinatura,
-    requestId,
-    dataId: recursoId
-  });
+  const texto = (valor, max) => (valor == null ? null : String(valor).trim().slice(0, max) || null);
 
-  let resultado = 'ignorado';
+  const orderNsu = texto(corpo.order_nsu, 80);
+  const transactionNsu = texto(corpo.transaction_nsu, 80);
+  const slug = texto(corpo.invoice_slug || corpo.slug, 120);
+  const tipo = texto(corpo.event || corpo.type || corpo.status, 50) || 'pagamento';
+
+  let resultado;
+  let confirmado = null;
+  let tentarDeNovo = false;
 
   try {
 
-    if (assinaturaValida === false) {
-      resultado = 'assinatura inválida';
-    } else if (tipo === 'payment' && recursoId) {
-      if (assinaturaValida === null) {
-        logger.aviso('MERCADOPAGO_WEBHOOK_SECRET não configurado: assinatura não verificada');
-      }
-      resultado = (await sincronizar(recursoId)).resultado;
+    if (orderNsu && transactionNsu && slug) {
+      resultado = (await sincronizar({
+        orderNsu,
+        transactionNsu,
+        slug,
+        comprovante: /^https:\/\//.test(corpo.receipt_url || '') ? String(corpo.receipt_url).slice(0, 500) : null
+      })).resultado;
+      confirmado = !['não pago', 'link desconhecido'].includes(resultado);
+    } else {
+      resultado = 'dados incompletos';
     }
 
   } catch (erro) {
     resultado = `erro: ${erro.message}`.slice(0, 255);
-    logger.erro('Erro ao processar webhook do Mercado Pago', { recursoId, erro: erro.message });
+    tentarDeNovo = true;
+    logger.erro('Erro ao processar webhook da InfinitePay', { orderNsu, transactionNsu, erro: erro.message });
   }
 
+  // assinatura_valida: aqui significa "confirmado na InfinitePay"
   await db.execute(
     `INSERT INTO pagamento_eventos (provedor, tipo, recurso_id, assinatura_valida, resultado)
-     VALUES ('mercadopago', ?, ?, ?, ?)`,
-    [tipo || null, recursoId || null, assinaturaValida, resultado]
+     VALUES ('infinitepay', ?, ?, ?, ?)`,
+    [tipo, transactionNsu, confirmado, resultado]
   );
 
-  return { resultado, assinaturaValida };
+  return { resultado, tentarDeNovo };
 }
 
 
 /*
-  Reembolso total ou parcial de um pedido pago.
+  Registra um reembolso total ou parcial de um pedido pago.
+
+  A InfinitePay não tem API de reembolso: o estorno é feito no app da
+  InfinitePay e registrado aqui, para o pedido, o faturamento e o
+  estoque ficarem certos.
+
   Reembolso total de pedido ainda não enviado também cancela o
   pedido e devolve o estoque.
 
@@ -576,7 +612,7 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
       `SELECT *
        FROM pagamentos
        WHERE pedido_id = ?
-       AND provedor = 'mercadopago'
+       AND provedor = 'infinitepay'
        AND tipo = 'pagamento'
        AND status IN ('aprovado', 'reembolsado_parcial')
        ORDER BY duplicado DESC, id DESC
@@ -610,17 +646,6 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
     }
 
     const total = valorReembolso === disponivel;
-
-    /*
-      Chamada externa com o pagamento travado: é uma ação rara do
-      gerente, e a trava é o que impede o reembolso em dobro.
-      Se o Mercado Pago recusar, nada é gravado (rollback).
-    */
-    await mercadoPago.reembolsar(
-      pagamento.provedor_id,
-      total && jaReembolsado === 0 ? null : valorReembolso,
-      `reembolso-${pedido.id}-${jaReembolsado}`
-    );
 
     const novoReembolsado = arredondar(jaReembolsado + valorReembolso);
     const statusPagamento = total ? 'reembolsado' : 'reembolsado_parcial';
@@ -685,56 +710,10 @@ async function reembolsar(pedidoId, { valor = null, adminId = null, motivo = nul
 
 
 /*
-  Se o pedido tem um pagamento pendente que ainda pode ser pago,
-  devolve até quando manter a reserva; senão, null.
-  - Boleto: vencimento + dias de compensação bancária
-  - Outros (PIX do Checkout Pro): vencimento + alguns minutos
-  O prazo é calculado a partir do vencimento (fixo), então a reserva
-  não se estende para sempre.
-*/
-function prazoDePagamentoPendente(resultados, pedido) {
-
-  // PIX direto da loja já tem prazo próprio (30 min): só o Checkout Pro estende
-  if (pedido.metodo_pagamento !== 'mercadopago') {
-    return null;
-  }
-
-  const agora = Date.now();
-  let maior = null;
-
-  for (const r of resultados) {
-
-    if (!['pending', 'in_process', 'authorized'].includes(r.status_mp)) {
-      continue;
-    }
-
-    const boleto = r.tipo_mp === 'ticket';
-
-    // Sem vencimento: só o boleto ganha prazo (contado da criação do pedido)
-    if (!r.vencimento_mp && !boleto) {
-      continue;
-    }
-
-    const base = r.vencimento_mp
-      ? new Date(r.vencimento_mp).getTime()
-      : new Date(pedido.criado_em).getTime() + DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000;
-
-    const limite = base + (boleto
-      ? DIAS_COMPENSACAO_BOLETO * 24 * 60 * 60 * 1000
-      : MINUTOS_TOLERANCIA_PENDENTE * 60 * 1000);
-
-    if (limite > agora && (!maior || limite > maior)) {
-      maior = limite;
-    }
-  }
-
-  return maior ? new Date(maior) : null;
-}
-
-
-/*
   Cancela pedidos cujo prazo de pagamento acabou e devolve o estoque.
-  Antes, confere no Mercado Pago se o pagamento não foi aprovado.
+  Antes, confere de novo na InfinitePay os pagamentos registrados.
+  O link deixa de aceitar pagamento antes disso (valid_until), então
+  um pedido sem pagamento registrado pode ser cancelado.
 */
 async function expirarPendentes() {
 
@@ -753,24 +732,9 @@ async function expirarPendentes() {
 
     try {
 
-      // Inclui pagamentos do Checkout Pro que ainda não chegaram por webhook
-      const resultados = await sincronizarPedido(id);
+      await sincronizarPedido(id);
 
       const atual = await buscarPedido(id);
-
-      // Boleto ou PIX gerado e ainda dentro do prazo: mantém a reserva
-      if (atual.status === 'aguardando_pagamento') {
-
-        const novoPrazo = prazoDePagamentoPendente(resultados, atual);
-
-        if (novoPrazo) {
-          await db.execute(
-            'UPDATE pedidos SET pagamento_expira_em = ? WHERE id = ?',
-            [novoPrazo, id]
-          );
-          continue;
-        }
-      }
 
       if (atual.status === 'aguardando_pagamento') {
         /*
@@ -808,6 +772,7 @@ async function expirarPendentes() {
 
 module.exports = {
   METODOS,
+  normalizarMetodo,
   iniciar,
   resumo,
   sincronizar,
