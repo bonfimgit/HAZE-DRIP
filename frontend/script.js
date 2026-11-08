@@ -509,7 +509,7 @@ function montarMenuMobile() {
           item('catalogo.html?promocao=1', 'Promoções') +
           item('catalogo.html?disponivel=1', 'Pronta entrega') +
           '<li class="menu-mobile-carregando" aria-live="polite">Carregando categorias…</li>')}
-        ${item('catalogo.html', 'Drops')}
+        ${item('drops.html', 'Drops')}
         ${secao('menu-mobile-institucional', 'Institucional',
           MENU_INSTITUCIONAL.map(([href, texto]) => item(href, texto)).join(''))}
         ${secao('menu-mobile-conta', 'Minha conta',

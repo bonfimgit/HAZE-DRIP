@@ -17,6 +17,20 @@
 
   const POR_PAGINA = 12;
 
+  /*
+    Este mesmo arquivo serve o catálogo e a página Drops.
+    drops.html marca <body data-catalogo="drops">: aí toda busca leva
+    drop=1 e a API devolve só os produtos marcados como Drop no painel.
+    O drop=1 não vai para a URL da página (ela continua limpa).
+  */
+  const SO_DROPS = document.body.dataset.catalogo === 'drops';
+
+  // Acrescenta drop=1 às consultas da API quando é a página Drops
+  function comDrop(consulta) {
+    if (!SO_DROPS) return consulta;
+    return consulta ? `${consulta}&drop=1` : '?drop=1';
+  }
+
   // Estado dos filtros
   const filtros = {
     busca: '',
@@ -127,6 +141,7 @@
     const p = parametros();
     p.set('pagina', pagina);
     p.set('limite', POR_PAGINA);
+    if (SO_DROPS) p.set('drop', '1');
 
     try {
 
@@ -153,7 +168,9 @@
       if (dados.total === 0) {
         grid.innerHTML = `
           <div class="estado-vazio">
-            <p>Nenhum produto encontrado com esses filtros.</p>
+            <p>${SO_DROPS && !window.location.search
+              ? 'Nenhum drop no ar agora. Os próximos lançamentos aparecem aqui.'
+              : 'Nenhum produto encontrado com esses filtros.'}</p>
             <button type="button" class="btn" id="vazio-limpar">Limpar filtros</button>
           </div>`;
         $('vazio-limpar').addEventListener('click', limparFiltros);
@@ -212,8 +229,8 @@
       const consulta = categoriasDasFacetas ? `?categoria=${encodeURIComponent(categoriasDasFacetas)}` : '';
 
       const [resposta, respostaCategoria] = await Promise.all([
-        fetch(`${API_URL}/catalogo/filtros`),
-        consulta ? fetch(`${API_URL}/catalogo/filtros${consulta}`) : null
+        fetch(`${API_URL}/catalogo/filtros${comDrop('')}`),
+        consulta ? fetch(`${API_URL}/catalogo/filtros${comDrop(consulta)}`) : null
       ]);
 
       const facetas = await resposta.json();
@@ -286,7 +303,7 @@
 
     try {
       const consulta = chave ? `?categoria=${encodeURIComponent(chave)}` : '';
-      const resposta = await fetch(`${API_URL}/catalogo/filtros${consulta}`);
+      const resposta = await fetch(`${API_URL}/catalogo/filtros${comDrop(consulta)}`);
       if (!resposta.ok) return;
       const facetas = await resposta.json();
 

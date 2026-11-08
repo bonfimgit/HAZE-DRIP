@@ -247,7 +247,7 @@ function renderizarDrops(
             destaque
               ? `
                 <span class="admin-drop-badge">
-                  ★ Em destaque
+                  ★ Nos Drops
                 </span>
               `
               : ''
@@ -315,8 +315,8 @@ function renderizarDrops(
 
             ${
               destaque
-                ? 'Remover destaque'
-                : 'Destacar produto'
+                ? 'Remover dos Drops'
+                : 'Adicionar aos Drops'
             }
 
           </button>
@@ -502,7 +502,7 @@ async function alterarDestaque(
 
       throw new Error(
         resultado.mensagem ||
-        'Não foi possível alterar o destaque.'
+        'Não foi possível alterar os Drops.'
       );
 
     }
@@ -538,7 +538,7 @@ async function alterarDestaque(
 
     mensagem.textContent =
       resultado.mensagem ||
-      'Destaque atualizado.';
+      'Drops atualizados.';
 
 
     aplicarBuscaDrops();
@@ -567,8 +567,8 @@ async function alterarDestaque(
 
     botao.textContent =
       novoDestaque
-        ? 'Destacar produto'
-        : 'Remover destaque';
+        ? 'Adicionar aos Drops'
+        : 'Remover dos Drops';
 
   }
 
