@@ -1,0 +1,11 @@
+# Haze Drip — o que os buscadores podem visitar
+User-agent: *
+Disallow: /admin/
+Disallow: /minha-conta.html
+Disallow: /sacola.html
+Disallow: /checkout.html
+Disallow: /pedido-confirmado.html
+Disallow: /redefinir-senha.html
+Disallow: /verificar-email.html
+
+Sitemap: https://hazedrip.com.br/sitemap.xml

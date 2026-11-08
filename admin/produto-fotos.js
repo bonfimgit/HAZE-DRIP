@@ -204,7 +204,7 @@ async function carregarProdutoFotos() {
     document.getElementById(
       'fotos-ver-produto'
     ).href =
-      `/hazedrip/frontend/produto.html?id=${produto.id}`;
+      `/produto.html?id=${produto.id}`;
 
 
     await carregarFotosProduto();

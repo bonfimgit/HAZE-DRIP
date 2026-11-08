@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Páginas fixas da loja (produtos entram pelo catálogo) -->
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>https://hazedrip.com.br/</loc></url>
+  <url><loc>https://hazedrip.com.br/catalogo.html</loc></url>
+  <url><loc>https://hazedrip.com.br/drops.html</loc></url>
+  <url><loc>https://hazedrip.com.br/sobre.html</loc></url>
+  <url><loc>https://hazedrip.com.br/contato.html</loc></url>
+  <url><loc>https://hazedrip.com.br/envio.html</loc></url>
+  <url><loc>https://hazedrip.com.br/trocas.html</loc></url>
+  <url><loc>https://hazedrip.com.br/termos.html</loc></url>
+  <url><loc>https://hazedrip.com.br/privacidade.html</loc></url>
+</urlset>

@@ -328,7 +328,7 @@ const produto =
     document.getElementById(
       'editar-ver-produto'
     ).href =
-      `/hazedrip/frontend/produto.html?id=${produto.id}`;
+      `/produto.html?id=${produto.id}`;
 
 
 
