@@ -194,7 +194,7 @@
         <label class="sacola-frete-opcao">
           <input type="radio" name="sacola_servico_frete" value="${escaparHtml(opcao.codigo)}" ${opcao.codigo === servicoEscolhido ? 'checked' : ''}>
           <span>
-            <strong>${escaparHtml(opcao.nome)} · ${opcao.gratis ? 'Grátis' : moeda(opcao.valor)}</strong>
+            <strong>${escaparHtml([opcao.transportadora, opcao.nome].filter(Boolean).join(' '))} · ${opcao.gratis ? 'Grátis' : moeda(opcao.valor)}</strong>
             ${prazo ? `<small>Entrega em até ${escaparHtml(prazo)}</small>` : ''}
           </span>
         </label>`;

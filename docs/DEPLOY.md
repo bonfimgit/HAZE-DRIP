@@ -42,7 +42,8 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `MERCADOPAGO_WEBHOOK_SECRET` | Assinatura secreta do webhook |
 | `CHECKOUT_LIMITE_POR_HORA` | Pedidos criados por IP por hora (opcional, padrão 10) |
 | `RESEND_API_KEY` / `EMAIL_REMETENTE` | Chave e remetente com domínio verificado |
-| `CORREIOS_*` / `FRETE_*` | Frete pelos Correios (opcional, veja a seção 4.1) |
+| `MELHOR_ENVIO_TOKEN`, `MELHOR_ENVIO_CEP_ORIGEM` | Frete calculado pelo Melhor Envio (gratuito, seção 4.0) |
+| `CORREIOS_*` / `FRETE_*` | Frete pela API dos Correios com contrato (opcional, seção 4.1) e ajustes do pacote |
 
 A API não sobe sem `JWT_SECRET`.
 
@@ -81,6 +82,25 @@ npm run migrate
 3. Teste com as contas e cartões de teste do Mercado Pago: compra com PIX e com cartão, pedido mudando para "Pago" sozinho e reembolso pelo painel.
 4. Se um webhook se perder, use **Consultar Mercado Pago** no detalhe do pedido. A cada 5 minutos a API também confere os pedidos vencidos antes de cancelá-los.
 
+## 4.0 Frete pelo Melhor Envio (recomendado, gratuito)
+
+Cota Correios PAC e SEDEX (e outras transportadoras, se quiser) sem contrato. A conta e a cotação são gratuitas; paga-se só a etiqueta, comprada no Melhor Envio.
+
+1. Crie a conta em [melhorenvio.com.br](https://melhorenvio.com.br) e gere um **token** no painel da conta (área de integrações/tokens).
+2. No Render, preencha:
+   - `MELHOR_ENVIO_TOKEN`: o token (só o texto do token, sem "Bearer").
+   - `MELHOR_ENVIO_CEP_ORIGEM`: o CEP de onde os pacotes saem.
+   - Opcionais: `MELHOR_ENVIO_SERVICOS` (padrão `1,2` = PAC e SEDEX; `17` = Mini Envios, `3,4` = Jadlog), `MELHOR_ENVIO_AMBIENTE=sandbox` para usar um token do ambiente de testes, `MELHOR_ENVIO_CONTATO` (e-mail técnico enviado no User-Agent).
+3. Ajuste o pacote em `FRETE_PESO_ITEM_GRAMAS` (peso de cada peça já embalada) e `FRETE_EMBALAGEM_CM` (`comprimento x largura x altura`).
+4. Teste em **Frete → Simular**: deve aparecer "Melhor Envio — Correios PAC: R$ ..., Correios SEDEX: R$ ...".
+
+Regras:
+- O valor cotado é o da etiqueta do Melhor Envio. Se for postar pagando no balcão da agência, use `FRETE_ADICIONAL` para cobrir a diferença.
+- O valor dos produtos vai como valor segurado (o mesmo na cotação e no pedido).
+- O "grátis acima de" da regra do CEP vale para a opção mais barata.
+- Se o Melhor Envio não responder (ou o token for inválido), o frete cai na tabela do painel e o log mostra `Cotação de frete falhou`. Mantenha a regra padrão (Brasil) ativa.
+- Com Melhor Envio e Correios configurados, vale o Melhor Envio.
+
 ## 4.1 Frete pelos Correios
 
 Sem as variáveis `CORREIOS_*`, o frete vem só da tabela do painel (**Frete**). Com elas, o checkout cota PAC e SEDEX na API dos Correios assim que o cliente informa o CEP, e o cliente escolhe a opção.
@@ -95,7 +115,7 @@ A tabela do painel continua valendo:
 - o **frete grátis** ("grátis acima de") da regra do CEP vale para a opção mais barata dos Correios;
 - se os Correios não responderem, o frete cai na regra da tabela. Mantenha a regra padrão (Brasil) ativa.
 
-As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log como `Cotação dos Correios falhou`.
+As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log como `Cotação de frete falhou`.
 
 ## 5. E-mails (Resend)
 
