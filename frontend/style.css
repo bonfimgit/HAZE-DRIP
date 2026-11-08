@@ -3300,3 +3300,64 @@ body.menu-mobile-ativo{ overflow: hidden; }
     z-index: 3;
   }
 }
+
+
+/* =============================================================
+   CARD DE PRODUTO — SELO "% OFF" E BOTÃO "COMPRAR"
+   (script.js: criarCardProduto)
+============================================================= */
+
+/* Selo de desconto em pílula no canto da foto ("26% OFF").
+   Só existe no HTML quando o produto tem desconto. */
+.selo-promocao {
+  top: 10px;
+  left: 10px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .35);
+}
+
+/* O card vira coluna de altura cheia: o botão fica sempre
+   alinhado embaixo, mesmo com nomes de tamanhos diferentes */
+.grid > .card {
+  height: 100%;
+}
+
+.card-info {
+  flex: 1;
+}
+
+/* "Comprar": mesmo gradiente metálico do "Adicionar ao carrinho",
+   com bordas arredondadas */
+.card-comprar {
+  border-radius: 10px;
+  justify-content: center;
+  width: 100%;
+  padding: 12px 10px;
+  font-size: 12px;
+  letter-spacing: .08em;
+  text-align: center;
+}
+
+.card-comprar[aria-disabled="true"] {
+  opacity: .45;
+  cursor: not-allowed;
+  animation: none;
+}
+
+@media (max-width: 560px) {
+  .card-comprar {
+    padding: 11px 6px;
+    font-size: 11px;
+  }
+
+  .selo-promocao {
+    top: 8px;
+    left: 8px;
+    padding: 5px 9px;
+    font-size: 10px;
+  }
+}
