@@ -34,7 +34,7 @@ Todas estão documentadas em [`backend/.env.example`](../backend/.env.example). 
 | `DB_SSL` | `true` (o TiDB Cloud exige SSL com certificado público; deixe `DB_SSL_CA` e `DB_SSL_CA_FILE` vazios) |
 | `JWT_SECRET` | 64+ caracteres aleatórios |
 | `FRONTEND_URLS` | Domínio(s) do Netlify, ex.: `https://hazedrip.com.br,https://www.hazedrip.com.br` |
-| `STORE_URL` | URL pública da loja, ex.: `https://hazedrip.com.br/frontend` |
+| `STORE_URL` | URL pública da loja, ex.: `https://hazedrip.com.br` (sem `/frontend`; endereços antigos com `/frontend` redirecionam) |
 | `API_URL` | URL pública da API (https) |
 | `TZ` / `DB_TIMEZONE` | `America/Sao_Paulo` / `-03:00` (padrão) |
 | `CLOUDINARY_*` | Painel do Cloudinary |
@@ -157,7 +157,7 @@ As cotações ficam 30 minutos em cache por CEP e peso, e falhas aparecem no log
 
 ## 8. Netlify (loja e painel)
 
-- Publique a raiz do repositório (configurado em `netlify.toml`). A loja fica em `/frontend/` e o painel em `/admin/` (abre o `login.html`); a raiz `/` redireciona para a loja e links antigos `/hazedrip/...` continuam funcionando.
+- Publique a raiz do repositório (configurado em `netlify.toml`). A loja é servida na raiz (`/produto.html`, arquivos em `frontend/`) e o painel em `/admin/` (abre o `login.html`); endereços antigos com `/frontend/...` ou `/hazedrip/...` redirecionam para os novos. Também ficam na raiz `robots.txt`, `sitemap.xml` e a imagem de prévia de link (`assets/og-image.jpg`).
 - A URL da API está em `frontend/script.js` e `admin/config.js` (em `localhost` usa a API local automaticamente).
 - Inclua o domínio do Netlify em `FRONTEND_URLS` na API.
 
